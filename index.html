@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor's AI Sales Deck - Grow with AI</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<div class="deck-container">
+    <!-- SLIDE 1: FOMO Intro -->
+    <section class="slide" id="slide-1">
+        <div class="glass-card">
+            <span class="badge">AI Performance Check</span>
+            <h1>Doctor Sahab, AI Pe Aapka Rank Kya Hai?</h1>
+            <div class="visual-container">
+                <img src="assets/fomo.png" alt="Doctor looking at low AI rank">
+            </div>
+            <p>Pura city AI se best doctors dhund raha hai. Chaliye dekhte hain aap kahan stand karte hain.</p>
+            <div class="form-container">
+                <div class="input-group">
+                    <input type="text" id="doc-name" placeholder="Doctor's Name" required>
+                    <input type="text" id="clinic-name" placeholder="Clinic Name" required>
+                    <input type="text" id="doc-city" placeholder="City" required>
+                </div>
+                <button class="cta-button" onclick="startAnalysis()">Check AI Rank & Presence <i class="fas fa-search"></i></button>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">*We will scan Google, Practo, and Social Media for your rank.</p>
+        </div>
+    </section>
+
+    <!-- SLIDE 2: Analysis & Rank -->
+    <section class="slide" id="slide-2">
+        <div class="glass-card" id="analysis-card">
+            <span class="badge danger" id="analysis-badge">AI Rank Analysis</span>
+            <h2 id="analysis-title">Searching for your digital presence...</h2>
+            
+            <div id="scanning-view" class="scanning-view">
+                <div class="scanner-line"></div>
+                <div class="source-list">
+                    <div class="source-item" id="source-google"><i class="fab fa-google"></i> Google Business... <span>Scanning</span></div>
+                    <div class="source-item" id="source-practo"><i class="fas fa-stethoscope"></i> Practo / Lybrate... <span>Waiting</span></div>
+                    <div class="source-item" id="source-social"><i class="fab fa-instagram"></i> Social Media... <span>Waiting</span></div>
+                </div>
+            </div>
+
+            <div id="results-view" style="display: none;">
+                <div class="score-summary-grid">
+                    <div class="rank-display">
+                        <div class="rank-indicator" id="final-rank">#--</div>
+                        <h4 id="score-text">Score: 0/9</h4>
+                    </div>
+                    <div class="checklist-container">
+                        <h3><i class="fas fa-swords"></i> Feature-by-Feature Battle:</h3>
+                        <div class="comparison-table-wrapper">
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Key Feature</th>
+                                        <th>You</th>
+                                        <th>Top Rated</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="presence-checklist">
+                                    <!-- Dynamically filled -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPETITOR BATTLE -->
+                <div class="competitor-battle">
+                    <h3><i class="fas fa-bolt"></i> Market Competition: You vs. Top Ranked</h3>
+                    <div class="battle-grid">
+                        <div class="battle-card you">
+                            <div class="battle-label">You</div>
+                            <div class="battle-score" id="your-score-battle">0/9</div>
+                            <div class="battle-rank" id="your-rank-battle">#--</div>
+                        </div>
+                        <div class="battle-vs">VS</div>
+                        <div class="battle-card topper">
+                            <div class="battle-label">Top Competitor</div>
+                            <div class="battle-score">9/9</div>
+                            <div class="battle-rank">#1</div>
+                        </div>
+                    </div>
+                    <p class="battle-insight" id="battle-insight">Top competitor is stealing <b>60% of your potential patients</b> because of better AI visibility.</p>
+                </div>
+
+                <!-- TOP 7 AI STANDINGS -->
+                <div class="platform-standings">
+                    <h3><i class="fas fa-network-wired"></i> Rank on Top 7 AI Platforms (India):</h3>
+                    <div class="standing-grid" id="ai-standings">
+                        <!-- Dynamically filled -->
+                    </div>
+                </div>
+
+                <div class="scorecard-grid">
+                    <div class="scorecard-section right">
+                        <h3><i class="fas fa-check-circle"></i> What's Working</h3>
+                        <ul id="right-ul" class="audit-list">
+                            <!-- Dynamically filled -->
+                        </ul>
+                    </div>
+                    <div class="scorecard-section wrong">
+                        <h3><i class="fas fa-times-circle"></i> What's Missing</h3>
+                        <ul id="wrong-ul" class="audit-list">
+                            <!-- Dynamically filled -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- AI GROWTH ROADMAP -->
+                <div class="growth-roadmap">
+                    <h3><i class="fas fa-map-signs"></i> AI Growth Roadmap (6 Pillars):</h3>
+                    <div class="roadmap-grid" id="roadmap-grid">
+                        <!-- Dynamically filled -->
+                    </div>
+                </div>
+                <div class="sub-ranks">
+                    <div class="sub-rank-item"><span>Search Visibility</span> <div class="progress-bar"><div id="progress-search" style="width: 0%"></div></div></div>
+                    <div class="sub-rank-item"><span>Patient Trust</span> <div class="progress-bar"><div id="progress-trust" style="width: 0%"></div></div></div>
+                    <div class="sub-rank-item"><span>Booking Ease</span> <div class="progress-bar"><div id="progress-booking" style="width: 0%"></div></div></div>
+                </div>
+                <div class="platform-audit">
+                    <h3>Digital Footprint & Data Integrity:</h3>
+                    <div class="data-proof-grid">
+                        <div class="proof-card" id="proof-contact"><i class="fas fa-phone-check"></i> <b>Contact Info</b> <span class="proof-status">Verified</span></div>
+                        <div class="proof-card" id="proof-timings"><i class="fas fa-clock"></i> <b>Clinic Timings</b> <span class="proof-status warn">Outdated</span></div>
+                        <div class="proof-card" id="proof-edu"><i class="fas fa-graduation-cap"></i> <b>Education/Degree</b> <span class="proof-status danger">Missing</span></div>
+                        <div class="proof-card" id="proof-team"><i class="fas fa-user-md"></i> <b>Team/Specialists</b> <span class="proof-status">2 Found</span></div>
+                    </div>
+
+                    <div class="audit-table-wrapper">
+                        <table class="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Platform</th>
+                                    <th>Results Found</th>
+                                    <th>Sentiment</th>
+                                    <th>Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-tbody">
+                                <!-- Dynamically filled -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="sentiment-deep-dive">
+                        <h3><i class="fab fa-google"></i> Patient Feedback Analysis:</h3>
+                        <div class="sentiment-bar-container">
+                            <div class="sentiment-segment pos" style="width: 70%">70% Positive</div>
+                            <div class="sentiment-segment neu" style="width: 20%">20% Neutral</div>
+                            <div class="sentiment-segment neg" style="width: 10%">10% Negative</div>
+                        </div>
+                        <p class="sentiment-insight">"Patient feedback is generally good, but <b>30% of users</b> report long waiting times and no follow-up."</p>
+                    </div>
+                </div>
+                <button class="cta-button" onclick="document.getElementById('slide-3').scrollIntoView()">Fix These Gaps with AI Staff <i class="fas fa-arrow-right"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SLIDE 3: The Big Shift -->
+    <section class="slide" id="slide-3">
+        <div class="glass-card">
+            <span class="badge">The Solution</span>
+            <h2>Ab 'Dukan' AI Staff Chalayeda</h2>
+            <div class="visual-container">
+                <img src="assets/dukan.png" alt="AI Dukan Team">
+            </div>
+            <div class="pitch-text">
+                <p>Ye battle harne ka ek hi reason hai: <b>Manual Work</b>. Aap clinic chala rahe hain, lekin topper AI chala raha hai.</p>
+                <p>Hum aapko dete hain specialized <b>AI Staff</b> jo aapki in gaps ko fill karenge aur aapko Rank #1 tak le jayenge.</p>
+            </div>
+            <button class="cta-button" onclick="document.getElementById('slide-4').scrollIntoView()">Miliye Apne AI Staff Se <i class="fas fa-robot"></i></button>
+        </div>
+    </section>
+
+    <!-- SLIDE 4: AI Staff 1 - Fixes Experience Gaps -->
+    <section class="slide" id="slide-4">
+        <div class="glass-card">
+            <span class="badge">AI Staff #1: Experience Expert</span>
+            <h2>Fixes: Booking & Feedback Gaps</h2>
+            <div class="grid-2">
+                <div class="visual-container" style="height: 300px;">
+                    <img src="assets/team_specialized.png" alt="Patient Care AI" class="staff-img">
+                </div>
+                <div>
+                    <div class="timeline-badge"><i class="fas fa-clock"></i> Execution: 7 Days</div>
+                    <p>Checklist mein missing <b>Slot Booking</b> aur <b>Mixed Feedback</b> ko ye staff handle karega:</p>
+                    <ul class="staff-features">
+                        <li><i class="fas fa-calendar-check"></i> <b>Instant WhatsApp Booking:</b> No more missing slots.</li>
+                        <li><i class="fas fa-star"></i> <b>AI Feedback Loop:</b> Positive reviews badhayega.</li>
+                        <li><i class="fas fa-capsules"></i> <b>Medicine Reminders:</b> Follow-up automated.</li>
+                    </ul>
+                </div>
+            </div>
+            <button class="cta-button" onclick="document.getElementById('slide-5').scrollIntoView()">Operations Staff Dekhiye <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- SLIDE 5: AI Staff 2 - Fixes Data Gaps -->
+    <section class="slide" id="slide-5">
+        <div class="glass-card">
+            <span class="badge">AI Staff #2: Admin & Ops Squad</span>
+            <h2>Fixes: Timings & Info Integrity</h2>
+            <div class="grid-2">
+                <div>
+                    <div class="timeline-badge"><i class="fas fa-clock"></i> Execution: 15 Days</div>
+                    <p>Audit mein found <b>Wrong Timings</b> aur <b>Missing Education</b> ko ye staff sync karega:</p>
+                    <ul class="staff-features">
+                        <li><i class="fas fa-sync"></i> <b>Omni-Channel Sync:</b> Har platform pe sahi info.</li>
+                        <li><i class="fas fa-receipt"></i> <b>Billing & Invoicing:</b> Instant automation.</li>
+                        <li><i class="fas fa-shield-alt"></i> <b>Tax Compliance:</b> Backend Records management.</li>
+                    </ul>
+                </div>
+                <div class="visual-container" style="height: 300px;">
+                    <img src="assets/team_specialized.png" alt="Admin AI" class="staff-img" style="filter: hue-rotate(180deg);">
+                </div>
+            </div>
+            <button class="cta-button" onclick="document.getElementById('slide-6').scrollIntoView()">Growth Engine Dekhiye <i class="fas fa-arrow-right"></i></button>
+        </div>
+    </section>
+
+    <!-- SLIDE 6: AI Staff 3 - Wins the Battle -->
+    <section class="slide" id="slide-6">
+        <div class="glass-card">
+            <span class="badge">AI Staff #3: Growth & Sales Expert</span>
+            <h2>Wins: The AI Ranking Race</h2>
+            <div class="grid-2">
+                <div class="visual-container" style="height: 300px;">
+                    <img src="assets/team_specialized.png" alt="Growth AI" class="staff-img" style="filter: hue-rotate(280deg);">
+                </div>
+                <div>
+                    <div class="timeline-badge"><i class="fas fa-clock"></i> Execution: 30 Days</div>
+                    <p>Aapko checklist mein <b>Rank #1</b> aur <b>Market Leader</b> banane ki responsibility inki hai:</p>
+                    <ul class="staff-features">
+                        <li><i class="fas fa-trophy"></i> <b>Rank Optimization:</b> Google & AI search dominate karein.</li>
+                        <li><i class="fas fa-video"></i> <b>Success Stories:</b> Patient outcomes showcase karein.</li>
+                        <li><i class="fas fa-comments-dollar"></i> <b>WhatsApp Sales:</b> Enquiries ko footfall mein badle.</li>
+                    </ul>
+                </div>
+            </div>
+            <button class="cta-button" onclick="document.getElementById('slide-7').scrollIntoView()">Final Impact <i class="fas fa-rocket"></i></button>
+        </div>
+    </section>
+
+    <!-- SLIDE 7: Conclusion -->
+    <section class="slide" id="slide-7">
+        <div class="glass-card" style="text-align: center;">
+            <span class="badge success">Final Result</span>
+            <h2>Mubarak Ho! Aapka Clinic Auto-Pilot Pe Hai</h2>
+            <div class="rank-indicator up">Rank #1</div>
+            <div class="visual-container">
+                <img src="assets/success.png" alt="Rank #1 Success">
+            </div>
+            <p>Jab aapka specialized AI staff kaam karega, toh aap sirf patient treat karenge, 'Dukan' AI chalayega.</p>
+            <button class="cta-button">Apna AI Staff Rakho <i class="fas fa-rocket"></i></button>
+        </div>
+    </section>
+</div>
+
+<script>
+    async function startAnalysis() {
+        const name = document.getElementById('doc-name').value;
+        const clinic = document.getElementById('clinic-name').value;
+        const city = document.getElementById('doc-city').value;
+
+        if (!name || !clinic || !city) {
+            alert('Please enter Name, Clinic, and City for analysis.');
+            return;
+        }
+
+        // Scroll to slide 2
+        document.getElementById('slide-2').scrollIntoView();
+
+        const steps = [
+            { id: 'source-google', text: 'Google Business Audit' },
+            { id: 'source-practo', text: 'Health Platform Crawl' },
+            { id: 'source-social', text: 'Social Engagement Scan' }
+        ];
+
+        // Simulate scanning
+        for (let step of steps) {
+            const el = document.getElementById(step.id);
+            el.querySelector('span').innerText = 'Crawling...';
+            await new Promise(r => setTimeout(r, 1200));
+            el.classList.add('done');
+            el.querySelector('span').innerText = 'Data Sync';
+        }
+
+        // Final results
+        document.getElementById('scanning-view').style.display = 'none';
+        document.getElementById('analysis-title').innerText = `${name} @ ${clinic}`;
+        document.getElementById('analysis-badge').innerText = city + ' Digital Audit';
+        document.getElementById('results-view').style.display = 'block';
+
+        // Calculate data
+        const mockData = calculateGaps(name, clinic, city);
+        
+        document.getElementById('final-rank').innerText = `#${mockData.rank}`;
+        document.getElementById('rank-summary').innerText = `${clinic} ki online dukan ${city} mein analyze ki gayi hai.`;
+
+        // Update Comparison Table
+        const checklistTbody = document.getElementById('presence-checklist');
+        checklistTbody.innerHTML = '';
+        let score = 0;
+        mockData.checklist.forEach(item => {
+            if (item.status) score++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.label}</td>
+                <td class="battle-cell ${item.status ? 'success' : 'fail'}">
+                    <i class="fas ${item.status ? 'fa-check-circle' : 'fa-times-circle'} battle-status-icon"></i>
+                    <span class="battle-data">${item.proof}</span>
+                </td>
+                <td class="battle-cell success">
+                    <i class="fas fa-check-circle battle-status-icon"></i>
+                    <span class="battle-data">${item.topperProof}</span>
+                </td>
+            `;
+            checklistTbody.appendChild(tr);
+        });
+        document.getElementById('score-text').innerText = `Your Score: ${score}/9`;
+        document.getElementById('your-score-battle').innerText = `${score}/9`;
+        document.getElementById('your-rank-battle').innerText = `#${mockData.rank}`;
+        document.getElementById('battle-insight').innerHTML = `Top competitor is stealing <b>${95 - mockData.scores.search}% of your potential patients</b> because of better AI visibility in ${city}.`;
+
+        // Update AI Standings
+        const standingDiv = document.getElementById('ai-standings');
+        standingDiv.innerHTML = '';
+        mockData.aiApps.forEach(app => {
+            const div = document.createElement('div');
+            div.className = 'standing-card';
+            div.innerHTML = `
+                <i class="${app.icon}"></i>
+                <span class="app-name">${app.name}</span>
+                <div class="app-rank">Rank #${app.rank}</div>
+            `;
+            standingDiv.appendChild(div);
+        });
+
+        // Update Roadmap
+        const roadmapDiv = document.getElementById('roadmap-grid');
+        roadmapDiv.innerHTML = '';
+        mockData.roadmap.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'roadmap-card';
+            div.innerHTML = `
+                <h4><i class="${r.icon}"></i> ${r.title}</h4>
+                <p><b>Issue:</b> ${r.issue}</p>
+                <p><b>AI Fix:</b> ${r.fix}</p>
+            `;
+            roadmapDiv.appendChild(div);
+        });
+
+        // Update Comparison Table
+        const rightUl = document.getElementById('right-ul');
+        const wrongUl = document.getElementById('wrong-ul');
+        rightUl.innerHTML = '';
+        wrongUl.innerHTML = '';
+        mockData.right.forEach(item => {
+            const li = document.createElement('li');
+            li.innerText = item;
+            rightUl.appendChild(li);
+        });
+        mockData.wrong.forEach(item => {
+            const li = document.createElement('li');
+            li.innerHTML = `<b>${item.text}</b> <br> <small>Fix with: ${item.staff}</small>`;
+            wrongUl.appendChild(li);
+        });
+
+        // Audit Table
+        const tbody = document.getElementById('audit-tbody');
+        tbody.innerHTML = '';
+        mockData.platforms.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><i class="${p.icon}"></i> ${p.name}</td>
+                <td><b>${p.count}</b> results</td>
+                <td><span class="sentiment-tag ${p.sentimentClass}">${p.sentiment}</span></td>
+                <td><span class="activity-tag ${p.activityClass}">${p.activity}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Update Proof Cards
+        document.getElementById('proof-contact').querySelector('.proof-status').innerText = mockData.integrity.contact;
+        document.getElementById('proof-timings').querySelector('.proof-status').innerText = mockData.integrity.timings;
+        document.getElementById('proof-timings').querySelector('.proof-status').className = 'proof-status ' + mockData.integrity.timingsClass;
+        document.getElementById('proof-edu').querySelector('.proof-status').innerText = mockData.integrity.edu;
+        document.getElementById('proof-edu').querySelector('.proof-status').className = 'proof-status ' + mockData.integrity.eduClass;
+        document.getElementById('proof-team').querySelector('.proof-status').innerText = mockData.integrity.team;
+
+        // Sentiment Bars
+        const sentimentDiv = document.querySelector('.sentiment-bar-container');
+        sentimentDiv.querySelector('.pos').style.width = mockData.sentimentData.pos + '%';
+        sentimentDiv.querySelector('.pos').innerText = mockData.sentimentData.pos + '% Pos';
+        sentimentDiv.querySelector('.neu').style.width = mockData.sentimentData.neu + '%';
+        sentimentDiv.querySelector('.neg').style.width = mockData.sentimentData.neg + '%';
+        document.querySelector('.sentiment-insight').innerHTML = `"${mockData.sentimentData.insight}"`;
+
+        // Progress bars
+        setTimeout(() => {
+            document.getElementById('progress-search').style.width = mockData.scores.search + '%';
+            document.getElementById('progress-trust').style.width = mockData.scores.trust + '%';
+            document.getElementById('progress-booking').style.width = mockData.scores.booking + '%';
+        }, 100);
+    }
+
+    function calculateGaps(name, clinic, city) {
+        const hash = (name + clinic + city).length;
+        
+        return {
+            rank: 12 + (hash % 45),
+            scores: {
+                search: 25 + (hash % 35),
+                trust: 35 + (hash % 45),
+                booking: 15 + (hash % 25)
+            },
+            aiApps: [
+                { name: 'Google Search', icon: 'fab fa-google', rank: 12 + (hash % 10) },
+                { name: 'ChatGPT', icon: 'fas fa-robot', rank: 45 + (hash % 20) },
+                { name: 'Gemini', icon: 'fas fa-brain', rank: 30 + (hash % 15) },
+                { name: 'Perplexity', icon: 'fas fa-search', rank: 50 + (hash % 10) },
+                { name: 'Practo', icon: 'fas fa-stethoscope', rank: 8 + (hash % 10) },
+                { name: 'Instagram', icon: 'fab fa-instagram', rank: 100 },
+                { name: 'Apple Maps', icon: 'fas fa-map-marked-alt', rank: 25 + (hash % 10) }
+            ],
+            roadmap: [
+                { title: 'Digital Process', icon: 'fas fa-laptop-code', issue: 'Fragmented data across 5 apps', fix: 'Omni-channel data sync by AI Staff #2' },
+                { title: 'Word of Mouth', icon: 'fas fa-comments', issue: '90% of happy patients forget to review', fix: 'Automated WhatsApp review loop by AI Staff #1' },
+                { title: 'Clinical Expertise', icon: 'fas fa-award', issue: 'Degrees & Specialty not indexed', fix: 'Deep SEO indexing by AI Staff #3' },
+                { title: 'Success Stories', icon: 'fas fa-heart', issue: 'Zero visual proof of outcomes', fix: 'Video testimonial pipeline by AI Staff #3' },
+                { title: 'Availability', icon: 'fas fa-hourglass-half', issue: 'Timings mismatch on Maps/Practo', fix: 'Real-time clock sync by AI Staff #2' },
+                { title: 'Book Appointment', icon: 'fas fa-calendar-plus', issue: 'Patients drop off on phone calls', fix: 'Instant WhatsApp Booking by AI Staff #1' }
+            ],
+            checklist: [
+                { label: 'Maps Presence', status: true, proof: `Found at: ${city} Sector 15`, topperProof: 'Verified Address + Interior Map' },
+                { label: 'Phone Contact', status: hash % 2 === 0, proof: hash % 2 === 0 ? `+91-98XXX-${1000 + (hash % 8999)}` : 'Hidden', topperProof: 'Click-to-Call Enabled' },
+                { label: 'Live Timings', status: hash % 3 !== 0, proof: hash % 3 !== 0 ? '10 AM - 7 PM' : 'Mismatched', topperProof: 'Real-time (Active Now)' },
+                { label: 'Slot Booking', status: false, proof: 'Not Found', topperProof: 'Instant WhatsApp Booking' },
+                { label: 'Scope of Help', status: true, proof: 'Basic Description', topperProof: 'Detailed Service Menu' },
+                { label: 'Patient Sentiment', status: true, proof: 'Mixed Feedback', topperProof: '98% Positive (Verified)' },
+                { label: 'Specialty Rank', status: hash % 4 !== 0, proof: 'Generic Tag', topperProof: 'Market Leader Badge' },
+                { label: 'Success Stories', status: hash % 5 === 0, proof: 'None Found', topperProof: '10+ Video Testimonials' },
+                { label: 'Care Outcomes', status: false, proof: '0 data points', topperProof: 'Outcome Stats Verified' }
+            ],
+            integrity: {
+                contact: hash % 2 === 0 ? 'Verified (Google)' : 'Outdated',
+                timings: hash % 3 === 0 ? 'Verified' : 'Outdated',
+                timingsClass: hash % 3 === 0 ? '' : 'warn',
+                edu: hash % 4 === 0 ? 'Verified' : 'Missing',
+                eduClass: hash % 4 === 0 ? '' : 'danger',
+                team: (hash % 5) + ' Doctors Found'
+            },
+            sentimentData: {
+                pos: 60 + (hash % 30),
+                neu: 10 + (hash % 10),
+                neg: 5 + (hash % 15),
+                insight: `Patient feedback for <b>${clinic}</b> is generally good, but <b>${10 + (hash % 20)}% of users</b> report confusing timings and no follow-up reminders.`
+            },
+            platforms: [
+                { name: 'Google Maps', icon: 'fab fa-google', count: 12, sentiment: 'Positive', sentimentClass: 'positive', activity: 'Active', activityClass: 'active' },
+                { name: 'Practo', icon: 'fas fa-stethoscope', count: 4, sentiment: 'Neutral', sentimentClass: 'neutral', activity: 'Idle', activityClass: 'idle' },
+                { name: 'Instagram', icon: 'fab fa-instagram', count: 8, sentiment: 'Mixed', sentimentClass: 'negative', activity: 'Inactive', activityClass: 'idle' },
+                { name: 'JustDial', icon: 'fas fa-phone', count: 2, sentiment: 'N/A', sentimentClass: 'neutral', activity: 'Outdated', activityClass: 'idle' }
+            ],
+            right: [
+                `${clinic} profile info exists`,
+                'Verified phone number found',
+                'Patient reviews are visible'
+            ],
+            wrong: [
+                { text: 'Doctor timings different platforms pe mismatch hain.', staff: 'AI Staff #3 (Growth Expert)' },
+                { text: 'Education aur specialty details maps pe missing hain.', staff: 'AI Staff #2 (Visibility Magnet)' },
+                { text: 'Follow-up care and reminders zero hain.', staff: 'AI Staff #1 (Experience Expert)' }
+            ]
+        };
+    }
+</script>
+
+</body>
+</html>
