@@ -187,8 +187,8 @@ The agent must execute the following `browser-mcp` tools strictly under these ru
     *   *Parameters:* `selector` (CSS/Text description), `value` (search query).
 3.  **`mcp_browser-mcp_browser_click`**: Use to click buttons, submit elements, expand menus, or navigate links.
     *   *Parameters:* `selector`.
-4.  **`mcp_browser-mcp_browser_screenshot`**: Use to capture high-fidelity visual proof.
-    *   *Parameters:* None (captures active viewport).
+4.  **`mcp_chrome-devtools-mcp_take_screenshot`**: Use to capture high-fidelity visual proof. STRICTLY avoid using `mcp_browser-mcp_browser_screenshot` as it does not natively save to disk.
+    *   *Parameters:* `filePath` (save directly or via `/tmp/` and move to the target `reports/v4/assets/` directory).
 5.  **`mcp_browser-mcp_browser_get_page_content`**: Use to extract DOM structure or raw text nodes.
     *   *Parameters:* `format: "html"` (for parsing scripts/schemas) or `format: "text"` (for E-E-A-T indexing).
 6.  **`mcp_browser-mcp_browser_wait_for_network`**: Call immediately after clicking submit buttons or search forms to ensure AJAX APIs and SPAs are fully rendered before scraping.
@@ -220,7 +220,7 @@ Workflow 1: Local SEO & Google Maps
     3.  Call `mcp_browser-mcp_browser_click` to submit the search, and run `mcp_browser-mcp_browser_wait_for_network`.
     4.  Inspect the local 3-pack structure. Note the clinic's exact position. If not in the local 3-pack, click "More businesses" to locate their exact numerical rank.
     5.  Navigate to the clinic's specific Google Maps listing and check if the listing is claimed. Look for the "Own this business?" or "Claim this business" link.
-    6.  Call `mcp_browser-mcp_browser_screenshot` to capture the maps rating overview. Save this screenshot as `reports/v4/assets/[doctor_slug]_maps_proof.png`.
+    6.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the maps rating overview. Save this screenshot as `reports/v4/assets/[doctor_slug]_maps_proof.png`.
 *   **Outputs Expected:** Exact Local Pack rank, claimed/unclaimed status, visual asset count (GBP photos), maps profile screenshot saved, and linked inline under the Query Matrix section of the main report.
 
 ---
@@ -236,7 +236,7 @@ Workflow 1: Local SEO & Google Maps
     3.  Click the first authoritative link in the results page, then call `mcp_browser-mcp_browser_wait_for_network`.
     4.  Inspect the Practo listing to see if appointment booking is active. Look for the "Book Appointment" button. Check if the profile is claimed or has an "unclaimed profile" disclaimer.
     5.  Inspect the Justdial listing to verify matching name, phone number, and address coordinates.
-    6.  Call `mcp_browser-mcp_browser_screenshot` on the Practo or Justdial profile to compile visual evidence. Save this screenshot as `reports/v4/assets/[doctor_slug]_aggregators_proof.png`.
+    6.  Call `mcp_chrome-devtools-mcp_take_screenshot` on the Practo or Justdial profile to compile visual evidence. Save this screenshot as `reports/v4/assets/[doctor_slug]_aggregators_proof.png`.
 *   **Outputs Expected:** Directory ranking position, claimed status on Practo/Justdial, slot booking availability (Yes/No), and aggregator landing page screenshot saved and linked inside the Visual Proof Index.
 
 ---
@@ -248,7 +248,7 @@ Workflow 1: Local SEO & Google Maps
     1.  Call `mcp_browser-mcp_browser_navigate` to the official registry website based on specialty (e.g., National Medical Commission `https://www.nmc.org.in`, Dental Council of India, or the State Dental Council/Medical Council search portal).
     2.  Locate the search registry input field, call `mcp_browser-mcp_browser_fill` with the doctor's full name, and click search.
     3.  If a match is found, call `mcp_browser-mcp_browser_get_page_content` to scrape text. Verify the doctor's name, registered degrees, active registration status, and exact registration number.
-    4.  Call `mcp_browser-mcp_browser_screenshot` to capture the active registration record on the council portal. Save this screenshot as `reports/v4/assets/[doctor_slug]_eeat_proof.png`.
+    4.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the active registration record on the council portal. Save this screenshot as `reports/v4/assets/[doctor_slug]_eeat_proof.png`.
 *   **Outputs Expected:** Verified registration status, exact medical registration number, degree confirmation, registry portal screenshot proof saved, and linked inline under the E-E-A-T Doctor Details section of the main report.
 
 ---
@@ -261,7 +261,7 @@ Workflow 1: Local SEO & Google Maps
     2.  Extract the total review count and aggregate star rating using `mcp_browser-mcp_browser_get_page_content`.
     3.  Sort or scan the latest 20 reviews. Count the number of reviews published within the last 60 days to calculate the **Review Velocity Proxy** (reviews per month).
     4.  Verify the existence of detailed patient text-based narratives (success stories or case descriptions) on the listings.
-    5.  Call `mcp_browser-mcp_browser_screenshot` showing the ratings distribution card. Save this screenshot as `reports/v4/assets/[doctor_slug]_reviews_proof.png` (optional, can be compiled with Maps proof).
+    5.  Call `mcp_chrome-devtools-mcp_take_screenshot` showing the ratings distribution card. Save this screenshot as `reports/v4/assets/[doctor_slug]_reviews_proof.png` (optional, can be compiled with Maps proof).
 *   **Outputs Expected:** Exact review count, aggregate rating, calculated review velocity, count of narrative case studies, and review summary screenshot saved.
 
 ---
@@ -274,7 +274,7 @@ Workflow 1: Local SEO & Google Maps
     2.  Submit simulated patient intent queries, such as `Who are the best [specialty] in [area], [city]?` or `Recommended clinical specialist for [specialty] near me`.
     3.  Extract the resulting text. Verify if the doctor's name or clinic name appears in the top 3 recommended listings.
     4.  Check if the LLM cites their website or specific directories.
-    5.  Call `mcp_browser-mcp_browser_screenshot` to capture the recommendation citations. Save this screenshot as `reports/v4/assets/[doctor_slug]_geo_proof.png` (optional).
+    5.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the recommendation citations. Save this screenshot as `reports/v4/assets/[doctor_slug]_geo_proof.png` (optional).
 *   **Outputs Expected:** Recommendation tier (Top 3, Mentioned, or Unmentioned), citation details, and conversational recommendation screenshot saved.
 
 ---
@@ -284,7 +284,7 @@ Workflow 1: Local SEO & Google Maps
 *   **Inputs:** Website URL (discovered from maps or aggregators).
 *   **Workflow Steps:**
     1.  Call `mcp_browser-mcp_browser_navigate` to the official clinic landing page.
-    2.  Verify the website loads. Call `mcp_browser-mcp_browser_screenshot` to capture the homepage viewport. Save this screenshot as `reports/v4/assets/[doctor_slug]_website_proof.png`.
+    2.  Verify the website loads. Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the homepage viewport. Save this screenshot as `reports/v4/assets/[doctor_slug]_website_proof.png`.
     3.  Call `mcp_browser-mcp_browser_get_page_content` with `format: "html"` to extract the raw page code.
     4.  Parse the HTML string using regex or semantic checks for `<script type="application/ld+json">`.
     5.  Locate JSON blocks and verify the presence of `@type: "MedicalBusiness"`, `"Dentist"`, or `"Physician"`. Validate that the name, address, and phone coordinates embedded in the JSON-LD match GBP data.
@@ -299,7 +299,7 @@ To prevent errors, data contamination, and keep reports strictly professional an
 ### 🔴 GLOBAL OPERATIONAL DONTs (The Integrity Firewall)
 *   🛑 **NO INFORMATION LEAKAGE:** You **MUST NOT** read previously generated doctor reports (e.g. `reports/v3/*.md` or `reports/v2/*.md` or `reports-old/*`) or look at other doctor data files in the workspace while performing an audit for a new doctor. This is a strict operational firewall. Every audit must be compiled purely from real-time browser session runs.
 *   🛑 **NO DATA HALLUCINATION:** Never invent medical credentials, state registrations, ratings, or phone numbers. If a detail cannot be verified through live browser queries, mark it **🔴 MISSING** and score it exactly as **0** under the scoring engine.
-*   🛑 **NO PLACEHOLDERS OR SUBJECTIVITY:** Do not place filler values or round up scores. Do not use generic images or generate screenshots using the AI image generation tool (`generate_image`). Every screenshot MUST be captured directly using the Browser MCP (`mcp_chrome-devtools-mcp_take_screenshot` or equivalent) on the live browser tab to guarantee absolute authenticity. Every visual proof reference must point to a captured screenshot `reports/v4/assets/[doctor_slug]_[channel]_proof.png` showing actual audited elements.
+*   🛑 **NO PLACEHOLDERS OR SUBJECTIVITY:** Do not place filler values or round up scores. Do not use generic images or generate screenshots using the AI image generation tool (`generate_image`). Every screenshot MUST be captured directly using the Chrome DevTools MCP (`mcp_chrome-devtools-mcp_take_screenshot`) on the live browser tab to guarantee absolute authenticity. Strictly avoid `mcp_browser-mcp_browser_screenshot`. Every visual proof reference must point to a captured screenshot `reports/v4/assets/[doctor_slug]_[channel]_proof.png` showing actual audited elements.
 *   🛑 **NO TAB SPAM:** Keep all operations within the active browser tab by specifying `new_tab: false` or reusing the existing session. Do not launch multiple browser instances.
 *   🛑 **NO SYSTEM DIRECTORY MUTATIONS:** Do not write project files to system temp, home, or desktop directories. All outputs must sit inside the active project directory under `reports/v4/`.
 *   🛑 **NO CHECKLIST OMISSION:** Do not skip creating the separate companion `[doctor_slug]_run_checklist.md` execution file. It is a mandatory audit deliverable.
