@@ -171,28 +171,30 @@ To guarantee that generating a report for the same doctor on the same day always
 
 ---
 
-## 🛠️ SECTION 4: BROWSER MCP INTEGRATION & TOOLING BLUEPRINT
+## 🛠️ SECTION 4: HYBRID SEARCH & BROWSER MCP TOOLING BLUEPRINT
 
-### Why Browser MCP Over Chrome DevTools MCP
-Chrome DevTools MCP operates strictly at the debugging API layer, which triggers anti-bot security systems, blocks standard search requests, fails on custom SPA rendering, and constantly prompts for CAPTCHAs. 
+To guarantee the highest report speed, lowest token overhead, and complete resilience against bot detection, the auditor uses a **hybrid search system** that divides tasks between **Semantic Search APIs** (`search_web`) and **Human-Emulated Browser Sessions** (`browser-mcp`).
 
-**Browser MCP** (`browser-mcp` server) resolves these limitations by executing actions inside an active, user-authenticated browser instance with native OS-level human interaction emulation. It utilizes standard cookies, active sessions, and browser-native renders, allowing seamless, captcha-free search audits.
+### The Scouting vs. Auditing Tool Split
+1.  **`search_web` (The Scouting Engine):** Used as an extremely fast, zero-session, low-token scraper to locate exact URL coordinates (e.g. Practo profile links, Justdial clinic pages, official government registration lookup portals) and query simulated GEO recommendations. This prevents triggering search CAPTCHAs inside the browser tab during discovery.
+2.  **`browser-mcp` (The Auditing & Proof Engine):** Operating inside an active, user-authenticated browser session with native OS-level human interaction emulation. Used strictly once target URLs are found to perform claim verification, interact with deep registry databases, load lazy-loaded elements, and capture screenshots.
 
 ### Core Tooling Blueprint
-The agent must execute the following `browser-mcp` tools strictly under these rules:
+The agent must execute the following tools strictly under these rules:
 
-1.  **`mcp_browser-mcp_browser_navigate`**: Use to load targeted URLs.
-    *   *Parameters:* `url`, `new_tab: false` (always reuse active tabs to prevent leakage).
-2.  **`mcp_browser-mcp_browser_fill`**: Use to input text strings into search boxes, inputs, or query boxes.
-    *   *Parameters:* `selector` (CSS/Text description), `value` (search query).
-3.  **`mcp_browser-mcp_browser_click`**: Use to click buttons, submit elements, expand menus, or navigate links.
+1.  **`search_web`**: Use to instantly resolve search queries (Google site-restricted searches, registry portal URLs, conversational GEO queries) to get text content or target URLs.
+2.  **`mcp_browser-mcp_browser_navigate`**: Use to load targeted URLs directly.
+    *   *Parameters:* `url`, `new_tab: false` (always reuse active tabs to prevent session and information leakage).
+3.  **`mcp_browser-mcp_browser_fill`**: Use to input text strings into search inputs, database lookups, or form fields.
+    *   *Parameters:* `selector`, `value`.
+4.  **`mcp_browser-mcp_browser_click`**: Use to click buttons, submit forms, or navigate links.
     *   *Parameters:* `selector`.
-4.  **`mcp_chrome-devtools-mcp_take_screenshot`**: Use to capture high-fidelity visual proof. STRICTLY avoid using `mcp_browser-mcp_browser_screenshot` as it does not natively save to disk.
+5.  **`mcp_chrome-devtools-mcp_take_screenshot`**: Use to capture high-fidelity visual proof. STRICTLY avoid using `mcp_browser-mcp_browser_screenshot` as it does not natively save to disk.
     *   *Parameters:* `filePath` (save directly or via `/tmp/` and move to the target `reports/v4/assets/` directory).
-5.  **`mcp_browser-mcp_browser_get_page_content`**: Use to extract DOM structure or raw text nodes.
-    *   *Parameters:* `format: "html"` (for parsing scripts/schemas) or `format: "text"` (for E-E-A-T indexing).
-6.  **`mcp_browser-mcp_browser_wait_for_network`**: Call immediately after clicking submit buttons or search forms to ensure AJAX APIs and SPAs are fully rendered before scraping.
-7.  **`mcp_browser-mcp_browser_solve_captcha`**: In the rare event a bot challenge appears, run this tool with `action: "detect"` followed by `action: "click_checkbox"` to automatically bypass challenges.
+6.  **`mcp_browser-mcp_browser_get_page_content`**: Use to extract DOM structure or raw text nodes.
+    *   *Parameters:* `format: "html"` (for parsing hydrated scripts/schemas) or `format: "text"` (for E-E-A-T indexing).
+7.  **`mcp_browser-mcp_browser_wait_for_network`**: Call immediately after clicking submit buttons or search forms to ensure AJAX APIs and SPAs are fully rendered before scraping.
+8.  **`mcp_browser-mcp_browser_solve_captcha`**: In the rare event a bot challenge appears on government registries or directory portals, run this tool with `action: "detect"` followed by `action: "click_checkbox"` to automatically bypass challenges.
 
 ---
 
@@ -201,17 +203,17 @@ The agent must execute the following `browser-mcp` tools strictly under these ru
 To ensure high reliability, easy maintenance, and clear enhancement paths in the future, the auditor must execute the following 6 step-by-step verification flows:
 
 ```
-Workflow 1: Local SEO & Google Maps
-     └── Workflow 2: Medical Aggregators (Practo/Justdial)
-           └── Workflow 3: EEAT & Medical Council Verification
-                 └── Workflow 4: Patient Sentiment & Review Velocity
-                       └── Workflow 5: GEO / AI Search Predictability
-                             └── Workflow 6: Official Website & Schema Parsing
+Workflow 1: Local SEO & Google Maps (Direct Browser MCP)
+     └── Workflow 2: Medical Aggregators (Hybrid: search_web -> Browser MCP)
+           └── Workflow 3: EEAT Registries (Hybrid: search_web -> Browser MCP)
+                 └── Workflow 4: Patient Sentiment & Velocity (Direct Browser MCP)
+                       └── Workflow 5: GEO Standing (Hybrid: search_web -> Browser MCP)
+                             └── Workflow 6: Official Website & Schema (Direct Browser MCP)
 ```
 
 ---
 
-### 🗺️ Workflow 1: Local SEO & Google Maps Auditing
+### 🗺️ Workflow 1: Local SEO & Google Maps Auditing (Direct Browser MCP)
 *   **Objective:** Verify map indexing, GBP claiming status, NAP consistency, and search ranking on Google Local Pack.
 *   **Inputs:** `Clinic Name`, `Specialty`, `City`, `Area`.
 *   **Workflow Steps:**
@@ -219,41 +221,42 @@ Workflow 1: Local SEO & Google Maps
     2.  Call `mcp_browser-mcp_browser_fill` on the search input with the query `best [specialty] in [area], [city]`.
     3.  Call `mcp_browser-mcp_browser_click` to submit the search, and run `mcp_browser-mcp_browser_wait_for_network`.
     4.  Inspect the local 3-pack structure. Note the clinic's exact position. If not in the local 3-pack, click "More businesses" to locate their exact numerical rank.
-    5.  Navigate to the clinic's specific Google Maps listing and check if the listing is claimed. Look for the "Own this business?" or "Claim this business" link.
+    5.  Navigate to the clinic's specific Google Maps listing page and check if the listing is claimed. Look for the "Own this business?" or "Claim this business" link.
     6.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the maps rating overview. Save this screenshot as `reports/v4/assets/[doctor_slug]_maps_proof.png`.
 *   **Outputs Expected:** Exact Local Pack rank, claimed/unclaimed status, visual asset count (GBP photos), maps profile screenshot saved, and linked inline under the Query Matrix section of the main report.
 
 ---
 
-### 🩺 Workflow 2: Medical Aggregators & Directories Audit
-*   **Objective:** Audit visibility, completeness, and appointment conversion potential on major medical directories.
+### 🩺 Workflow 2: Medical Aggregators & Directories Audit (Hybrid: search_web -> Browser MCP)
+*   **Objective:** Audit visibility, completeness, and appointment conversion potential on major medical directories (Practo and Justdial).
 *   **Inputs:** `Doctor Name`, `Clinic Name`, `Specialty`, `City`.
 *   **Workflow Steps:**
-    1.  Call `mcp_browser-mcp_browser_navigate` to `https://www.google.com`.
-    2.  Perform site-restricted searches by calling `mcp_browser-mcp_browser_fill` with:
+    1.  Call `search_web` to execute site-restricted searches:
         *   `site:practo.com [Doctor Name] [city]`
         *   `site:justdial.com [Clinic Name] [city]`
-    3.  Click the first authoritative link in the results page, then call `mcp_browser-mcp_browser_wait_for_network`.
-    4.  Inspect the Practo listing to see if appointment booking is active. Look for the "Book Appointment" button. Check if the profile is claimed or has an "unclaimed profile" disclaimer.
-    5.  Inspect the Justdial listing to verify matching name, phone number, and address coordinates.
-    6.  Call `mcp_chrome-devtools-mcp_take_screenshot` on the Practo or Justdial profile to compile visual evidence. Save this screenshot as `reports/v4/assets/[doctor_slug]_aggregators_proof.png`.
+    2.  Extract the top matching URL for each directory from the search results.
+    3.  Call `mcp_browser-mcp_browser_navigate` with `new_tab: false` to go directly to the discovered Practo URL, then call `mcp_browser-mcp_browser_wait_for_network`.
+    4.  Inspect the Practo listing to see if appointment booking is active (look for active slot booking buttons) and if the profile is claimed.
+    5.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the claimed/active booking proof. Save as `reports/v4/assets/[doctor_slug]_aggregators_proof.png`.
+    6.  Call `mcp_browser-mcp_browser_navigate` with `new_tab: false` to navigate to the discovered Justdial URL. Verify matching name, phone number, and address coordinates against GBP.
 *   **Outputs Expected:** Directory ranking position, claimed status on Practo/Justdial, slot booking availability (Yes/No), and aggregator landing page screenshot saved and linked inside the Visual Proof Index.
 
 ---
 
-### 🔬 Workflow 3: E-E-A-T & Registration Credentials Verification
+### 🔬 Workflow 3: E-E-A-T & Registration Credentials Verification (Hybrid: search_web -> Browser MCP)
 *   **Objective:** Verify clinical qualifications and active medical registration status through authoritative national/state databases.
 *   **Inputs:** `Doctor Name`, `Specialty`, `State Council`.
 *   **Workflow Steps:**
-    1.  Call `mcp_browser-mcp_browser_navigate` to the official registry website based on specialty (e.g., National Medical Commission `https://www.nmc.org.in`, Dental Council of India, or the State Dental Council/Medical Council search portal).
-    2.  Locate the search registry input field, call `mcp_browser-mcp_browser_fill` with the doctor's full name, and click search.
-    3.  If a match is found, call `mcp_browser-mcp_browser_get_page_content` to scrape text. Verify the doctor's name, registered degrees, active registration status, and exact registration number.
-    4.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the active registration record on the council portal. Save this screenshot as `reports/v4/assets/[doctor_slug]_eeat_proof.png`.
+    1.  Call `search_web` to locate the official search registry page for the specialty or state council (e.g. `UP Dental Council search portal link` or `NMC registry search page`).
+    2.  Extract the portal URL and call `mcp_browser-mcp_browser_navigate` with `new_tab: false` to go directly to the registry lookup form.
+    3.  Locate the search input field, call `mcp_browser-mcp_browser_fill` with the doctor's full name, click search, and run `mcp_browser-mcp_browser_wait_for_network`.
+    4.  If a match is found, call `mcp_browser-mcp_browser_get_page_content` to scrape the text. Verify the doctor's name, registered degrees, active registration status, and exact registration number.
+    5.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the active registration record on the council portal. Save this screenshot as `reports/v4/assets/[doctor_slug]_eeat_proof.png`.
 *   **Outputs Expected:** Verified registration status, exact medical registration number, degree confirmation, registry portal screenshot proof saved, and linked inline under the E-E-A-T Doctor Details section of the main report.
 
 ---
 
-### 💬 Workflow 4: Patient Sentiment & Review Velocity Analysis
+### 💬 Workflow 4: Patient Sentiment & Review Velocity Analysis (Direct Browser MCP)
 *   **Objective:** Quantify aggregate patient satisfaction and recent footfall velocity to establish active practice traffic.
 *   **Inputs:** GBP URL, Aggregator URLs.
 *   **Workflow Steps:**
@@ -266,20 +269,21 @@ Workflow 1: Local SEO & Google Maps
 
 ---
 
-### 🤖 Workflow 5: Generative AI Optimization (GEO) & Predictive Recommendations
+### 🤖 Workflow 5: Generative AI Optimization (GEO) & Predictive Recommendations (Hybrid: search_web -> Browser MCP)
 *   **Objective:** Audit the probability of the doctor/clinic being recommended by LLMs for localized clinical queries.
 *   **Inputs:** `Specialty`, `City`, `Area`, `Clinic Name`.
 *   **Workflow Steps:**
-    1.  Call `mcp_browser-mcp_browser_navigate` to Gemini/ChatGPT/Perplexity or query an authorized web-search API that simulates conversational engines.
-    2.  Submit simulated patient intent queries, such as `Who are the best [specialty] in [area], [city]?` or `Recommended clinical specialist for [specialty] near me`.
-    3.  Extract the resulting text. Verify if the doctor's name or clinic name appears in the top 3 recommended listings.
-    4.  Check if the LLM cites their website or specific directories.
-    5.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the recommendation citations. Save this screenshot as `reports/v4/assets/[doctor_slug]_geo_proof.png` (optional).
+    1.  Call `search_web` with simulated patient intent queries, such as:
+        *   `Who are the best [specialty] in [area], [city]?`
+        *   `Recommended clinical specialist for [specialty] near me`
+    2.  Inspect the resulting text output and citations to verify if the doctor's name or clinic name appears in the recommended top 3 recommendations.
+    3.  If a physical screenshot is required, navigate `mcp_browser-mcp_browser_navigate` with `new_tab: false` to an open, un-authenticated conversational engine (such as Google Search's AI Overview) and run the same queries.
+    4.  Call `mcp_chrome-devtools-mcp_take_screenshot` to capture the recommendation citations. Save this screenshot as `reports/v4/assets/[doctor_slug]_geo_proof.png` (optional).
 *   **Outputs Expected:** Recommendation tier (Top 3, Mentioned, or Unmentioned), citation details, and conversational recommendation screenshot saved.
 
 ---
 
-### 💻 Workflow 6: Official Website & Structured Schema Parsing
+### 💻 Workflow 6: Official Website & Structured Schema Parsing (Direct Browser MCP)
 *   **Objective:** Verify clinical landing page performance and search engine indexing via structured JSON-LD schema.
 *   **Inputs:** Website URL (discovered from maps or aggregators).
 *   **Workflow Steps:**
