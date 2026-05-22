@@ -1,3 +1,8 @@
+
+/goal Generate a json report for a doctor with follwoings details follwong the instructions below. dont read any exisitng files until explicity mentioned in the insturctions. FInd any gaps in pulling data for any channel. Report back it at the end. Dont make any plan or nonsense. Use only mcp tools menitoned below, dont write code. if some instruction is not clear stop there and ask right away, just stick to the workflow word by word and give me step by step update.
+
+Dont fucking do anything on your own. No plans needed, just execute this below 
+
 # DigiClinic AI Rank & SEO Report Generator Guide (Version 6)
 
 This document is the master operational specification (Version 6) for the DigiClinic Digital Presence & AI Rank Analyzer. It is an **incremental upgrade of Version 5** with these key changes:
