@@ -41,8 +41,11 @@ export interface MetricData {
 export interface PlatformData {
   name: string;
   standing: string;
+  recommended_rank?: number | null;
   points: number;
   citation: string;
+  credentials_cited?: boolean;
+  sentiment_positive?: boolean;
 }
 
 export interface CheckData {
@@ -52,16 +55,40 @@ export interface CheckData {
   points: number;
 }
 
+export interface SubCategory {
+  label: string;
+  score: number;
+  max_points: number;
+  details: string;
+}
+
+export interface SentimentData {
+  total_reviews: number;
+  average_rating: number;
+  review_velocity_per_month: number;
+  narrative_success_stories: number;
+  points_breakdown?: {
+    review_volume_and_rating: number;
+    review_velocity: number;
+    success_stories: number;
+  };
+}
+
 export interface Channel {
   id: string;
   name: string;
   weight: number;
   channel_percentage_score: number;
   evidence_screenshot: string;
+  sub_categories?: {
+    [key: string]: SubCategory;
+  };
   queries?: QueryData[];
   metrics?: MetricData[];
   platforms?: PlatformData[];
   checks?: CheckData[];
+  completeness_checks?: CheckData[];
+  sentiment_data?: SentimentData;
 }
 
 export interface HistoricalRun {
@@ -74,6 +101,18 @@ export interface TreatmentPillar {
   description: string;
 }
 
+export interface CompetitorCallout {
+  primary_competitor: string;
+  estimated_market_capture: string;
+  reason: string;
+}
+
+export interface VisualProofItem {
+  label: string;
+  path: string;
+  description: string;
+}
+
 export interface ReportSchema {
   report_metadata: ReportMetadata;
   overall_score: number;
@@ -81,5 +120,8 @@ export interface ReportSchema {
   diagnostic_summary: string;
   historical_runs: HistoricalRun[];
   channels: Channel[];
+  competitor_callout?: CompetitorCallout;
   treatment_plan: TreatmentPillar[];
+  visual_proof_index?: VisualProofItem[];
 }
+
