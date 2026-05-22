@@ -33,25 +33,3 @@ Doctor 2:
 Dr. Nidhi Patel, city: vadodara
 Speciality: Dermatologist,Aesthetic Dermatologist,Dermatosurgeon,Hair Transplant Surgeon
 
-
-
-## Test cases
-
-
-Test Cases with process Process
-1. Multiple run for same doctor generate same structure and data of report.
-Basically generate files 2 times and compare it so the gaps and dont stop until reports are same
-- [dr_nidhi_patel_report-run-1.json](reports/v6/dr_nidhi_patel_report-run-1.json)
-- [dr_nidhi_patel_report-run-2.json](reports/v6/dr_nidhi_patel_report-run-2.json)
-
-
-2. Report for different doctor should have same structure.
-
-generate report for 2 doctors, and check if reports have same structure.
-Reports generated:
-- [dr_nidhi_patel_report-run-1.json](reports/v6/dr_nidhi_patel_report-run-1.json)
-- [dr_nidhi_patel_report-run-2.json](reports/v6/dr_nidhi_patel_report-run-2.json)
-- [dr_vishal_maurya_report-run-1.json](reports/v6/dr_vishal_maurya_report-run-1.json)
-- [dr_vishal_maurya_report-run-2.json](reports/v6/dr_vishal_maurya_report-run-2.json)
-
----
