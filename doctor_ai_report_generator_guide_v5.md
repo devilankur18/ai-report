@@ -79,11 +79,11 @@ Every entity details section must list specific items with the status **🟢 VER
 *   **Requirements:** Compile and link all captured browser screenshots verifying each audited digital channel, ensuring complete visual traceability.
 *   **Format:** Standard Markdown image links with descriptive figure captions.
 *   **Required Proof Assets (Strictly 5 assets):**
-    1.  `![Google Maps Proof](file:///Users/ankur/dev/docx/ppt/reports/v5/assets/[doctor_slug]_maps_proof.png)` - Google Maps listing and rank evidence.
-    2.  `![Bing Search & Maps Proof](file:///Users/ankur/dev/docx/ppt/reports/v5/assets/[doctor_slug]_bing_proof.png)` - Bing Search query and maps ranking.
-    3.  `![Medical Aggregator Proof](file:///Users/ankur/dev/docx/ppt/reports/v5/assets/[doctor_slug]_aggregators_proof.png)` - Justdial or Practo claimed status and reviews.
-    4.  `![Medical Registry EEAT Proof](file:///Users/ankur/dev/docx/ppt/reports/v5/assets/[doctor_slug]_eeat_proof.png)` - Official National/State Council registration registry verification.
-    5.  `![Conversational AI Standing Proof](file:///Users/ankur/dev/docx/ppt/reports/v5/assets/[doctor_slug]_ai_standing_proof.png)` - Unified view of ChatGPT/Gemini prompt response showing recommendations.
+    1.  `![Google Maps Proof](assets/[doctor_slug]_maps_proof.png)` - Google Maps listing and rank evidence.
+    2.  `![Bing Search & Maps Proof](assets/[doctor_slug]_bing_proof.png)` - Bing Search query and maps ranking.
+    3.  `![Medical Aggregator Proof](assets/[doctor_slug]_aggregators_proof.png)` - Justdial or Practo claimed status and reviews.
+    4.  `![Medical Registry EEAT Proof](assets/[doctor_slug]_eeat_proof.png)` - Official National/State Council registration registry verification.
+    5.  `![Conversational AI Standing Proof](assets/[doctor_slug]_ai_standing_proof.png)` - Unified view of ChatGPT/Gemini prompt response showing recommendations.
 
 ### 7. Actionable 6-Pillar Treatment Plan
 *   **Required Pillars:** Name/NAP Unification, Medical Registration indexing, Schema Landing Page setup, Slot Booking integration, Review Velocity engine, Video SEO.
@@ -220,7 +220,7 @@ The agent must execute the following tools strictly under these rules:
 2.  **`mcp_browser-mcp_browser_navigate`**: Use to load targeted URLs directly. Reuses active tabs (`new_tab: false`) to prevent session and information leakage.
 3.  **`mcp_browser-mcp_browser_fill`**: Use to input text strings into search inputs, database lookups, or form fields.
 4.  **`mcp_browser-mcp_browser_click`**: Use to click buttons, submit forms, or navigate links.
-5.  **`mcp_chrome-devtools-mcp_take_screenshot`**: Use to capture high-fidelity visual proof. Save directly to the target `reports/v5/assets/` directory.
+5.  **`mcp_browser-mcp_browser_screenshot`**: Use to capture high-fidelity visual proof. Save directly to the target `reports/v5/assets/` directory.
 6.  **`mcp_browser-mcp_browser_get_page_content`**: Use to extract DOM structure or raw text nodes.
 7.  **`mcp_browser-mcp_browser_wait_for_network`**: Call immediately after clicking submit buttons or search forms to ensure AJAX APIs and SPAs are fully rendered before scraping.
 8.  **`mcp_browser-mcp_browser_solve_captcha`**: In the rare event a bot challenge appears on government registries or directory portals, run this tool with `action: "detect"` followed by `action: "click_checkbox"` to automatically bypass challenges.
@@ -233,7 +233,7 @@ The agent must execute the following tools strictly under these rules:
 1. Navigate `mcp_browser-mcp_browser_navigate` to `https://www.google.com`.
 2. Search for the local queries (e.g. `best dentist in naini, prayagraj`). Note the clinic's exact position and compile the list of the **Top 3 Competitor Names** appearing in the maps search rankings.
 3. Check if the clinic listing is claimed.
-4. Capture Google Maps ranking screenshot as `reports/v5/assets/[doctor_slug]_maps_proof.png` using `mcp_chrome-devtools-mcp_take_screenshot`.
+4. Capture Google Maps ranking screenshot as `reports/v5/assets/[doctor_slug]_maps_proof.png` using `mcp_browser-mcp_browser_screenshot`.
 
 ### 🔍 Workflow 2: Bing Search & Maps Auditing
 1. Navigate `mcp_browser-mcp_browser_navigate` to `https://www.bing.com`.
@@ -275,8 +275,9 @@ The agent must execute the following tools strictly under these rules:
 ### 🔴 GLOBAL OPERATIONAL DONTs
 *   🛑 **NO INFORMATION LEAKAGE:** You **MUST NOT** read previously generated doctor reports (e.g. `reports/v3/*.md` or `reports/v4/*.md`) to perform an audit for a new doctor. This is a strict operational firewall.
 *   🛑 **NO DATA HALLUCINATION:** Never invent medical credentials, state registrations, ratings, or phone numbers. If a detail cannot be verified through live browser queries, mark it **🔴 MISSING** and score it exactly as **0** under the scoring engine.
-*   🛑 **NO PLACEHOLDERS OR SUBJECTIVITY:** Do not place filler values or round up scores. Do not use generic images or generate screenshots using the AI image generation tool (`generate_image`). Every screenshot MUST be captured directly using the Chrome DevTools MCP on the live browser tab to guarantee absolute authenticity.
+*   🛑 **NO PLACEHOLDERS OR SUBJECTIVITY:** Do not place filler values or round up scores. Do not use generic images or generate screenshots using the AI image generation tool (`generate_image`). Every screenshot MUST be captured directly using the Browser MCP on the live browser tab to guarantee absolute authenticity.
 *   🛑 **NO CHECKLIST OMISSION:** Do not skip creating the separate companion `[doctor_slug]_run_checklist.md` execution file. It is a mandatory audit deliverable.
+*   🛑 **NO ABSOLUTE FILE IMAGE PATHS:** Do not use absolute paths starting with `file:///` for embedded images in the report, as they are blocked by standard markdown viewer security sandboxes. Instead, always use relative paths (e.g., `assets/[doctor_slug]_[proof_type].png`) to ensure seamless markdown rendering and display.
 
 ### 🟢 GLOBAL OPERATIONAL DOs
 *   ✅ **DO EMBED PROOF VISUALLY RELEVANT AND INLINE:** Always embed the specific channel-specific proof screenshots directly *inline* inside their relevant sections (e.g., search matrix rank screenshot under search matrix, NMC registration screenshot under credentials) to make the report visually engaging and immediate.
