@@ -536,6 +536,37 @@ $$\text{Channel \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \tim
 
 The auditor uses a **hybrid search system** that divides tasks between **Semantic Search APIs** (`search_web`) and **Human-Emulated Browser Sessions** (`browser-mcp`).
 
+### 3.1 MCP Tool Quick-Reference
+
+These are the **exact** `browser-mcp` tools and their parameter signatures used across all workflows. **Do NOT read tool schema files at runtime** — use these signatures directly.
+
+| Tool Name | Required Params | Optional Params | Purpose |
+|:---|:---|:---|:---|
+| `browser_navigate` | `url` (string) | `new_tab` (bool, default: false) | Navigate current tab to a URL |
+| `browser_fill` | `selector` (string), `value` (string) | — | Fill a form input field (CSS or text selector) |
+| `browser_click` | `selector` (string) | — | Click an element (CSS or text selector, e.g. `"button:text(Submit)"`, `"#my-button"`) |
+| `browser_press_key` | `key` (string, e.g. `"Enter"`) | `ctrl` (bool), `shift` (bool), `meta` (bool), `alt` (bool) | Press a keyboard key |
+| `browser_wait` | `selector` (string) | `timeout` (number, default: 10000) | Wait for an element to appear on the page |
+| `browser_wait_for_network` | — | `url_pattern` (string), `timeout` (number, default: 15000) | Wait for network requests to complete |
+| `browser_get_page_content` | — | `format` (enum: `"text"` / `"html"`, default: `"text"`) | Extract page content as text or HTML |
+| `browser_screenshot` | — | `path` (string, e.g. `/absolute/path/screenshot.png`) | Take screenshot; saves to disk if path provided |
+| `browser_scroll` | — | `selector` (string), `x` (number), `y` (number) | Scroll to element or by pixel amount |
+| `browser_dismiss_overlays` | — | `scope` (enum: `"non_critical"` / `"aggressive"`, default: `"non_critical"`), `max_passes` (number, default: 3) | Dismiss popups, modals, cookie banners |
+| `browser_execute_script` | `code` (string) | — | Execute JS in page context, returns result |
+
+### 3.2 Global Error Handling Patterns
+
+Before executing any platform workflow, the agent must follow these standard error-recovery patterns. Each step table below references these by code (e.g., `→ ERR-LOGIN`).
+
+| Error Code | Trigger Condition | Recovery Action |
+|:---|:---|:---|
+| **ERR-LOGIN** | Page redirects to a login/signup screen, or page content contains "Sign in", "Log in", "Create account" as the primary action | **STOP.** Tell the user: *"[Platform] requires authentication. Please log in manually in the browser, then say 'continue'."* Do NOT attempt to fill login credentials. |
+| **ERR-CAPTCHA** | Page shows CAPTCHA, Cloudflare challenge, or "Verify you are human" | Call `browser_dismiss_overlays` with `{"scope": "non_critical"}`. If still blocked, **STOP** and ask user to solve it manually. |
+| **ERR-SELECTOR** | `browser_fill` or `browser_click` fails with "element not found" | **Selector recovery sequence:** ① Call `browser_get_page_content` with `{"format": "html"}`. ② Search the HTML for `<textarea`, `contenteditable="true"`, or `<input` elements. ③ Use the first matching selector found. ④ If no input element found, call `browser_screenshot` (no path) to visually inspect, then **STOP** and ask user for the correct selector. |
+| **ERR-TIMEOUT** | `browser_wait` or `browser_wait_for_network` times out | Retry once with `timeout` doubled (e.g., 30000 → 60000). If still timed out, call `browser_screenshot` (no path) to inspect state, then **STOP** and report the issue. |
+| **ERR-NAVIGATE** | `browser_navigate` fails or page returns HTTP error | Retry the same URL once. If still failing, **STOP** and ask user to provide a working URL for this platform. |
+| **ERR-EMPTY** | `browser_get_page_content` returns empty or very short text (< 50 chars) after waiting | The response may still be streaming. Call `browser_wait` with `{"selector": "text=.", "timeout": 15000}` then retry `browser_get_page_content`. If still empty, call `browser_screenshot` (no path) and **STOP**. |
+
 ---
 
 ## 🧭 SECTION 4: STEP-BY-STEP CHANNEL AUTOMATED WORKFLOWS
@@ -544,33 +575,142 @@ The auditor uses a **hybrid search system** that divides tasks between **Semanti
 
 ### 🤖 Workflow 5: Conversational AI App GEO Standing → Channel `conversational_ai`
 
-#### Steps:
-1.  For each of the 4 AI platforms (ChatGPT, Gemini, Meta AI, Grok AI):
-    *   Open a browser session and navigate (`mcp_browser-mcp_browser_navigate`) to the conversational interface:
-        *   ChatGPT: `https://chatgpt.com` or custom AI sandbox.
-        *   Gemini: `https://gemini.google.com` or custom AI sandbox.
-        *   Meta AI: `https://www.meta.ai` or custom AI sandbox.
-        *   Grok AI: `https://x.com/i/grok` or custom AI sandbox.
-    *   Issue the **Smart Comparative Prompt** (Section 1.5) with the doctor's actual specialty, area, city, clinic name, and doctor name substituted.
-    *   Call `mcp_browser-mcp_browser_wait_for_network` and wait for the model to finish streaming its response completely.
-    *   Extract page text using `mcp_browser-mcp_browser_get_page_content` to read the full text answer.
-    *   Take an individual platform screenshot using `mcp_browser-mcp_browser_screenshot` and save it directly to `reports/v7/assets/[doctor_slug]_[platform_name]_proof.png` (all lowercase, e.g., `dr_vishal_maurya_chatgpt_proof.png`).
-2.  For each platform response, parse the output text and extract:
-    *   **Standing:** "Recommended in Top 3" / "Mentioned but not Top 3" / "Not Recommended".
-    *   **Recommended rank** (if applicable): 1, 2, 3, or null.
-    *   **Verbatim citation:** Verbatim paragraph explaining the AI's view of the doctor/clinic.
-    *   **Credentials cited:** true if degrees, state registrations, or years of experience are referenced; false otherwise.
-    *   **Sentiment positive:** true if compared favorably vs top 3 competitors; false otherwise.
-    *   **Top Recommendations:** Identify the exact names of the top 3 doctors/clinics recommended by this specific platform, their relative rank in the response, and the reason given by the AI.
-3.  Populate all fields in the `conversational_ai` platform objects, calculate final visibility/completeness/sentiment sub-category scores, and compute the overall `conversational_ai` channel score.
+This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI platform. Execute them in order. After all 4 complete, run the **Shared Parsing & Scoring** step.
+
+**Prompt Template** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}`, `{CLINIC_NAME}`, `{DOCTOR_NAME}` with actual values from report input):
+
+> *"You are a local health advisor. Recommend the top {SPECIALTY} in {AREA}, {CITY}. Compare their verified credentials (education, council registration, experience), review ratings, and patient sentiment. List them in a ranked table with reasons for their rank. Check if {CLINIC_NAME} or {DOCTOR_NAME} is recommended and compare them with the top 3."*
+
+---
+
+#### 🤖 Workflow 5A: ChatGPT → `conversational_ai.platforms[0]`
+
+**Platform URL:** `https://chatgpt.com`
+**Screenshot file:** `assets/{doctor_slug}_chatgpt_proof.png`
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Navigate to ChatGPT | `browser_navigate` | `{"url": "https://chatgpt.com"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss any overlays (cookie banners, popups) | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore — continue to step 3 |
+| 3 | Wait for the prompt textarea to load | `browser_wait` | `{"selector": "#prompt-textarea", "timeout": 10000}` | Check for login wall `→ ERR-LOGIN`. If no login wall, `→ ERR-SELECTOR` |
+| 4 | Fill the Smart Comparative Prompt into the textarea | `browser_fill` | `{"selector": "#prompt-textarea", "value": "<PROMPT_TEXT>"}` | `→ ERR-SELECTOR` — fallback selectors in order: `"textarea"`, `"div[contenteditable='true']"` |
+| 5 | Submit the prompt | `browser_press_key` | `{"key": "Enter"}` | If no response appears, try `browser_click` with `{"selector": "button[data-testid='send-button']"}` |
+| 6 | Wait for ChatGPT to finish streaming the response | `browser_wait_for_network` | `{"timeout": 30000}` | `→ ERR-TIMEOUT` |
+| 7 | Additional wait for rendering to complete | `browser_wait` | `{"selector": "button[data-testid='send-button']:not([disabled])", "timeout": 20000}` | Ignore — proceed to step 8 (response may already be done) |
+| 8 | Scroll down to ensure full response is visible | `browser_scroll` | `{"y": 500}` | Ignore |
+| 9 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 10 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_chatgpt_proof.png"}` | Retry once. If still fails, take screenshot without `path` (returns base64) and save manually. |
+
+---
+
+#### 🤖 Workflow 5B: Gemini → `conversational_ai.platforms[1]`
+
+**Platform URL:** `https://gemini.google.com/app`
+**Screenshot file:** `assets/{doctor_slug}_gemini_proof.png`
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Navigate to Gemini | `browser_navigate` | `{"url": "https://gemini.google.com/app"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss any overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore — continue |
+| 3 | Check for login redirect | `browser_get_page_content` | `{"format": "text"}` | If content contains "Sign in" or URL changed to `accounts.google.com` → `ERR-LOGIN` |
+| 4 | Wait for the input area to load | `browser_wait` | `{"selector": "div.ql-editor[contenteditable='true'], rich-textarea textarea, div[contenteditable='true']", "timeout": 10000}` | `→ ERR-SELECTOR` |
+| 5 | Fill the Smart Comparative Prompt | `browser_fill` | `{"selector": "div.ql-editor[contenteditable='true']", "value": "<PROMPT_TEXT>"}` | Fallback selectors in order: `"rich-textarea textarea"`, `"div[contenteditable='true']"`, `"textarea"`. If all fail `→ ERR-SELECTOR` |
+| 6 | Submit the prompt | `browser_click` | `{"selector": "button[aria-label='Send message']"}` | Fallback: `browser_press_key` with `{"key": "Enter"}`. If still no submit: try `browser_click` with `{"selector": "button:text(Submit)"}` |
+| 7 | Wait for Gemini to finish streaming | `browser_wait_for_network` | `{"timeout": 30000}` | `→ ERR-TIMEOUT` |
+| 8 | Additional wait for response rendering | `browser_wait` | `{"selector": "message-content, .model-response-text, .response-container", "timeout": 20000}` | Ignore — proceed |
+| 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
+| 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_gemini_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+
+---
+
+#### 🤖 Workflow 5C: Meta AI → `conversational_ai.platforms[2]`
+
+**Platform URL:** `https://www.meta.ai`
+**Screenshot file:** `assets/{doctor_slug}_meta_ai_proof.png`
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Navigate to Meta AI | `browser_navigate` | `{"url": "https://www.meta.ai"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss any overlays (cookie consent, etc.) | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore — continue |
+| 3 | Check for login redirect | `browser_get_page_content` | `{"format": "text"}` | If content contains "Log in with Facebook", "Sign up", or URL redirects to `facebook.com` → `ERR-LOGIN` |
+| 4 | Wait for the input area to load | `browser_wait` | `{"selector": "textarea, div[contenteditable='true']", "timeout": 10000}` | `→ ERR-SELECTOR` |
+| 5 | Fill the Smart Comparative Prompt | `browser_fill` | `{"selector": "textarea[placeholder]", "value": "<PROMPT_TEXT>"}` | Fallback selectors in order: `"textarea"`, `"div[contenteditable='true']"`. If all fail `→ ERR-SELECTOR` |
+| 6 | Submit the prompt | `browser_press_key` | `{"key": "Enter"}` | Fallback: `browser_click` with `{"selector": "button[aria-label='Send']"}`. If still no submit: try `{"selector": "button[type='submit']"}` |
+| 7 | Wait for Meta AI to finish streaming | `browser_wait_for_network` | `{"timeout": 30000}` | `→ ERR-TIMEOUT` |
+| 8 | Additional wait for response rendering | `browser_wait` | `{"selector": ".response-text, .message-content, div[data-testid]", "timeout": 20000}` | Ignore — proceed |
+| 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
+| 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_meta_ai_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+
+---
+
+#### 🤖 Workflow 5D: Grok AI → `conversational_ai.platforms[3]`
+
+**Platform URL:** `https://x.com/i/grok`
+**Screenshot file:** `assets/{doctor_slug}_grok_proof.png`
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Navigate to Grok AI | `browser_navigate` | `{"url": "https://x.com/i/grok"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss any overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore — continue |
+| 3 | Check for login redirect | `browser_get_page_content` | `{"format": "text"}` | If content contains "Sign in", "Log in to X", or URL redirects to `x.com/login` → `ERR-LOGIN` |
+| 4 | Wait for the input area to load | `browser_wait` | `{"selector": "textarea, div[contenteditable='true']", "timeout": 10000}` | `→ ERR-SELECTOR` |
+| 5 | Fill the Smart Comparative Prompt | `browser_fill` | `{"selector": "textarea", "value": "<PROMPT_TEXT>"}` | Fallback selectors in order: `"div[contenteditable='true']"`, `"input[type='text']"`. If all fail `→ ERR-SELECTOR` |
+| 6 | Submit the prompt | `browser_press_key` | `{"key": "Enter"}` | Fallback: `browser_click` with `{"selector": "button[aria-label='Send']"}`. If still no submit: try `{"selector": "button[type='submit']"}` |
+| 7 | Wait for Grok AI to finish streaming | `browser_wait_for_network` | `{"timeout": 30000}` | `→ ERR-TIMEOUT` |
+| 8 | Additional wait for response rendering | `browser_wait` | `{"selector": ".message, .response, div[data-testid]", "timeout": 20000}` | Ignore — proceed |
+| 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
+| 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_grok_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+
+---
+
+#### 📊 Workflow 5E: Shared Parsing & Scoring (run after all 4 platforms complete)
+
+After completing Workflows 5A–5D, parse each platform's extracted text (from step 9/10 of each workflow) and populate the `conversational_ai` channel data.
+
+**For each platform response, extract these fields:**
+
+| Field | How to Extract | JSON Key |
+|:---|:---|:---|
+| **Standing** | Search extracted text for doctor/clinic name. If found in the top 3 ranked entries → `"Recommended in Top 3"`. If mentioned anywhere else → `"Mentioned but not Top 3"`. If absent → `"Not Recommended"`. | `platforms[n].standing` |
+| **Recommended Rank** | If standing is "Recommended in Top 3", note the position (1, 2, or 3). Otherwise → `null`. | `platforms[n].recommended_rank` |
+| **Verbatim Citation** | Copy the exact paragraph or sentence where the AI discusses the target doctor/clinic. If not mentioned, write `"Doctor/clinic not mentioned in response."` | `platforms[n].citation` |
+| **Credentials Cited** | Set `true` if the response references degrees (BDS, MDS, MBBS), state council registration, or years of experience for the target doctor. Otherwise `false`. | `platforms[n].credentials_cited` |
+| **Sentiment Positive** | Set `true` if the AI compares the target doctor/clinic favorably vs. top 3 competitors (e.g., "highly rated", "recommended"). Set `false` if compared negatively, neutrally, or not compared at all. | `platforms[n].sentiment_positive` |
+| **Top 3 Recommendations** | Identify the top 3 doctors/clinics the AI actually recommended. For each, record: `name`, `rank` (1/2/3), `reason_cited` (the AI's stated reason). | `platforms[n].top_recommendations[]` |
+
+**Sub-Category Scoring (per platform, then averaged across 4 platforms):**
+
+| Sub-Category | Per-Platform Score | Averaging |
+|:---|:---|:---|
+| **Visibility** | Recommended Top 3 = 100, Mentioned = 50, Not Recommended = 0 | Average of 4 platform scores |
+| **Completeness** | Credentials cited correctly = 100, Partially cited = 50, Not cited = 0 | Average of 4 platform scores |
+| **Sentiment** | Positive comparison = 100, Neutral = 50, Negative/absent = 0 | Average of 4 platform scores |
+
+**Channel Score Formula:**
+$$\text{conversational\_ai \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \times 0.3) + (\text{Sentiment} \times 0.2)$$
+
+---
 
 #### 🚦 Channel DOs & DONTs — Conversational AI:
-*   ✅ **DO** execute the prompt on all 4 platform UI dashboards.
-*   ✅ **DO** save individual, unique screenshots for EACH of the 4 platforms under `reports/v7/assets/`.
-*   ✅ **DO** capture the exact top 3 recommended competitors and reasons given by the AI for each platform.
-*   ✅ **DO** use `mcp_browser-mcp_browser_wait_for_network` to ensure the conversational streaming output has completely finished rendering before taking the screenshot.
-*   🛑 **DO NOT** use generic placeholder screenshots.
-*   🛑 **DO NOT** group AI responses into a single screenshot or citation block. Each platform must be fully separated.
+
+**DOs:**
+*   ✅ **DO** execute Workflows 5A, 5B, 5C, and 5D individually and in order.
+*   ✅ **DO** follow each step table row-by-row. Do NOT skip steps or combine them.
+*   ✅ **DO** save individual, unique screenshots for EACH platform: `{doctor_slug}_chatgpt_proof.png`, `{doctor_slug}_gemini_proof.png`, `{doctor_slug}_meta_ai_proof.png`, `{doctor_slug}_grok_proof.png`.
+*   ✅ **DO** capture the exact top 3 recommended competitors and reasons for each platform separately.
+*   ✅ **DO** always call `browser_wait_for_network` (step 6/7) AND `browser_wait` (step 7/8) before taking the screenshot. Both waits are required to ensure streaming is complete.
+*   ✅ **DO** always call `browser_scroll` before `browser_screenshot` to capture the full response area.
+*   ✅ **DO** follow the `On Error` column exactly — use the Global Error Handling codes from Section 3.2.
+
+**DONTs:**
+*   🛑 **DO NOT** use generic placeholder screenshots. Every screenshot must be captured live.
+*   🛑 **DO NOT** group AI responses into a single screenshot or citation block. Each platform is fully separated.
+*   🛑 **DO NOT** read MCP tool schema files at runtime. All parameter signatures are in Section 3.1.
+*   🛑 **DO NOT** guess selectors. Use the exact selectors in the step table, and the fallback chain in the `On Error` column.
+*   🛑 **DO NOT** attempt to log into any platform. If login is required, STOP and ask the user (ERR-LOGIN).
 
 ---
 

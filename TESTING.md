@@ -6,7 +6,7 @@
 Start a new subtask with prompt
 
 ```
-Read the @ppt/doctor_ai_report_generator_guide_v6.md and generate a report for a doctor with follwoings details
+Stictly Follow the @ai_health_report/guide_v7.md and generate a report for a doctor with follwoings details
 
 Dr. Vishal Maurya
 Speciality: Dentist
