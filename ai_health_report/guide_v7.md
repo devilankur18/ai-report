@@ -530,6 +530,87 @@ $$\text{Channel \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \tim
 *   **Completeness (30%):** Schema & NAP compliance.
 *   **Sentiment (20%):** Trust signals.
 
+### 2.4 Deterministic Sentiment Scoring Rubric
+
+Sentiment scoring is **fully deterministic**. Use the rubric tables below — no subjective judgment is permitted. Match the **first** row where ALL conditions are true (scan top-to-bottom).
+
+#### 2.4.1 Reviews-Based Sentiment (Google SEO, Bing SEO, Aggregators)
+
+The sentiment score is a weighted composite of three components:
+
+$$\text{Sentiment} = (\text{Volume \& Rating} \times 0.5) + (\text{Velocity} \times 0.3) + (\text{Success Stories} \times 0.2)$$
+
+**Review Volume & Rating Points:**
+
+| Condition | Points |
+|:---|:---|
+| >= 100 reviews AND >= 4.5 avg rating | 100 |
+| >= 50 reviews AND >= 4.5 avg rating | 80 |
+| >= 50 reviews AND >= 4.0 avg rating | 60 |
+| >= 20 reviews AND >= 4.5 avg rating | 50 |
+| >= 20 reviews AND >= 4.0 avg rating | 40 |
+| >= 10 reviews AND >= 4.0 avg rating | 20 |
+| >= 10 reviews AND < 4.0 avg rating | 10 |
+| < 10 reviews | 0 |
+
+**Review Velocity Points (reviews per month):**
+
+| Reviews/Month | Points |
+|:---|:---|
+| >= 10 | 100 |
+| >= 5 | 80 |
+| >= 2 | 60 |
+| >= 1 | 40 |
+| >= 0.5 | 20 |
+| < 0.5 | 0 |
+
+**Narrative Success Stories Points** (reviews with detailed patient narratives, >= 3 sentences):
+
+| Count | Points |
+|:---|:---|
+| >= 10 | 100 |
+| >= 5 | 60 |
+| >= 2 | 40 |
+| >= 1 | 20 |
+| 0 | 0 |
+
+#### 2.4.2 E-E-A-T Sentiment (Reputation Signals)
+
+Score = Average points of all 4 checks:
+
+| Check | Found = Points | Not Found = Points |
+|:---|:---|:---|
+| Clinical Publications Indexed (PubMed/Google Scholar) | 100 | 0 |
+| Professional Association Membership (IDA/IMA) | 100 | 0 |
+| CME/Conference Participation Indexed | 100 | 0 |
+| Peer Citations or Awards | 100 | 0 |
+
+#### 2.4.3 Website Sentiment (Trust Signals)
+
+Score = Average points of all 4 checks:
+
+| Check | Found = Points | Not Found = Points |
+|:---|:---|:---|
+| Patient Testimonials on Website (>= 3) | 100 | 0 |
+| Before/After Photo Gallery | 100 | 0 |
+| Video Content (website or YouTube, >= 1) | 100 | 0 |
+| Blog/Educational Content (>= 2 posts) | 100 | 0 |
+
+#### 2.4.4 Conversational AI Sentiment
+
+Already defined in Section 2.3: Positive comparison = 100, Neutral = 50, Negative/absent = 0. Average across 4 platforms.
+
+### 2.5 Overall Score Computation
+
+The `overall_score` is the **weighted sum** of all 6 channel percentage scores:
+
+$$\text{overall\_score} = \sum_{i=1}^{6} \left( \text{channel\_percentage\_score}_i \times \frac{\text{weight}_i}{100} \right)$$
+
+**Expanded:**
+$$\text{overall\_score} = (\text{google\_seo} \times 0.25) + (\text{bing\_seo} \times 0.15) + (\text{aggregators} \times 0.15) + (\text{conversational\_ai} \times 0.15) + (\text{eeat\_credentials} \times 0.15) + (\text{website\_schema} \times 0.15)$$
+
+Round the final `overall_score` to the nearest integer. Then apply Tier Rules from Section 1.2.
+
 ---
 
 ## 🛠️ SECTION 3: HYBRID SEARCH & BROWSER MCP TOOLING BLUEPRINT
@@ -553,6 +634,7 @@ These are the **exact** `browser-mcp` tools and their parameter signatures used 
 | `browser_scroll` | — | `selector` (string), `x` (number), `y` (number) | Scroll to element or by pixel amount |
 | `browser_dismiss_overlays` | — | `scope` (enum: `"non_critical"` / `"aggressive"`, default: `"non_critical"`), `max_passes` (number, default: 3) | Dismiss popups, modals, cookie banners |
 | `browser_execute_script` | `code` (string) | — | Execute JS in page context, returns result |
+| `search_web` | `query` (string) | `domain` (string) | Semantic web search; returns ranked result summaries with URLs. Use for all search rank queries. |
 
 ### 3.2 Global Error Handling Patterns
 
@@ -570,6 +652,125 @@ Before executing any platform workflow, the agent must follow these standard err
 ---
 
 ## 🧭 SECTION 4: STEP-BY-STEP CHANNEL AUTOMATED WORKFLOWS
+
+Execute Workflows 1 through 6 in order. Each workflow maps to one channel in the JSON report.
+
+---
+
+### 🔍 Workflow 1: Google Search & Maps → Channel `google_seo`
+
+#### 1A: Execute 7 Standard Search Queries
+
+**Repeat the following steps for EACH of the 7 standard queries from Section 1.4** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}`, `{CLINIC_NAME}` with actual values):
+
+| Step | Action | Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Run the search query | `search_web` | `{"query": "<query text>"}` | Retry once. If still fails → rank = `"Unranked"`, points = `0`. |
+| 2 | Scan results for doctor/clinic name | *Agent parsing* | Search returned text for `{CLINIC_NAME}`, `{DOCTOR_NAME}`, or known aliases (e.g., "Pravisha Health Care Center" for "Pravisha Healthcare") | If neither found → rank = `"Unranked"`, points = `0`. Skip to step 4. |
+| 3 | Determine rank position | *Agent parsing* | Count the 1-indexed position of the first matching result. Apply interpolation from Section 2.1. | Use **exact** position from results. Do NOT estimate or round to milestone numbers. |
+| 4 | Extract top 3 competitors | *Agent parsing* | Record the names and **actual URLs** from positions 1, 2, 3 in the search results. | **Never fabricate URLs.** If fewer than 3 results, record as many as available with real links. |
+
+After all 7 queries: `visibility.score = average of all 7 query points`.
+
+#### 1B: GBP Profile Inspection
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Navigate to Google Maps search | `browser_navigate` | `{"url": "https://www.google.com/maps/search/{CLINIC_NAME}+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 3 | Wait for Maps results | `browser_wait` | `{"selector": "#searchboxinput", "timeout": 10000}` | `→ ERR-TIMEOUT` |
+| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 5 | Parse completeness checks | *Agent parsing* | From extracted text, check: GBP claimed status, primary category, photo count, address, phone. Cross-reference address and phone against data found later in Workflows 2-3 for NAP consistency. | Record each check: `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
+| 6 | Parse review data | *Agent parsing* | Extract: `total_reviews`, `average_rating`. Calculate `review_velocity_per_month` = total_reviews ÷ months since oldest visible review. Count narrative success stories (reviews >= 3 sentences long). | Apply sentiment rubric from **Section 2.4.1**. |
+| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_maps_proof.png"}` | Retry once. |
+
+**Scoring:**
+- `completeness.score` = average of all `completeness_checks` points.
+- `sentiment.score` = apply Section 2.4.1 formula.
+- `channel_percentage_score` = apply Section 2.2 weighted formula.
+
+---
+
+### 🔍 Workflow 2: Bing Search & Maps → Channel `bing_seo`
+
+#### 2A: Execute 7 Standard Search Queries on Bing
+
+**Repeat the following steps for EACH of the 7 standard queries from Section 1.4:**
+
+| Step | Action | Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Run query scoped to Bing | `search_web` | `{"query": "<query text>", "domain": "bing.com"}` | Retry once. If still fails → rank = `"Unranked"`, points = `0`. |
+| 2 | Scan results for doctor/clinic name | *Agent parsing* | Same as Workflow 1A step 2. | If not found → rank = `"Unranked"`, points = `0`. Skip to step 4. |
+| 3 | Determine rank position | *Agent parsing* | Same as Workflow 1A step 3. Apply Section 2.1 interpolation. | Use exact position. Do NOT estimate. |
+| 4 | Extract top 3 competitors with actual URLs | *Agent parsing* | Record names and **real URLs** from positions 1, 2, 3. | **Never fabricate URLs.** Use real links from search results. |
+
+After all 7 queries: `visibility.score = average of all 7 query points`.
+
+#### 2B: Bing Places Profile Inspection
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Search Bing for the clinic | `browser_navigate` | `{"url": "https://www.bing.com/search?q={CLINIC_NAME}+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
+| 2 | Dismiss overlays / CAPTCHA | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | `→ ERR-CAPTCHA` |
+| 3 | Wait for results | `browser_wait` | `{"selector": "#b_results", "timeout": 10000}` | `→ ERR-TIMEOUT` |
+| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 5 | Parse completeness checks | *Agent parsing* | Check for: Bing Places listing active, photos count, address consistency vs Google (from Workflow 1B), phone consistency vs Google. | `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
+| 6 | Parse review data | *Agent parsing* | Extract Bing review count and rating if available. If no Bing reviews exist → all sentiment components = 0. | Apply Section 2.4.1 rubric. |
+| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_bing_proof.png"}` | Retry once. |
+
+**Scoring:** Same formulas as Workflow 1.
+
+---
+
+### 🔍 Workflow 3: Medical Aggregators → Channel `aggregators`
+
+#### 3A: Justdial Profile Inspection
+
+| Step | Action | Tool / MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Search for doctor on Justdial | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {AREA} {CITY} site:justdial.com"}` | Fallback: `{"query": "{CLINIC_NAME} {CITY} site:justdial.com"}`. If still none → Justdial status = `MISSING`. Skip to 3B. |
+| 2 | Navigate to Justdial profile URL | `browser_navigate` | `{"url": "<actual URL from search result>"}` | `→ ERR-NAVIGATE` |
+| 3 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 4 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
+| 5 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 6 | Parse metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry with `VERIFIED`/`MISSING` status and points. |
+| 7 | Take screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_aggregators_proof.png"}` | Retry once. |
+
+#### 3B: Practo Profile Inspection
+
+| Step | Action | Tool / MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Search for doctor on Practo | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} site:practo.com"}` | If no results → Practo status = `MISSING`, points = 0. Skip to scoring. |
+| 2 | Navigate to Practo profile | `browser_navigate` | `{"url": "<actual URL from search result>"}` | `→ ERR-NAVIGATE` |
+| 3 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 5 | Parse metrics | *Agent parsing* | Extract: profile active status, rating, review count, consultation fee, specializations. | Record as `metrics[]` entries. |
+
+**Scoring:**
+- `visibility.score` = average of listing status + category ranking points across both platforms.
+- `completeness.score` = average of all profile completeness `metrics[]` points.
+- `sentiment.score` = apply Section 2.4.1 rubric to combined Practo + Justdial review data.
+
+---
+
+### 🔍 Workflow 4: E-E-A-T & Credentials Audit → Channel `eeat_credentials`
+
+| Step | Action | Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Search for state council registration | `search_web` | `{"query": "{DOCTOR_NAME} {STATE} dental council registration"}` (use `medical council` for MBBS doctors) | Fallback: `{"query": "{DOCTOR_NAME} doctor registration {STATE}"}`. If none → council status = `MISSING`. |
+| 2 | Verify registration details | *Agent parsing* | Extract: council name, registration number, registration date. | If found → status = `VERIFIED`, points = 100. Record in `report_metadata.state_council_registration`. |
+| 3 | Cross-check NMC national registry | `search_web` | `{"query": "{DOCTOR_NAME} site:nmc.org.in"}` | If not found → NMC status = `MISSING`. Note: dentists register under DCI, not NMC — expected for dentists. |
+| 4 | Search for education credentials | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} BDS MDS MBBS degree {CITY}"}` | If not found → education status = `MISSING`. |
+| 5 | Search CMO/Ayushman Bharat HFR | `search_web` | `{"query": "{CLINIC_NAME} ayushman bharat HFR"}` | If not found → HFR status = `MISSING`. |
+| 6 | Search for clinical publications | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} publication pubmed OR scholar.google.com"}` | If none → publications = `MISSING`. |
+| 7 | Search for professional associations | `search_web` | `{"query": "{DOCTOR_NAME} IDA IMA member {STATE}"}` | If none → association = `MISSING`. |
+| 8 | Navigate to best registry evidence page | `browser_navigate` | `{"url": "<best registry URL found, or Google search results page>"}` | If no registry URL, use Google search page as evidence. |
+| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_eeat_proof.png"}` | Retry once. |
+
+**Scoring:**
+- `visibility.score` = council found on official registry site = 100, found only on directories = 50, not found = 0.
+- `completeness.score` = average of all `checks[]` points (each: `VERIFIED` = 100, `MISSING` = 0).
+- `sentiment.score` = apply Section 2.4.2 rubric.
 
 ---
 
@@ -711,6 +912,47 @@ $$\text{conversational\_ai \%} = (\text{Visibility} \times 0.5) + (\text{Complet
 *   🛑 **DO NOT** read MCP tool schema files at runtime. All parameter signatures are in Section 3.1.
 *   🛑 **DO NOT** guess selectors. Use the exact selectors in the step table, and the fallback chain in the `On Error` column.
 *   🛑 **DO NOT** attempt to log into any platform. If login is required, STOP and ask the user (ERR-LOGIN).
+
+---
+
+### 🔍 Workflow 6: Website & Schema Compliance → Channel `website_schema`
+
+#### 6A: Discover Website
+
+| Step | Action | Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Search for clinic website | `search_web` | `{"query": "{CLINIC_NAME} {CITY} official website"}` | Fallback: `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} website"}`. If no website found → `"Official Clinic Website Exists"` = `MISSING`. Skip to step 8. |
+| 2 | Check GBP for website link | *From Workflow 1B data* | Review GBP content extracted in Workflow 1B for a website URL. | If GBP has no website → `"Website Linked from GBP"` = `MISSING`. |
+| 3 | Determine website type | *Agent parsing* | A custom domain (e.g., `pravishahealthcare.com`) = full `VERIFIED`. A subdomain/landing page (e.g., `getmy.clinic`, `practo.com`) = `VERIFIED` with note about platform type. No website at all = `MISSING`. | Record the exact URL found. |
+
+#### 6B: Inspect Website (only if website exists)
+
+| Step | Action | MCP Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 4 | Navigate to the website | `browser_navigate` | `{"url": "<discovered website URL>"}` | `→ ERR-NAVIGATE` |
+| 5 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 6 | Extract page HTML for schema check | `browser_get_page_content` | `{"format": "html"}` | `→ ERR-EMPTY` |
+| 7 | Check for JSON-LD structured data | `browser_execute_script` | `{"code": "document.querySelector('script[type=\\\"application/ld+json\\\"]')?.textContent || 'No JSON-LD found'"}` | If script errors, search HTML from step 6 for `<script type="application/ld+json">` blocks manually. |
+| 8 | Extract page text for trust signals | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_website_proof.png"}` | If no website exists, navigate to Google search showing "no website found" and screenshot that instead. |
+
+**Parsing (from steps 6-8):**
+
+| Check | How to Verify | Points |
+|:---|:---|:---|
+| Official Clinic Website Exists | URL found in steps 1-3 | `VERIFIED` = 100 / `MISSING` = 0 |
+| Website Linked from GBP | GBP data from Workflow 1B | `VERIFIED` = 100 / `MISSING` = 0 |
+| MedicalBusiness JSON-LD Schema | Step 7 output contains `"MedicalBusiness"` | `VERIFIED` = 100 / `MISSING` = 0 |
+| Dentist/Physician @type Schema | Step 7 output contains `"Dentist"` or `"Physician"` | `VERIFIED` = 100 / `MISSING` = 0 |
+| NAP Address Consistency | Compare website address vs GBP (Workflow 1B) vs Bing (Workflow 2B) | `VERIFIED` = 100 / `CONFLICTING` = 50 / `MISSING` = 0 |
+| NAP Phone Consistency | Compare website phone vs GBP vs Bing | `VERIFIED` = 100 / `CONFLICTING` = 50 / `MISSING` = 0 |
+| Patient Testimonials on Website | Search page text for testimonial/review sections (>= 3 testimonials) | `VERIFIED` = 100 / `MISSING` = 0 |
+| Video Content on Website/YouTube | Search HTML for `<video>`, YouTube `<iframe>` embeds, or search YouTube for clinic name | `VERIFIED` = 100 / `MISSING` = 0 |
+
+**Scoring:**
+- `visibility.score` = average of (Website Exists + Website Linked from GBP) points.
+- `completeness.score` = average of (Schema checks + NAP checks) points.
+- `sentiment.score` = apply Section 2.4.3 rubric.
 
 ---
 
