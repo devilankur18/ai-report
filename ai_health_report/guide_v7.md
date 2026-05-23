@@ -731,3 +731,4 @@ Every report execution must generate a separate step-verification checklist file
 
 ### 🟢 GLOBAL OPERATIONAL DOs
 *   ✅ **DO CAPTURE ALL 4 AI PROOFS:** Ensure `reports/v7/assets/[doctor_slug]_chatgpt_proof.png`, `_gemini_proof.png`, `_meta_ai_proof.png`, and `_grok_proof.png` are captured and indexed correctly.
+*   ✅ **DO USE TEMPORARY DIRECTORY:** Use the temporary directory `reports/tmp` to save any intermediate or temporary files generated during the process.
