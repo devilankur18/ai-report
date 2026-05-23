@@ -4,10 +4,10 @@ Dont fucking do anything on your own. No plans needed, just execute this below
 
 # DigiClinic AI Rank & SEO Report Generator Guide (Version 7)
 
-This document is the master operational specification (Version 7) for the DigiClinic Digital Presence & AI Rank Analyzer. It is an **incremental upgrade of Version 6** with these key changes:
+This document is the master operational specification for the DigiClinic Digital Presence & AI Rank Analyzer (Version 7). Key characteristics of this version include:
 
-1.  **Enriched Conversational AI Sub-Category & Multi-App Verification:** Conversational AI (ChatGPT, Gemini, Meta AI, and Grok AI) is enriched to run queries in each engine via browser MCP, capture individual high-fidelity screenshots as proof, and parse structured text to identify rankings, top 3 recommended doctors, and corresponding citation reasons.
-2.  **Individual Visual Proofs for AI Platforms:** Instead of a single combined AI screenshot, every AI platform has its own individual visual proof screenshot saved in `reports/v7/assets/`.
+1.  **Enriched Conversational AI Sub-Category & Multi-App Verification:** Conversational AI (ChatGPT, Gemini, Meta AI, and Grok AI) runs queries in each engine via browser MCP, captures individual high-fidelity screenshots as proof, and parses structured text to identify rankings, top 3 recommended doctors, and corresponding citation reasons.
+2.  **Individual Visual Proofs for AI Platforms:** Every AI platform has its own individual visual proof screenshot saved in `reports/v7/assets/`.
 3.  **JSON Report Output Version 7:** The primary deliverable is a structured JSON file targeting `reports/v7/` to power the interactive Report Viewer application.
 
 ---
@@ -61,12 +61,7 @@ Every generated report must strictly conform to the following JSON schema. No fi
 {
   "overall_score": 15,
   "discoverability_tier": "WEAK",
-  "diagnostic_summary": "A highly focused, 2-3 sentence paragraph summarizing strengths, core technical gaps (e.g., missing schema, unclaimed profiles, wrong GBP primary categories), and local competitive standing.",
-  "historical_runs": [
-    { "date": "2026-03-22", "overall_score": 13 },
-    { "date": "2026-04-22", "overall_score": 21 },
-    { "date": "[Current YYYY-MM-DD]", "overall_score": 15 }
-  ]
+  "diagnostic_summary": "A highly focused, 2-3 sentence paragraph summarizing strengths, core technical gaps (e.g., missing schema, unclaimed profiles, wrong GBP primary categories), and local competitive standing."
 }
 ```
 
@@ -75,8 +70,6 @@ Every generated report must strictly conform to the following JSON schema. No fi
 *   `GOOD`: overall_score 60–79
 *   `MODERATE`: overall_score 40–59
 *   `WEAK`: overall_score < 40
-
-**Historical Runs:** If previous month reports exist in `reports/v7/` or `reports/v6/`, read their `overall_score` to populate the array. If this is the first run, include only the current entry.
 
 ### 1.3 Channels Array
 
@@ -108,7 +101,6 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
   "overall_score": 0,
   "discoverability_tier": "WEAK",
   "diagnostic_summary": "...",
-  "historical_runs": [],
 
   "channels": [
     {
