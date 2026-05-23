@@ -38,6 +38,12 @@ export interface MetricData {
   points: number;
 }
 
+export interface PlatformRecommendation {
+  name: string;
+  rank: number;
+  reason_cited: string;
+}
+
 export interface PlatformData {
   name: string;
   standing: string;
@@ -46,6 +52,8 @@ export interface PlatformData {
   citation: string;
   credentials_cited?: boolean;
   sentiment_positive?: boolean;
+  evidence_screenshot?: string;
+  top_recommendations?: PlatformRecommendation[];
 }
 
 export interface CheckData {

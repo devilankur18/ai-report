@@ -3,7 +3,8 @@ import { ReportSchema } from './types/reportSchema';
 import './report.css';
 
 const DEFAULT_RUNS = [
-  { value: 'dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini, Prayagraj' },
+  { value: 'v7/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Live)' },
+  { value: 'v6/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V6.0)' },
   { value: 'live_audit_run.json', label: 'Live Audit Run' }
 ];
 
@@ -51,18 +52,78 @@ const TABS = [
   { id: 'search_seo', label: 'SEO & Search Pack', icon: 'fas fa-magnifying-glass-chart' },
   { id: 'directories_ai', label: 'AI & Directories', icon: 'fas fa-robot' },
   { id: 'checklists', label: 'Technical & E-E-A-T', icon: 'fas fa-clipboard-check' },
-  { id: 'treatment_roadmap', label: 'Action Roadmap', icon: 'fas fa-prescription-bottle-medical' },
-  { id: 'evidence_proofs', label: 'Evidence Gallery', icon: 'fas fa-images' }
+  { id: 'treatment_roadmap', label: 'Action Roadmap', icon: 'fas fa-prescription-bottle-medical' }
 ];
 
 export const ReportViewer: React.FC = () => {
   const [reportData, setReportData] = useState<ReportSchema | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRun, setSelectedRun] = useState<string>('dr_vishal_maurya_report.json');
+  const [selectedRun, setSelectedRun] = useState<string>('v7/dr_vishal_maurya_report.json');
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<string>('executive');
   const [lightboxImage, setLightboxImage] = useState<{ path: string; caption: string } | null>(null);
+
+  // Helper to get correct asset path based on current loaded report version
+  const getAssetPath = (pathStr: string) => {
+    if (!pathStr) return '';
+    // If it already has reports/vX, return it
+    if (pathStr.startsWith('/reports/') || pathStr.startsWith('reports/')) {
+      return pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+    }
+    // Determine directory version based on reportData metadata or selectedRun value
+    const isV7 = reportData?.report_metadata?.version === '7.0' || selectedRun.startsWith('v7/');
+    const versionDir = isV7 ? 'v7' : 'v6';
+    return `/reports/${versionDir}/${pathStr}`;
+  };
+
+  // Helper to render colocated visual evidence inline with its channel block
+  const renderInlineEvidence = (channelId: string) => {
+    if (!reportData) return null;
+    const channel = reportData.channels.find(c => c.id === channelId);
+    if (!channel || !channel.evidence_screenshot) return null;
+
+    if (channelId === 'conversational_ai') {
+      // In V7, platform-level screenshots exist, so don't duplicate the channel-level screenshot
+      const hasPlatformEvidence = channel.platforms?.some(p => p.evidence_screenshot);
+      if (hasPlatformEvidence) return null;
+    }
+    
+    // Find matching proof description from visual_proof_index
+    const proof = reportData.visual_proof_index?.find(
+      p => p.path === channel.evidence_screenshot || channel.evidence_screenshot?.endsWith(p.path)
+    );
+    
+    const label = proof?.label || `${channel.name} Audit Proof`;
+    const description = proof?.description || `${channel.name} verification details.`;
+    const path = getAssetPath(channel.evidence_screenshot);
+    
+    return (
+      <div className="inline-evidence-container" onClick={() => setLightboxImage({ path, caption: description })}>
+        <div className="inline-evidence-header">
+          <div className="inline-evidence-title">
+            <i className="fas fa-camera"></i>
+            <span>{label}</span>
+          </div>
+          <span className="inline-evidence-hint">
+            <i className="fas fa-magnifying-glass-plus"></i> View Full Resolution
+          </span>
+        </div>
+        <div className="inline-evidence-preview">
+          <img 
+            src={path} 
+            alt={label} 
+          />
+          <div className="inline-evidence-overlay">
+            <i className="fas fa-expand"></i>
+          </div>
+        </div>
+        <div className="inline-evidence-footer">
+          <p>{description}</p>
+        </div>
+      </div>
+    );
+  };
 
   // Scroll Spy to highlight active section in navigation
   useEffect(() => {
@@ -129,23 +190,33 @@ export const ReportViewer: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    // Fetch the JSON file
-    fetch(`/reports/v6/${targetFile}`)
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`Failed to load report: ${res.statusText}`);
+    // Fetch the JSON file with fallbacks for version paths
+    const tryFetch = async () => {
+      try {
+        let response;
+        if (targetFile.includes('/')) {
+          response = await fetch(`/reports/${targetFile}`);
+        } else {
+          // Try v7 first, then v6
+          response = await fetch(`/reports/v7/${targetFile}`);
+          if (!response.ok) {
+            response = await fetch(`/reports/v6/${targetFile}`);
+          }
         }
-        return res.json();
-      })
-      .then((data: ReportSchema) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load report: ${response.statusText}`);
+        }
+        const data = await response.json();
         setReportData(data);
         setLoading(false);
-      })
-      .catch(err => {
+      } catch (err: any) {
         console.error(err);
-        setError(`Failed to fetch report JSON. Make sure reports/v6/${targetFile} exists. Error: ${err.message}`);
+        setError(`Failed to fetch report JSON. Error: ${err.message}`);
         setLoading(false);
-      });
+      }
+    };
+    
+    tryFetch();
   }, [selectedRun]);
 
   // Handle run change
@@ -583,7 +654,7 @@ export const ReportViewer: React.FC = () => {
                           {channel.evidence_screenshot && (
                             <button 
                               className="btn-card-evidence"
-                              onClick={() => setLightboxImage({ path: channel.evidence_screenshot, caption: `${channel.name} Audit Evidence Screenshot` })}
+                              onClick={() => setLightboxImage({ path: getAssetPath(channel.evidence_screenshot), caption: `${channel.name} Audit Evidence Screenshot` })}
                             >
                               <i className="fas fa-camera"></i> Audit Proof
                             </button>
@@ -700,6 +771,7 @@ export const ReportViewer: React.FC = () => {
                                 </div>
                               ))}
                             </div>
+                            {renderInlineEvidence(id)}
                           </div>
                         );
                       })}
@@ -802,32 +874,145 @@ export const ReportViewer: React.FC = () => {
                         </div>
                       ))}
                     </div>
+                    {renderInlineEvidence('conversational_ai')}
                   </div>
                 )}
 
                 {aiChannel && aiChannel.platforms && (
-                  <div className="ai-standing-grid">
+                  <div className="ai-standing-grid-v7">
                     {aiChannel.platforms.map((plat, idx) => {
                       const isRecommended = plat.standing?.toLowerCase().includes('recommended') && !plat.standing?.toLowerCase().includes('not');
+                      const isMentioned = plat.standing?.toLowerCase().includes('mentioned');
+                      
+                      // Platform branding meta
+                      let platMeta = {
+                        icon: 'fas fa-robot',
+                        color: '#a855f7',
+                        bg: 'rgba(168, 85, 247, 0.1)',
+                        textColor: '#fff'
+                      };
+                      
+                      if (plat.name === 'ChatGPT') {
+                        platMeta = {
+                          icon: 'fas fa-robot',
+                          color: '#10a37f', // ChatGPT Green
+                          bg: 'rgba(16, 163, 127, 0.1)',
+                          textColor: '#10a37f'
+                        };
+                      } else if (plat.name === 'Gemini') {
+                        platMeta = {
+                          icon: 'fas fa-wand-magic-sparkles',
+                          color: '#4285f4', // Google/Gemini Blue
+                          bg: 'rgba(66, 133, 244, 0.1)',
+                          textColor: '#4285f4'
+                        };
+                      } else if (plat.name === 'Meta AI') {
+                        platMeta = {
+                          icon: 'fab fa-meta',
+                          color: '#0081fb', // Meta Blue
+                          bg: 'rgba(0, 129, 251, 0.1)',
+                          textColor: '#0081fb'
+                        };
+                      } else if (plat.name === 'Grok AI') {
+                        platMeta = {
+                          icon: 'fas fa-terminal',
+                          color: '#e2e8f0', // Grok light gray/white
+                          bg: 'rgba(255, 255, 255, 0.08)',
+                          textColor: '#e2e8f0'
+                        };
+                      }
+
                       return (
-                        <div className="ai-platform-card" key={idx}>
+                        <div className="glass-card ai-platform-card-v7" key={idx} style={{ borderTop: `4px solid ${platMeta.color}` }}>
                           <div className="ai-platform-header">
-                            <span className="ai-platform-name">{plat.name}</span>
-                            <span className={`ai-standing-status ${isRecommended ? 'ai-standing-yes' : 'ai-standing-no'}`}>
+                            <div className="ai-platform-title-area">
+                              <span className="ai-platform-icon-wrap" style={{ backgroundColor: platMeta.bg, color: platMeta.color }}>
+                                <i className={platMeta.icon}></i>
+                              </span>
+                              <span className="ai-platform-name">{plat.name}</span>
+                            </div>
+                            <span className={`ai-standing-status ${
+                              isRecommended ? 'ai-standing-yes' : isMentioned ? 'ai-standing-warn' : 'ai-standing-no'
+                            }`}>
                               {plat.standing}
                             </span>
                           </div>
-                          <p className="ai-citation">
-                            "{plat.citation}"
-                          </p>
-                          <div className="ai-platform-subsignals">
-                            <span className={`signal-badge ${plat.credentials_cited ? 'cited' : 'not-cited'}`}>
-                              <i className="fas fa-certificate"></i> Credentials {plat.credentials_cited ? 'Cited' : 'Missing'}
-                            </span>
-                            <span className={`signal-badge ${plat.sentiment_positive ? 'positive' : 'negative'}`}>
-                              <i className="fas fa-heart"></i> {plat.sentiment_positive ? 'Positive Sentiment' : 'Neutral/Negative'}
-                            </span>
+
+                          <div className="ai-platform-content-grid">
+                            <div className="ai-platform-left-col">
+                              <div className="ai-section-title-sm">Live Response & Sentiment Analysis</div>
+                              <p className="ai-citation-v7">
+                                "{plat.citation}"
+                              </p>
+                              
+                              <div className="ai-platform-subsignals-v7">
+                                <span className={`signal-badge ${plat.credentials_cited ? 'cited' : 'not-cited'}`}>
+                                  <i className="fas fa-certificate"></i> Credentials: {plat.credentials_cited ? 'Cited' : 'Missing'}
+                                </span>
+                                <span className={`signal-badge ${plat.sentiment_positive ? 'positive' : 'negative'}`}>
+                                  <i className="fas fa-heart"></i> Sentiment: {plat.sentiment_positive ? 'Positive' : 'Neutral/Negative'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="ai-platform-right-col">
+                              {plat.evidence_screenshot && (
+                                <div className="ai-evidence-thumbnail-container">
+                                  <div className="ai-section-title-sm">Visual Verification Proof</div>
+                                  <div 
+                                    className="ai-evidence-thumbnail" 
+                                    onClick={() => setLightboxImage({ path: getAssetPath(plat.evidence_screenshot!), caption: `${plat.name} Standing Evidence Screenshot` })}
+                                  >
+                                    <img 
+                                      src={getAssetPath(plat.evidence_screenshot)} 
+                                      alt={`${plat.name} proof`}
+                                    />
+                                    <div className="ai-evidence-hover-overlay">
+                                      <i className="fas fa-expand"></i>
+                                      <span>Click to Expand Proof</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {plat.top_recommendations && plat.top_recommendations.length > 0 && (
+                            <div className="ai-recommendations-section">
+                              <div className="ai-section-title-sm" style={{ marginTop: '1.25rem', marginBottom: '0.75rem' }}>
+                                <i className="fas fa-list-ol" style={{ color: platMeta.color, marginRight: '0.5rem' }}></i>
+                                Local Top 3 Recommended Competitors
+                              </div>
+                              <div className="ai-recommendations-table-wrapper">
+                                <table className="ai-recommendations-table">
+                                  <thead>
+                                    <tr>
+                                      <th style={{ width: '80px' }}>Rank</th>
+                                      <th style={{ width: '220px' }}>Provider Name</th>
+                                      <th>AI Citation Rationale</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {plat.top_recommendations.map((rec, rIdx) => {
+                                      const isSelf = rec.name.toLowerCase().includes('vishal maurya') || rec.name.toLowerCase().includes('pravisha');
+                                      return (
+                                        <tr key={rIdx} className={isSelf ? 'highlight-self-row' : ''}>
+                                          <td className="rank-cell">
+                                            <span className={`rank-badge rank-${rec.rank}`}>#{rec.rank}</span>
+                                          </td>
+                                          <td className="name-cell">
+                                            <strong>{rec.name}</strong>
+                                            {isSelf && <span className="self-tag">This Clinic</span>}
+                                          </td>
+                                          <td className="reason-cell">{rec.reason_cited}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -868,6 +1053,7 @@ export const ReportViewer: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {renderInlineEvidence('eeat_credentials')}
                     </div>
                   )}
 
@@ -894,6 +1080,7 @@ export const ReportViewer: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {renderInlineEvidence('website_schema')}
                     </div>
                   )}
 
@@ -981,6 +1168,7 @@ export const ReportViewer: React.FC = () => {
                           );
                         })}
                       </div>
+                      {renderInlineEvidence('aggregators')}
                     </div>
                   )}
                 </div>
@@ -1017,46 +1205,7 @@ export const ReportViewer: React.FC = () => {
                     )}
                   </section>
 
-                  {/* EVIDENCE GALLERY SECTION */}
-                  <section id="evidence_proofs" className="report-section fade-in">
-                {reportData.visual_proof_index && reportData.visual_proof_index.length > 0 ? (
-                  <>
-                    <h2 className="section-title">
-                      <i className="fas fa-images"></i>
-                      <span>Audit Screenshot & Visual Evidence Proofs</span>
-                    </h2>
-                    <p className="section-intro-desc">
-                      Verifiable audit snippets captured from live search packs, council registries, and website structure indices.
-                    </p>
-                    <div className="glass-card">
-                      <div className="gallery-grid">
-                        {reportData.visual_proof_index.map((shot, idx) => (
-                          <div 
-                            className="gallery-card" 
-                            key={idx} 
-                            onClick={() => setLightboxImage({ path: shot.path, caption: shot.description })}
-                          >
-                            <img src={`/${shot.path}`} alt={shot.label} onError={(e) => {
-                              // Fallback relative path lookup
-                              e.currentTarget.src = `../${shot.path}`;
-                            }} />
-                            <div className="gallery-caption">
-                              <strong>{shot.label}</strong>
-                              <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, opacity: 0.8, marginTop: '0.15rem' }}>
-                                {shot.description}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="no-data-card glass-card">
-                    <p>No visual proof index loaded in this report.</p>
-                  </div>
-                  )}
-                </section>
+
 
           </div>
 
@@ -1066,11 +1215,8 @@ export const ReportViewer: React.FC = () => {
               <button className="lightbox-close" onClick={() => setLightboxImage(null)}>&times;</button>
               <img 
                 className="lightbox-content" 
-                src={`/${lightboxImage.path}`} 
+                src={lightboxImage.path} 
                 alt={lightboxImage.caption} 
-                onError={(e) => {
-                  e.currentTarget.src = `../${lightboxImage.path}`;
-                }} 
                 onClick={(e) => e.stopPropagation()} 
               />
               <div className="lightbox-caption">{lightboxImage.caption}</div>

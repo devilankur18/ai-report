@@ -25,15 +25,21 @@ export default defineConfig({
               // Resolve paths
               let filePath = path.resolve(projectRoot, '..' + cleanRelativePath);
               if (assetsIndex !== -1 && (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())) {
-                // Try reports/v6/assets first
-                const fallbackV6 = path.resolve(projectRoot, '../reports/v6' + cleanRelativePath);
-                if (fs.existsSync(fallbackV6) && fs.statSync(fallbackV6).isFile()) {
-                  filePath = fallbackV6;
+                // Try reports/v7/assets first
+                const fallbackV7 = path.resolve(projectRoot, '../reports/v7' + cleanRelativePath);
+                if (fs.existsSync(fallbackV7) && fs.statSync(fallbackV7).isFile()) {
+                  filePath = fallbackV7;
                 } else {
-                  // Fallback to reports/v5/assets if not found in v6
-                  const fallbackV5 = path.resolve(projectRoot, '../reports/v5' + cleanRelativePath);
-                  if (fs.existsSync(fallbackV5) && fs.statSync(fallbackV5).isFile()) {
-                    filePath = fallbackV5;
+                  // Try reports/v6/assets second
+                  const fallbackV6 = path.resolve(projectRoot, '../reports/v6' + cleanRelativePath);
+                  if (fs.existsSync(fallbackV6) && fs.statSync(fallbackV6).isFile()) {
+                    filePath = fallbackV6;
+                  } else {
+                    // Fallback to reports/v5/assets if not found in v6
+                    const fallbackV5 = path.resolve(projectRoot, '../reports/v5' + cleanRelativePath);
+                    if (fs.existsSync(fallbackV5) && fs.statSync(fallbackV5).isFile()) {
+                      filePath = fallbackV5;
+                    }
                   }
                 }
               }
