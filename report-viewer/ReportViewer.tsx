@@ -64,17 +64,17 @@ export const ReportViewer: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('executive');
   const [lightboxImage, setLightboxImage] = useState<{ path: string; caption: string } | null>(null);
 
-  // Helper to get correct asset path based on current loaded report version
+  // Helper to get correct asset path based on current loaded report version and location
   const getAssetPath = (pathStr: string) => {
     if (!pathStr) return '';
     // If it already has reports/vX, return it
     if (pathStr.startsWith('/reports/') || pathStr.startsWith('reports/')) {
       return pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
     }
-    // Determine directory version based on reportData metadata or selectedRun value
-    const isV7 = reportData?.report_metadata?.version === '7.0' || selectedRun.startsWith('v7/');
-    const versionDir = isV7 ? 'v7' : 'v6';
-    return `/reports/${versionDir}/${pathStr}`;
+    // Determine base folder from selectedRun (e.g., 'v7/dr_saket_saxena-26-05-27-01-36')
+    const baseFolder = selectedRun.includes('/') ? selectedRun.substring(0, selectedRun.lastIndexOf('/')) : selectedRun;
+    // Build full asset path relative to the report folder
+    return `/reports/${baseFolder}/${pathStr}`.replace('//reports/', '/reports/');
   };
 
   // Helper to render colocated visual evidence inline with its channel block

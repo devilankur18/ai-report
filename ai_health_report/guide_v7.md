@@ -7,8 +7,8 @@ Dont fucking do anything on your own. No plans needed, just execute this below
 This document is the master operational specification for the DigiClinic Digital Presence & AI Rank Analyzer (Version 7). Key characteristics of this version include:
 
 1.  **Enriched Conversational AI Sub-Category & Multi-App Verification:** Conversational AI (ChatGPT, Gemini, Meta AI, and Grok AI) runs queries in each engine via browser MCP, captures individual high-fidelity screenshots as proof, and parses structured text to identify rankings, top 3 recommended doctors, and corresponding citation reasons.
-2.  **Individual Visual Proofs for AI Platforms:** Every AI platform has its own individual visual proof screenshot saved in `reports/v7/assets/`.
-3.  **JSON Report Output Version 7:** The primary deliverable is a structured JSON file targeting `reports/v7/` to power the interactive Report Viewer application.
+2.  **Individual Visual Proofs for AI Platforms:** Every AI platform has its own individual visual proof screenshot saved in `[OUTPUT_DIR]/`.
+3.  **JSON Report Output Version 7:** The primary deliverable is a structured JSON file targeting `[OUTPUT_DIR]/` to power the interactive Report Viewer application.
 
 ---
 
@@ -17,9 +17,9 @@ This document is the master operational specification for the DigiClinic Digital
 Every generated report must strictly conform to the following JSON schema. No fields may be added, rearranged, or removed unless explicitly specified in this guide.
 
 ### Output File Convention
-*   **File Name:** `[doctor_slug]_report.json` or `[doctor_slug]_report_[YYYY-MM].json` for monthly tracking.
-*   **Output Directory:** `reports/v7/`
-*   **Screenshot Assets Directory:** `reports/v7/assets/`
+*   **Run Output Directory (`[OUTPUT_DIR]`):** `reports/v7/<doctor-name>-<yy-mm-dd-HH-MM>/`
+*   **File Name:** `[doctor_slug]_report.json` or `[doctor_slug]_report_[YYYY-MM].json` for monthly tracking inside `[OUTPUT_DIR]`.
+*   **Screenshot Assets Directory:** `[OUTPUT_DIR]` (all assets, images, JSON, and checklist go in this single directory).
 
 ### 1.1 Report Metadata
 
@@ -108,7 +108,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Google Search & Maps",
       "weight": 25,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_maps_proof.png",
+      "evidence_screenshot": "[doctor_slug]_maps_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Search & Maps Rank Visibility",
@@ -165,7 +165,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Bing Search & Maps",
       "weight": 15,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_bing_proof.png",
+      "evidence_screenshot": "[doctor_slug]_bing_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Bing Search & Maps Rank Visibility",
@@ -221,7 +221,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Medical Aggregators (Practo & Justdial)",
       "weight": 15,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_aggregators_proof.png",
+      "evidence_screenshot": "[doctor_slug]_aggregators_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Aggregator Listing & Rank Visibility",
@@ -266,7 +266,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Conversational AI Standing",
       "weight": 15,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_chatgpt_proof.png",
+      "evidence_screenshot": "[doctor_slug]_chatgpt_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "AI Recommendation Standing",
@@ -296,7 +296,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "citation": "Verbatim excerpt from ChatGPT response...",
           "credentials_cited": false,
           "sentiment_positive": false,
-          "evidence_screenshot": "assets/[doctor_slug]_chatgpt_proof.png",
+          "evidence_screenshot": "[doctor_slug]_chatgpt_proof.png",
           "top_recommendations": [
             { "name": "[Competitor 1]", "rank": 1, "reason_cited": "[Why ChatGPT ranks them]" },
             { "name": "[Competitor 2]", "rank": 2, "reason_cited": "[Why ChatGPT ranks them]" },
@@ -311,7 +311,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "citation": "...",
           "credentials_cited": false,
           "sentiment_positive": false,
-          "evidence_screenshot": "assets/[doctor_slug]_gemini_proof.png",
+          "evidence_screenshot": "[doctor_slug]_gemini_proof.png",
           "top_recommendations": [
             { "name": "[Competitor 1]", "rank": 1, "reason_cited": "..." },
             { "name": "[Competitor 2]", "rank": 2, "reason_cited": "..." },
@@ -326,7 +326,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "citation": "...",
           "credentials_cited": false,
           "sentiment_positive": false,
-          "evidence_screenshot": "assets/[doctor_slug]_meta_ai_proof.png",
+          "evidence_screenshot": "[doctor_slug]_meta_ai_proof.png",
           "top_recommendations": [
             { "name": "[Competitor 1]", "rank": 1, "reason_cited": "..." },
             { "name": "[Competitor 2]", "rank": 2, "reason_cited": "..." },
@@ -341,7 +341,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "citation": "...",
           "credentials_cited": false,
           "sentiment_positive": false,
-          "evidence_screenshot": "assets/[doctor_slug]_grok_proof.png",
+          "evidence_screenshot": "[doctor_slug]_grok_proof.png",
           "top_recommendations": [
             { "name": "[Competitor 1]", "rank": 1, "reason_cited": "..." },
             { "name": "[Competitor 2]", "rank": 2, "reason_cited": "..." },
@@ -355,7 +355,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "E-E-A-T & Credentials Audit",
       "weight": 15,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_eeat_proof.png",
+      "evidence_screenshot": "[doctor_slug]_eeat_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Registry Discoverability",
@@ -392,7 +392,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Website & Schema Compliance",
       "weight": 15,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/[doctor_slug]_website_proof.png",
+      "evidence_screenshot": "[doctor_slug]_website_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Website Discoverability",
@@ -442,15 +442,15 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
   ],
 
   "visual_proof_index": [
-    { "label": "Google Maps Proof", "path": "assets/[doctor_slug]_maps_proof.png", "description": "Google Maps listing and rank evidence." },
-    { "label": "Bing Search & Maps Proof", "path": "assets/[doctor_slug]_bing_proof.png", "description": "Bing Search query and maps ranking." },
-    { "label": "Medical Aggregator Proof", "path": "assets/[doctor_slug]_aggregators_proof.png", "description": "Justdial/Practo claimed status and reviews." },
-    { "label": "Medical Registry E-E-A-T Proof", "path": "assets/[doctor_slug]_eeat_proof.png", "description": "Official National/State Council registration registry verification." },
-    { "label": "ChatGPT Standing Proof", "path": "assets/[doctor_slug]_chatgpt_proof.png", "description": "ChatGPT response showing local recommendations." },
-    { "label": "Gemini Standing Proof", "path": "assets/[doctor_slug]_gemini_proof.png", "description": "Gemini response showing local recommendations." },
-    { "label": "Meta AI Standing Proof", "path": "assets/[doctor_slug]_meta_ai_proof.png", "description": "Meta AI response showing local recommendations." },
-    { "label": "Grok AI Standing Proof", "path": "assets/[doctor_slug]_grok_proof.png", "description": "Grok AI response showing local recommendations." },
-    { "label": "Website & Schema Proof", "path": "assets/[doctor_slug]_website_proof.png", "description": "Homepage screenshot or search result showing website is missing." }
+    { "label": "Google Maps Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_maps_proof.png", "description": "Google Maps listing and rank evidence." },
+    { "label": "Bing Search & Maps Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_bing_proof.png", "description": "Bing Search query and maps ranking." },
+    { "label": "Medical Aggregator Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_aggregators_proof.png", "description": "Justdial/Practo claimed status and reviews." },
+    { "label": "Medical Registry E-E-A-T Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_eeat_proof.png", "description": "Official National/State Council registration registry verification." },
+    { "label": "ChatGPT Standing Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_chatgpt_proof.png", "description": "ChatGPT response showing local recommendations." },
+    { "label": "Gemini Standing Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_gemini_proof.png", "description": "Gemini response showing local recommendations." },
+    { "label": "Meta AI Standing Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_meta_ai_proof.png", "description": "Meta AI response showing local recommendations." },
+    { "label": "Grok AI Standing Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_grok_proof.png", "description": "Grok AI response showing local recommendations." },
+    { "label": "Website & Schema Proof", "path": "[OUTPUT_DIR]/[doctor_slug]_website_proof.png", "description": "Homepage screenshot or search result showing website is missing." }
   ]
 }
 ```
@@ -682,7 +682,7 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 | 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
 | 5 | Parse completeness checks | *Agent parsing* | From extracted text, check: GBP claimed status, primary category, photo count, address, phone. Cross-reference address and phone against data found later in Workflows 2-3 for NAP consistency. | Record each check: `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
 | 6 | Parse review data | *Agent parsing* | Extract: `total_reviews`, `average_rating`. Calculate `review_velocity_per_month` = total_reviews ÷ months since oldest visible review. Count narrative success stories (reviews >= 3 sentences long). | Apply sentiment rubric from **Section 2.4.1**. |
-| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_maps_proof.png"}` | Retry once. |
+| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_maps_proof.png"}` | Retry once. |
 
 **Scoring:**
 - `completeness.score` = average of all `completeness_checks` points.
@@ -716,7 +716,7 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 | 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
 | 5 | Parse completeness checks | *Agent parsing* | Check for: Bing Places listing active, photos count, address consistency vs Google (from Workflow 1B), phone consistency vs Google. | `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
 | 6 | Parse review data | *Agent parsing* | Extract Bing review count and rating if available. If no Bing reviews exist → all sentiment components = 0. | Apply Section 2.4.1 rubric. |
-| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_bing_proof.png"}` | Retry once. |
+| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_bing_proof.png"}` | Retry once. |
 
 **Scoring:** Same formulas as Workflow 1.
 
@@ -734,7 +734,7 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 | 4 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
 | 5 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
 | 6 | Parse metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry with `VERIFIED`/`MISSING` status and points. |
-| 7 | Take screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_aggregators_proof.png"}` | Retry once. |
+| 7 | Take screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_aggregators_proof.png"}` | Retry once. |
 
 #### 3B: Practo Profile Inspection
 
@@ -765,7 +765,7 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 | 6 | Search for clinical publications | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} publication pubmed OR scholar.google.com"}` | If none → publications = `MISSING`. |
 | 7 | Search for professional associations | `search_web` | `{"query": "{DOCTOR_NAME} IDA IMA member {STATE}"}` | If none → association = `MISSING`. |
 | 8 | Navigate to best registry evidence page | `browser_navigate` | `{"url": "<best registry URL found, or Google search results page>"}` | If no registry URL, use Google search page as evidence. |
-| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_eeat_proof.png"}` | Retry once. |
+| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_eeat_proof.png"}` | Retry once. |
 
 **Scoring:**
 - `visibility.score` = council found on official registry site = 100, found only on directories = 50, not found = 0.
@@ -787,7 +787,7 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 #### 🤖 Workflow 5A: ChatGPT → `conversational_ai.platforms[0]`
 
 **Platform URL:** `https://chatgpt.com`
-**Screenshot file:** `assets/{doctor_slug}_chatgpt_proof.png`
+**Screenshot file:** `{doctor_slug}_chatgpt_proof.png`
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
@@ -800,14 +800,14 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 | 7 | Additional wait for rendering to complete | `browser_wait` | `{"selector": "button[data-testid='send-button']:not([disabled])", "timeout": 20000}` | Ignore — proceed to step 8 (response may already be done) |
 | 8 | Scroll down to ensure full response is visible | `browser_scroll` | `{"y": 500}` | Ignore |
 | 9 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 10 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_chatgpt_proof.png"}` | Retry once. If still fails, take screenshot without `path` (returns base64) and save manually. |
+| 10 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_chatgpt_proof.png"}` | Retry once. If still fails, take screenshot without `path` (returns base64) and save manually. |
 
 ---
 
 #### 🤖 Workflow 5B: Gemini → `conversational_ai.platforms[1]`
 
 **Platform URL:** `https://gemini.google.com/app`
-**Screenshot file:** `assets/{doctor_slug}_gemini_proof.png`
+**Screenshot file:** `{doctor_slug}_gemini_proof.png`
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
@@ -821,14 +821,14 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 | 8 | Additional wait for response rendering | `browser_wait` | `{"selector": "message-content, .model-response-text, .response-container", "timeout": 20000}` | Ignore — proceed |
 | 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
 | 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_gemini_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_gemini_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
 
 ---
 
 #### 🤖 Workflow 5C: Meta AI → `conversational_ai.platforms[2]`
 
 **Platform URL:** `https://www.meta.ai`
-**Screenshot file:** `assets/{doctor_slug}_meta_ai_proof.png`
+**Screenshot file:** `{doctor_slug}_meta_ai_proof.png`
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
@@ -842,14 +842,14 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 | 8 | Additional wait for response rendering | `browser_wait` | `{"selector": ".response-text, .message-content, div[data-testid]", "timeout": 20000}` | Ignore — proceed |
 | 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
 | 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_meta_ai_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_meta_ai_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
 
 ---
 
 #### 🤖 Workflow 5D: Grok AI → `conversational_ai.platforms[3]`
 
 **Platform URL:** `https://x.com/i/grok`
-**Screenshot file:** `assets/{doctor_slug}_grok_proof.png`
+**Screenshot file:** `{doctor_slug}_grok_proof.png`
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
@@ -863,7 +863,7 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 | 8 | Additional wait for response rendering | `browser_wait` | `{"selector": ".message, .response, div[data-testid]", "timeout": 20000}` | Ignore — proceed |
 | 9 | Scroll down to ensure full response visible | `browser_scroll` | `{"y": 500}` | Ignore |
 | 10 | Extract the full page text | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_grok_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
+| 11 | Take evidence screenshot and save to disk | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_grok_proof.png"}` | Retry once. If still fails, screenshot without path + manual save. |
 
 ---
 
@@ -934,7 +934,7 @@ $$\text{conversational\_ai \%} = (\text{Visibility} \times 0.5) + (\text{Complet
 | 6 | Extract page HTML for schema check | `browser_get_page_content` | `{"format": "html"}` | `→ ERR-EMPTY` |
 | 7 | Check for JSON-LD structured data | `browser_execute_script` | `{"code": "document.querySelector('script[type=\\\"application/ld+json\\\"]')?.textContent || 'No JSON-LD found'"}` | If script errors, search HTML from step 6 for `<script type="application/ld+json">` blocks manually. |
 | 8 | Extract page text for trust signals | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "reports/v7/assets/{doctor_slug}_website_proof.png"}` | If no website exists, navigate to Google search showing "no website found" and screenshot that instead. |
+| 9 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/{doctor_slug}_website_proof.png"}` | If no website exists, navigate to Google search showing "no website found" and screenshot that instead. |
 
 **Parsing (from steps 6-8):**
 
@@ -960,7 +960,7 @@ $$\text{conversational\_ai \%} = (\text{Visibility} \times 0.5) + (\text{Complet
 
 Every report execution must generate a separate step-verification checklist file alongside the JSON report.
 
-*   **File Path:** `reports/v7/[doctor_slug]_run_checklist.md`
+*   **File Path:** `[OUTPUT_DIR]/[doctor_slug]_run_checklist.md`
 *   **Structure:** Standard run checklists for Channels 1 to 6. Include individual check slots for ChatGPT, Gemini, Meta AI, and Grok AI screenshot capturing.
 
 ---
@@ -969,8 +969,8 @@ Every report execution must generate a separate step-verification checklist file
 
 ### 🔴 GLOBAL OPERATIONAL DONTs
 *   🛑 **NO PLACEHOLDERS OR SUBJECTIVITY:** Never use generic images. All visual proof screenshots must be captured live.
-*   🛑 **NO ABSOLUTE FILE IMAGE PATHS:** Always use relative paths starting with `assets/` (e.g., `assets/[doctor_slug]_chatgpt_proof.png`) for report viewer compatibility.
+*   🛑 **NO ABSOLUTE FILE IMAGE PATHS:** Always use relative filename paths (e.g., `[doctor_slug]_chatgpt_proof.png`) for report viewer compatibility.
 
 ### 🟢 GLOBAL OPERATIONAL DOs
-*   ✅ **DO CAPTURE ALL 4 AI PROOFS:** Ensure `reports/v7/assets/[doctor_slug]_chatgpt_proof.png`, `_gemini_proof.png`, `_meta_ai_proof.png`, and `_grok_proof.png` are captured and indexed correctly.
+*   ✅ **DO CAPTURE ALL 4 AI PROOFS:** Ensure `[OUTPUT_DIR]/[doctor_slug]_chatgpt_proof.png`, `_gemini_proof.png`, `_meta_ai_proof.png`, and `_grok_proof.png` are captured and indexed correctly.
 *   ✅ **DO USE TEMPORARY DIRECTORY:** Use the temporary directory `reports/tmp` to save any intermediate or temporary files generated during the process.
