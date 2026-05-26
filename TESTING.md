@@ -6,7 +6,7 @@
 Start a new subtask with prompt
 
 ```
-Stictly Follow the @ai_health_report/guide_v7.md and generate a report for a doctor with follwoings details
+Stictly Follow the @ai_health_report/guide_v7.md and generate a report for a doctor with follwoings details. Dont fukcing read any file in reports-old directory
 
 Dr. Vishal Maurya
 Speciality: Dentist
