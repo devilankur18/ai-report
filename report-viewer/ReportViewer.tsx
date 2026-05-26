@@ -3,7 +3,8 @@ import { ReportSchema } from './types/reportSchema';
 import './report.css';
 
 const DEFAULT_RUNS = [
-  { value: 'v7/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Live)' },
+  { value: 'v7/dr_vishal_maurya/report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Live)' },
+  { value: 'v7/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Legacy)' },
   { value: 'v6/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V6.0)' },
   { value: 'live_audit_run.json', label: 'Live Audit Run' }
 ];
@@ -56,10 +57,11 @@ const TABS = [
 ];
 
 export const ReportViewer: React.FC = () => {
+  const [runsList, setRunsList] = useState<{ value: string; label: string }[]>([]);
   const [reportData, setReportData] = useState<ReportSchema | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRun, setSelectedRun] = useState<string>('v7/dr_vishal_maurya_report.json');
+  const [selectedRun, setSelectedRun] = useState<string>('');
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<string>('executive');
   const [lightboxImage, setLightboxImage] = useState<{ path: string; caption: string } | null>(null);
@@ -172,19 +174,39 @@ export const ReportViewer: React.FC = () => {
     }
   };
 
+  // Fetch active runs on mount
+  useEffect(() => {
+    const fetchRuns = async () => {
+      try {
+        const response = await fetch('/api/runs');
+        if (response.ok) {
+          const data = await response.json();
+          setRunsList(data);
+        } else {
+          setRunsList(DEFAULT_RUNS);
+        }
+      } catch (err) {
+        console.error("Failed fetching runs list", err);
+        setRunsList(DEFAULT_RUNS);
+      }
+    };
+    fetchRuns();
+  }, []);
+
   // Fetch report data when selected run changes
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fileParam = params.get('file');
     
     let targetFile = selectedRun;
-    if (fileParam) {
+    if (fileParam && !selectedRun) {
       targetFile = fileParam;
-      // Sync dropdown with URL file query
-      const matched = DEFAULT_RUNS.find(r => r.value === fileParam || r.value.includes(fileParam));
-      if (matched) {
-        setSelectedRun(matched.value);
-      }
+      setSelectedRun(fileParam);
+    }
+
+    if (!targetFile) {
+      setLoading(false);
+      return;
     }
 
     setLoading(true);
@@ -226,7 +248,11 @@ export const ReportViewer: React.FC = () => {
     
     // Update URL query parameter
     const url = new URL(window.location.href);
-    url.searchParams.set('file', nextRun);
+    if (nextRun) {
+      url.searchParams.set('file', nextRun);
+    } else {
+      url.searchParams.delete('file');
+    }
     window.history.pushState({}, '', url.toString());
   };
 
@@ -379,6 +405,57 @@ export const ReportViewer: React.FC = () => {
     );
   }
 
+  if (!selectedRun && !loading) {
+    return (
+      <div className="welcome-container" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#040712', color: '#fff', padding: '2rem', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+        {/* Glow Effects */}
+        <div style={{ position: 'absolute', top: '15%', left: '20%', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)', filter: 'blur(50px)', pointerEvents: 'none' }}></div>
+        <div style={{ position: 'absolute', bottom: '15%', right: '20%', width: '450px', height: '450px', background: 'radial-gradient(circle, rgba(6, 182, 212, 0.12) 0%, transparent 70%)', filter: 'blur(60px)', pointerEvents: 'none' }}></div>
+
+        <div className="glass-card" style={{ maxWidth: '640px', padding: '3.5rem 3rem', borderRadius: '24px', background: 'rgba(10, 15, 30, 0.7)', border: '1px solid rgba(255, 255, 255, 0.08)', backdropFilter: 'blur(20px)', boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
+          <div style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)', width: '80px', height: '80px', borderRadius: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 10px 25px rgba(99, 102, 241, 0.4)' }}>
+            <i className="fas fa-laptop-medical" style={{ fontSize: '2.5rem', color: '#fff' }}></i>
+          </div>
+          
+          <div>
+            <h1 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '2.4rem', fontWeight: 800, background: 'linear-gradient(135deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>DigiClinic Audit Portal</h1>
+            <p style={{ color: '#94a3b8', fontSize: '1.05rem', lineHeight: '1.6', maxWidth: '480px', margin: '0 auto' }}>Select an active clinical digital presence audit run or upload a local audit JSON to begin the analysis engine.</p>
+          </div>
+
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <select 
+                className="selector-dropdown" 
+                style={{ width: '100%', padding: '1.1rem 1.5rem', borderRadius: '14px', background: '#0d1224', border: '1px solid rgba(255, 255, 255, 0.12)', color: '#fff', fontSize: '1.05rem', fontFamily: 'Outfit, sans-serif', fontWeight: 500, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none', transition: 'all 0.3s ease', outline: 'none' }}
+                value={selectedRun}
+                onChange={handleRunChange}
+              >
+                <option value="">-- Choose an active audit run --</option>
+                {runsList.map(run => (
+                  <option key={run.value} value={run.value}>{run.label}</option>
+                ))}
+              </select>
+              <div style={{ position: 'absolute', right: '1.5rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94a3b8' }}>
+                <i className="fas fa-chevron-down"></i>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%', gap: '1rem', margin: '0.5rem 0' }}>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }}></div>
+              <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.08)' }}></div>
+            </div>
+
+            <label className="btn btn-primary" style={{ width: '100%', padding: '1.1rem 1.5rem', borderRadius: '14px', background: 'linear-gradient(135deg, #6366f1, #4f46e5)', border: 'none', color: '#fff', fontSize: '1.05rem', fontFamily: 'Outfit, sans-serif', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', cursor: 'pointer', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.25)', transition: 'all 0.3s ease' }}>
+              <i className="fas fa-upload"></i> Upload local audit JSON
+              <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
+            </label>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !reportData) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#040712', color: '#fff', padding: '2rem', textAlign: 'center' }}>
@@ -386,7 +463,8 @@ export const ReportViewer: React.FC = () => {
         <h2 style={{ maxWidth: '800px', fontFamily: 'Outfit, sans-serif' }}>{error || "No report loaded."}</h2>
         <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           <select className="selector-dropdown" value={selectedRun} onChange={handleRunChange}>
-            {DEFAULT_RUNS.map(run => (
+            <option value="">-- Choose an active audit run --</option>
+            {runsList.map(run => (
               <option key={run.value} value={run.value}>{run.label}</option>
             ))}
           </select>
@@ -432,7 +510,8 @@ export const ReportViewer: React.FC = () => {
         
         <div className="controls-bar">
           <select className="selector-dropdown" value={selectedRun} onChange={handleRunChange}>
-            {DEFAULT_RUNS.map(run => (
+            <option value="">-- Choose run --</option>
+            {runsList.map(run => (
               <option key={run.value} value={run.value}>{run.label}</option>
             ))}
           </select>

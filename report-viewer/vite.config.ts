@@ -3,6 +3,24 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
+function getJsonReports(dirPath: string): string[] {
+  let results: string[] = [];
+  if (!fs.existsSync(dirPath)) return results;
+  const list = fs.readdirSync(dirPath);
+  list.forEach((file) => {
+    const filePath = path.resolve(dirPath, file);
+    const stat = fs.statSync(filePath);
+    if (stat && stat.isDirectory()) {
+      if (file !== 'tmp' && file !== 'node_modules' && file !== 'dist') {
+        results = results.concat(getJsonReports(filePath));
+      }
+    } else if (file.endsWith('.json') && file !== 'package.json' && file !== 'tsconfig.json') {
+      results.push(filePath);
+    }
+  });
+  return results;
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -11,6 +29,50 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
             console.log(`[Vite Request] ${req.url}`);
+            
+            // Check for /api/runs endpoint
+            if (req.url && (req.url === '/api/runs' || req.url.startsWith('/api/runs'))) {
+              try {
+                const projectRoot = process.cwd();
+                const reportsDir = path.resolve(projectRoot, '../reports');
+                const jsonFiles = getJsonReports(reportsDir);
+                
+                const runs = jsonFiles.map((filePath) => {
+                  try {
+                    const relativePath = path.relative(reportsDir, filePath);
+                    const content = fs.readFileSync(filePath, 'utf8');
+                    const json = JSON.parse(content);
+                    const meta = json.report_metadata || {};
+                    const doctorName = meta.prepared_for || 'Unknown Doctor';
+                    const city = meta.location?.city || '';
+                    const date = meta.audit_date || '';
+                    const version = meta.version ? `V${meta.version}` : '';
+                    
+                    let label = doctorName;
+                    if (city) label += ` — ${city}`;
+                    if (version || date) {
+                      label += ` (${[version, date].filter(Boolean).join(' — ')})`;
+                    }
+                    
+                    return {
+                      value: relativePath,
+                      label: label
+                    };
+                  } catch (e) {
+                    return null;
+                  }
+                }).filter(Boolean);
+                
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(JSON.stringify(runs));
+              } catch (err: any) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({ error: err.message }));
+              }
+              return;
+            }
+
             if (req.url && (
               req.url.startsWith('/reports/') || req.url.includes('/reports/') ||
               req.url.startsWith('/assets/') || req.url.includes('/assets/')
