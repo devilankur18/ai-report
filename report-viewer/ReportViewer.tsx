@@ -1073,7 +1073,11 @@ export const ReportViewer: React.FC = () => {
                                   </thead>
                                   <tbody>
                                     {plat.top_recommendations.map((rec, rIdx) => {
-                                      const isSelf = rec.name.toLowerCase().includes('vishal maurya') || rec.name.toLowerCase().includes('pravisha');
+                                      // Dynamically detect if this recommendation IS the current client
+                                      const doctorNameTokens = (meta.prepared_for || '').toLowerCase().split(/\s+/).filter(t => t.length > 3);
+                                      const clinicNameTokens = (meta.clinic_name || '').toLowerCase().split(/\s+/).filter(t => t.length > 3);
+                                      const recNameLower = rec.name.toLowerCase();
+                                      const isSelf = [...doctorNameTokens, ...clinicNameTokens].some(tok => recNameLower.includes(tok));
                                       return (
                                         <tr key={rIdx} className={isSelf ? 'highlight-self-row' : ''}>
                                           <td className="rank-cell">
