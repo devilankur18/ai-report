@@ -306,6 +306,9 @@ export const ReportViewer: React.FC = () => {
     md += `## 🔴 2. Consolidated Rank & Summary Card\n`;
     md += `> ### 🔴 DIAGNOSTIC STANDING & RANK CARD\n`;
     md += `> *   **Overall Score:** ${reportData.overall_score} / 100\n`;
+    if (reportData.brand_protection_score !== undefined) {
+      md += `> *   **Brand Protection Score:** ${reportData.brand_protection_score} / 100\n`;
+    }
     md += `> *   **Discoverability Tier:** ${reportData.discoverability_tier}\n`;
     md += `> *   **Diagnostic Summary:** ${reportData.diagnostic_summary}\n\n`;
     
@@ -349,10 +352,10 @@ export const ReportViewer: React.FC = () => {
     md += `## 🤖 4. Conversational AI Standings\n\n`;
     const aiChannel = reportData.channels.find(c => c.id === 'conversational_ai');
     if (aiChannel && aiChannel.platforms) {
-      md += `| AI Platform | Recommendation Standing | Verbatim Citation |\n`;
-      md += `| :--- | :--- | :--- |\n`;
+      md += `| AI Platform | Recommendation Standing | Score | Verbatim Citation |\n`;
+      md += `| :--- | :--- | :--- | :--- |\n`;
       aiChannel.platforms.forEach(plat => {
-        md += `| **${plat.name}** | **${plat.standing}** | "${plat.citation}" |\n`;
+        md += `| **${plat.name}** | **${plat.standing}** | ${plat.points ?? 0} pts | "${plat.citation}" |\n`;
       });
     }
     md += `\n---\n\n`;
@@ -679,13 +682,21 @@ export const ReportViewer: React.FC = () => {
                     </div>
 
                     <div className="diagnostic-text">
-                      <h2>
-                        <span>Diagnostic Standing:</span>
-                        <span className={`tier-badge tier-${reportData.discoverability_tier}`}>
-                          {reportData.discoverability_tier}
-                        </span>
-                      </h2>
-                      <p className="summary-para">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        <h2 style={{ margin: 0 }}>
+                          <span>Diagnostic Standing:</span>
+                          <span className={`tier-badge tier-${reportData.discoverability_tier}`}>
+                            {reportData.discoverability_tier}
+                          </span>
+                        </h2>
+                        {reportData.brand_protection_score !== undefined && (
+                          <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', padding: '0.4rem 0.8rem', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <i className="fas fa-shield-halved" style={{ color: '#3b82f6' }}></i>
+                            <span style={{ color: '#e2e8f0', fontSize: '0.9rem', fontWeight: 600 }}>Brand Protection: <span style={{ color: '#3b82f6' }}>{reportData.brand_protection_score}%</span></span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="summary-para" style={{ marginTop: 0 }}>
                         {reportData.diagnostic_summary}
                       </p>
                     </div>
@@ -1038,11 +1049,25 @@ export const ReportViewer: React.FC = () => {
                               </span>
                               <span className="ai-platform-name">{plat.name}</span>
                             </div>
-                            <span className={`ai-standing-status ${
-                              isRecommended ? 'ai-standing-yes' : isMentioned ? 'ai-standing-warn' : 'ai-standing-no'
-                            }`}>
-                              {plat.standing}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <span className={`ai-standing-status ${
+                                isRecommended ? 'ai-standing-yes' : isMentioned ? 'ai-standing-warn' : 'ai-standing-no'
+                              }`}>
+                                {plat.standing}
+                              </span>
+                              <div style={{ 
+                                background: platMeta.bg, 
+                                color: platMeta.color, 
+                                padding: '0.35rem 0.75rem', 
+                                borderRadius: '16px', 
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                border: `1px solid ${platMeta.color}40`,
+                                whiteSpace: 'nowrap'
+                              }}>
+                                {plat.points ?? 0} pts
+                              </div>
+                            </div>
                           </div>
 
                           <div className="ai-platform-content-grid">

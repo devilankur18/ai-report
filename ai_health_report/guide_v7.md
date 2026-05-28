@@ -808,7 +808,7 @@ This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI
 
 **Prompt Template** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}` with actual values from report input):
 
-> *"I'm looking for a good {SPECIALTY} in {AREA}, {CITY}. please give me good options and also reason why, years of experience and fees."*
+> *"I'm looking for a good {SPECIALTY} in {AREA}, {CITY}. please give me top 5 good options in a table format and also reason why, years of experience, address, contact number, and fees."*
 
 ---
 

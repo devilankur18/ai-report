@@ -124,9 +124,10 @@ export interface VisualProofItem {
 export interface ReportSchema {
   report_metadata: ReportMetadata;
   overall_score: number;
+  brand_protection_score?: number;
   discoverability_tier: string;
   diagnostic_summary: string;
-  historical_runs: HistoricalRun[];
+  historical_runs?: HistoricalRun[];
   channels: Channel[];
   competitor_callout?: CompetitorCallout;
   treatment_plan: TreatmentPillar[];
