@@ -396,6 +396,34 @@ export const ReportViewer: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  // Print PDF with custom filename based on doctor name and generation time
+  const handlePrintPDF = () => {
+    if (!reportData) return;
+    const originalTitle = document.title;
+    
+    // Clean up doctor name: e.g. "Dr. Saket Saxena" -> "dr-saket-saxena"
+    const docNameClean = reportData.report_metadata.prepared_for
+      ? reportData.report_metadata.prepared_for.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+      : 'doctor';
+      
+    // Format current date and time
+    const now = new Date();
+    const pad = (num: number) => num.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    
+    // Filename structure: doctorname-timestamp-ai-health-report
+    const customTitle = `${docNameClean}-${timestamp}-ai-health-report`;
+    
+    document.title = customTitle;
+    window.print();
+    
+    // Restore original document title
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 500);
+  };
+
+
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#040712', color: '#fff', gap: '1.5rem' }}>
@@ -525,7 +553,7 @@ export const ReportViewer: React.FC = () => {
             <i className="fas fa-mobile-screen-button"></i> {isMobile ? 'Desktop View' : 'Mobile View'}
           </button>
 
-          <button className="btn" onClick={() => window.print()}>
+          <button className="btn" onClick={handlePrintPDF}>
             <i className="fas fa-file-pdf"></i> PDF
           </button>
 
