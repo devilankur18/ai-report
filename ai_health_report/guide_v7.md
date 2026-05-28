@@ -60,6 +60,7 @@ Every generated report must strictly conform to the following JSON schema. No fi
 ```json
 {
   "overall_score": 15,
+  "brand_protection_score": 100,
   "discoverability_tier": "WEAK",
   "diagnostic_summary": "A highly focused, 2-3 sentence paragraph summarizing strengths, core technical gaps (e.g., missing schema, unclaimed profiles, wrong GBP primary categories), and local competitive standing."
 }
@@ -75,9 +76,9 @@ Every generated report must strictly conform to the following JSON schema. No fi
 
 The `channels` array contains **exactly 6 channel objects** in this exact order. Each channel has sub-categories for granular scoring (see Section 2 for scoring rules).
 
-### 1.4 Cross-Channel Standard Queries
+### 1.4 Cross-Channel Standard Queries (Generic)
 
-The following **7 standard queries** must be executed for Google SEO and Bing SEO channels:
+The following **6 standard generic queries** must be executed for Google SEO and Bing SEO channels to evaluate genuine non-branded visibility (`visibility.score`):
 
 1.  `top [specialty] in [city]`
 2.  `top [specialty] in [area]`
@@ -85,13 +86,14 @@ The following **7 standard queries** must be executed for Google SEO and Bing SE
 4.  `best [specialty] in [area]`
 5.  `best [specialty] for kids in [city]`
 6.  `best [specialty] for females in [city]`
-7.  `[Clinic Name] [city]` (or `[Doctor Name] [city]` if no clinic name)
+
+*Note: The brand query (`[Clinic Name] [city]`) is excluded from the standard visibility average to prevent score inflation. It is executed separately for the `brand_protection_score`.*
 
 ### 1.5 AI Conversational Smart Comparative Prompt
 
 The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok AI (simulating conversational queries):
 
-> *"You are a local health advisor. Recommend the top [specialty] in [area], [city]. Compare their verified credentials (education, council registration, experience), review ratings, and patient sentiment. List them in a ranked table with reasons for their rank. Check if [Clinic Name] or [Doctor Name] is recommended and compare them with the top 3."*
+> *"I'm looking for a good [specialty] in [area], [city]. please give me good options and also reason why, years of experience and fees."*
 
 ### 1.6 Full JSON Schema (Complete Channel Definitions)
 
@@ -99,6 +101,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
 {
   "report_metadata": { "..." : "See Section 1.1" },
   "overall_score": 0,
+  "brand_protection_score": 0,
   "discoverability_tier": "WEAK",
   "diagnostic_summary": "...",
 
@@ -114,7 +117,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "label": "Search & Maps Rank Visibility",
           "score": 0.0,
           "max_points": 100,
-          "details": "Average of points across 7 standard queries using progressive interpolation."
+          "details": "Average of points across 6 standard generic queries using progressive interpolation."
         },
         "completeness": {
           "label": "GBP Profile Completeness",
@@ -171,7 +174,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
           "label": "Bing Search & Maps Rank Visibility",
           "score": 0.0,
           "max_points": 100,
-          "details": "Average of points across 7 standard queries using progressive interpolation."
+          "details": "Average of points across 6 standard generic queries using progressive interpolation."
         },
         "completeness": {
           "label": "Bing Places Profile Completeness",
@@ -497,13 +500,16 @@ $$\text{Channel \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \tim
 
 ### 2.3 Scoring Rules Per Channel
 
+#### Brand Protection Score
+*   **`brand_protection_score`**: Average of points for the query `[Clinic Name] [city]` across Google and Bing. Evaluated independently from the main visibility score.
+
 #### Channel: `google_seo` (Weight: 25%)
-*   **Visibility (50%):** Average of interpolated points across all 7 standard queries on Google Search & Maps.
+*   **Visibility (50%):** Average of interpolated points across all **6 standard generic queries** on Google Search & Maps.
 *   **Completeness (30%):** Average of `completeness_checks` points.
 *   **Sentiment (20%):** Composite of Google Reviews.
 
 #### Channel: `bing_seo` (Weight: 15%)
-*   **Visibility (50%):** Average of interpolated points across all 7 standard queries on Bing Search & Maps.
+*   **Visibility (50%):** Average of interpolated points across all **6 standard generic queries** on Bing Search & Maps.
 *   **Completeness (30%):** Average of `completeness_checks` points.
 *   **Sentiment (20%):** Bing Reviews.
 
@@ -653,36 +659,55 @@ Before executing any platform workflow, the agent must follow these standard err
 
 ## 🧭 SECTION 4: STEP-BY-STEP CHANNEL AUTOMATED WORKFLOWS
 
-Execute Workflows 1 through 6 in order. Each workflow maps to one channel in the JSON report.
+Execute Workflows 0 through 6 in order. Each workflow targets specific data points in the JSON report.
+
+---
+
+### 🛡️ Workflow 0: Brand Protection Check
+
+This workflow evaluates if the doctor owns their own brand name in search results, distinct from generic discovery.
+
+**Target Query:** `{CLINIC_NAME} {CITY}` (or `{DOCTOR_NAME} {CITY}` if no clinic name)
+
+| Step | Action | Tool | Parameters | On Error |
+|:---:|:---|:---|:---|:---|
+| 1 | Run on Google | `search_web` | `{"query": "<brand query text>"}` | `points_google = 0` |
+| 2 | Check Google Rank | *Agent parsing* | Find position of doctor/clinic. Apply rank points from Sec 2.1. | `points_google = 0` |
+| 3 | Run on Bing | `search_web` | `{"query": "<brand query text>", "domain": "bing.com"}` | `points_bing = 0` |
+| 4 | Check Bing Rank | *Agent parsing* | Find position of doctor/clinic. Apply rank points from Sec 2.1. | `points_bing = 0` |
+
+**Scoring:** 
+Set `brand_protection_score` in root JSON to `(points_google + points_bing) / 2`.
 
 ---
 
 ### 🔍 Workflow 1: Google Search & Maps → Channel `google_seo`
 
-#### 1A: Execute 7 Standard Search Queries
+#### 1A: Execute 6 Standard Generic Search Queries
 
-**Repeat the following steps for EACH of the 7 standard queries from Section 1.4** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}`, `{CLINIC_NAME}` with actual values):
+**Repeat the following steps for EACH of the 6 standard generic queries from Section 1.4** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}` with actual values):
 
 | Step | Action | Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
 | 1 | Run the search query | `search_web` | `{"query": "<query text>"}` | Retry once. If still fails → rank = `"Unranked"`, points = `0`. |
-| 2 | Scan results for doctor/clinic name | *Agent parsing* | Search returned text for `{CLINIC_NAME}`, `{DOCTOR_NAME}`, or known aliases (e.g., "Pravisha Health Care Center" for "Pravisha Healthcare") | If neither found → rank = `"Unranked"`, points = `0`. Skip to step 4. |
+| 2 | Scan results for doctor/clinic name | *Agent parsing* | Search returned text for `{CLINIC_NAME}`, `{DOCTOR_NAME}`, or known aliases | If neither found → rank = `"Unranked"`, points = `0`. Skip to step 4. |
 | 3 | Determine rank position | *Agent parsing* | Count the 1-indexed position of the first matching result. Apply interpolation from Section 2.1. | Use **exact** position from results. Do NOT estimate or round to milestone numbers. |
 | 4 | Extract top 3 competitors | *Agent parsing* | Record the names and **actual URLs** from positions 1, 2, 3 in the search results. | **Never fabricate URLs.** If fewer than 3 results, record as many as available with real links. |
 
-After all 7 queries: `visibility.score = average of all 7 query points`.
+After all 6 queries: `visibility.score = average of the 6 generic query points`.
 
 #### 1B: GBP Profile Inspection
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
-| 1 | Navigate to Google Maps search | `browser_navigate` | `{"url": "https://www.google.com/maps/search/{CLINIC_NAME}+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
+| 1 | Navigate to Google Maps for Generic Search | `browser_navigate` | `{"url": "https://www.google.com/maps/search/top+{SPECIALTY}+in+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
 | 2 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
 | 3 | Wait for Maps results | `browser_wait` | `{"selector": "#searchboxinput", "timeout": 10000}` | `→ ERR-TIMEOUT` |
-| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 5 | Parse completeness checks | *Agent parsing* | From extracted text, check: GBP claimed status, primary category, photo count, address, phone. Cross-reference address and phone against data found later in Workflows 2-3 for NAP consistency. | Record each check: `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
-| 6 | Parse review data | *Agent parsing* | Extract: `total_reviews`, `average_rating`. Calculate `review_velocity_per_month` = total_reviews ÷ months since oldest visible review. Count narrative success stories (reviews >= 3 sentences long). | Apply sentiment rubric from **Section 2.4.1**. |
-| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/maps_proof.png"}` | Retry once. |
+| 4 | Take Generic Evidence Screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/maps_proof.png"}` | This visually proves their lack of generic visibility. |
+| 5 | Locate Profile via Brand Search | `browser_fill` & `browser_press_key` | Search for `{CLINIC_NAME}` in the Maps search box and hit Enter to find their specific profile for auditing. | If not found, skip completeness check and score 0. |
+| 6 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 7 | Parse completeness checks | *Agent parsing* | From extracted text, check: GBP claimed status, primary category, photo count, address, phone. Cross-reference address and phone against data found later in Workflows 2-3 for NAP consistency. | Record each check: `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
+| 8 | Parse review data | *Agent parsing* | Extract: `total_reviews`, `average_rating`. Calculate `review_velocity_per_month` = total_reviews ÷ months since oldest visible review. Count narrative success stories (reviews >= 3 sentences long). | Apply sentiment rubric from **Section 2.4.1**. |
 
 **Scoring:**
 - `completeness.score` = average of all `completeness_checks` points.
@@ -693,9 +718,9 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 
 ### 🔍 Workflow 2: Bing Search & Maps → Channel `bing_seo`
 
-#### 2A: Execute 7 Standard Search Queries on Bing
+#### 2A: Execute 6 Standard Generic Search Queries on Bing
 
-**Repeat the following steps for EACH of the 7 standard queries from Section 1.4:**
+**Repeat the following steps for EACH of the 6 standard generic queries from Section 1.4:**
 
 | Step | Action | Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
@@ -704,19 +729,20 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 | 3 | Determine rank position | *Agent parsing* | Same as Workflow 1A step 3. Apply Section 2.1 interpolation. | Use exact position. Do NOT estimate. |
 | 4 | Extract top 3 competitors with actual URLs | *Agent parsing* | Record names and **real URLs** from positions 1, 2, 3. | **Never fabricate URLs.** Use real links from search results. |
 
-After all 7 queries: `visibility.score = average of all 7 query points`.
+After all 6 queries: `visibility.score = average of the 6 generic query points`.
 
 #### 2B: Bing Places Profile Inspection
 
 | Step | Action | MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
-| 1 | Search Bing for the clinic | `browser_navigate` | `{"url": "https://www.bing.com/search?q={CLINIC_NAME}+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
+| 1 | Search Bing Generically | `browser_navigate` | `{"url": "https://www.bing.com/search?q=top+{SPECIALTY}+in+{AREA}+{CITY}"}` | `→ ERR-NAVIGATE` |
 | 2 | Dismiss overlays / CAPTCHA | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | `→ ERR-CAPTCHA` |
 | 3 | Wait for results | `browser_wait` | `{"selector": "#b_results", "timeout": 10000}` | `→ ERR-TIMEOUT` |
-| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 5 | Parse completeness checks | *Agent parsing* | Check for: Bing Places listing active, photos count, address consistency vs Google (from Workflow 1B), phone consistency vs Google. | `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
-| 6 | Parse review data | *Agent parsing* | Extract Bing review count and rating if available. If no Bing reviews exist → all sentiment components = 0. | Apply Section 2.4.1 rubric. |
-| 7 | Take evidence screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/bing_proof.png"}` | Retry once. |
+| 4 | Take Generic Evidence Screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/bing_proof.png"}` | Proves their lack of generic visibility. |
+| 5 | Locate Profile via Brand Search | `browser_fill` & `browser_press_key` | Search for `{CLINIC_NAME}` in the Bing search box and hit Enter to find their profile. | If not found, skip completeness check and score 0. |
+| 6 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 7 | Parse completeness checks | *Agent parsing* | Check for: Bing Places listing active, photos count, address consistency vs Google (from Workflow 1B), phone consistency vs Google. | `VERIFIED` = 100, `MISSING` = 0, `CONFLICTING` = 50. |
+| 8 | Parse review data | *Agent parsing* | Extract Bing review count and rating if available. If no Bing reviews exist → all sentiment components = 0. | Apply Section 2.4.1 rubric. |
 
 **Scoring:** Same formulas as Workflow 1.
 
@@ -728,23 +754,25 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 
 | Step | Action | Tool / MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
-| 1 | Search for doctor on Justdial | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {AREA} {CITY} site:justdial.com"}` | Fallback: `{"query": "{CLINIC_NAME} {CITY} site:justdial.com"}`. If still none → Justdial status = `MISSING`. Skip to 3B. |
-| 2 | Navigate to Justdial profile URL | `browser_navigate` | `{"url": "<actual URL from search result>"}` | `→ ERR-NAVIGATE` |
-| 3 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
-| 4 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
-| 5 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 6 | Parse metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry with `VERIFIED`/`MISSING` status and points. |
-| 7 | Take screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/aggregators_proof.png"}` | Retry once. |
+| 1 | Generic Search on Justdial | `search_web` | `{"query": "top {SPECIALTY} in {AREA} {CITY} site:justdial.com"}` | Capture results to see if they rank generically. |
+| 2 | Take Generic Screenshot | `browser_navigate` & `browser_screenshot` | Navigate to the Justdial search page and screenshot to prove unranked status. | Save as `aggregators_proof.png`. |
+| 3 | Locate Profile via Brand Search | `search_web` | `{"query": "{CLINIC_NAME} {CITY} site:justdial.com"}` | Direct search to find their profile for the completeness audit. |
+| 4 | Navigate to Justdial profile URL | `browser_navigate` | `{"url": "<actual URL from step 3>"}` | `→ ERR-NAVIGATE` |
+| 5 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 6 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
+| 7 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 8 | Parse metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry with `VERIFIED`/`MISSING` status and points. |
 
 #### 3B: Practo Profile Inspection
 
 | Step | Action | Tool / MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
-| 1 | Search for doctor on Practo | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} site:practo.com"}` | If no results → Practo status = `MISSING`, points = 0. Skip to scoring. |
-| 2 | Navigate to Practo profile | `browser_navigate` | `{"url": "<actual URL from search result>"}` | `→ ERR-NAVIGATE` |
-| 3 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
-| 4 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 5 | Parse metrics | *Agent parsing* | Extract: profile active status, rating, review count, consultation fee, specializations. | Record as `metrics[]` entries. |
+| 1 | Generic Search on Practo | `search_web` | `{"query": "top {SPECIALTY} in {AREA} {CITY} site:practo.com"}` | Evaluate if they rank generically. |
+| 2 | Locate Profile via Brand Search | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} site:practo.com"}` | Direct search to find their profile for the completeness audit. |
+| 3 | Navigate to Practo profile | `browser_navigate` | `{"url": "<actual URL from step 2>"}` | `→ ERR-NAVIGATE` |
+| 4 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 5 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 6 | Parse metrics | *Agent parsing* | Extract: profile active status, rating, review count, consultation fee, specializations. | Record as `metrics[]` entries. |
 
 **Scoring:**
 - `visibility.score` = average of listing status + category ranking points across both platforms.
@@ -778,9 +806,9 @@ After all 7 queries: `visibility.score = average of all 7 query points`.
 
 This workflow is split into **4 individual sub-workflows** (5A–5D), one per AI platform. Execute them in order. After all 4 complete, run the **Shared Parsing & Scoring** step.
 
-**Prompt Template** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}`, `{CLINIC_NAME}`, `{DOCTOR_NAME}` with actual values from report input):
+**Prompt Template** (substitute `{SPECIALTY}`, `{AREA}`, `{CITY}` with actual values from report input):
 
-> *"You are a local health advisor. Recommend the top {SPECIALTY} in {AREA}, {CITY}. Compare their verified credentials (education, council registration, experience), review ratings, and patient sentiment. List them in a ranked table with reasons for their rank. Check if {CLINIC_NAME} or {DOCTOR_NAME} is recommended and compare them with the top 3."*
+> *"I'm looking for a good {SPECIALTY} in {AREA}, {CITY}. please give me good options and also reason why, years of experience and fees."*
 
 ---
 
