@@ -18,7 +18,7 @@ Every generated report must strictly conform to the following JSON schema. No fi
 
 ### Output File Convention
 *   **Run Output Directory (`[OUTPUT_DIR]`):** `reports/v7/<doctor-name>-<yy-mm-dd-HH-MM>/`
-*   **File Name:** `[doctor_slug]_report.json` or `[doctor_slug]_report_[YYYY-MM].json` for monthly tracking inside `[OUTPUT_DIR]`.
+*   **File Name:** `report.json for monthly tracking inside `[OUTPUT_DIR]`.
 *   **Screenshot Assets Directory:** `[OUTPUT_DIR]/assets/` (all images go in this subfolder, while JSON and checklist remain in `[OUTPUT_DIR]`).
 
 ### 1.1 Report Metadata
@@ -109,7 +109,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
     {
       "id": "google_seo",
       "name": "Google Search & Maps",
-      "weight": 25,
+      "weight": 15,
       "channel_percentage_score": 0.0,
       "evidence_screenshot": "assets/maps_proof.png",
       "sub_categories": {
@@ -166,7 +166,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
     {
       "id": "bing_seo",
       "name": "Bing Search & Maps",
-      "weight": 15,
+      "weight": 10,
       "channel_percentage_score": 0.0,
       "evidence_screenshot": "assets/bing_proof.png",
       "sub_categories": {
@@ -222,7 +222,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
     {
       "id": "aggregators",
       "name": "Medical Aggregators (Practo & Justdial)",
-      "weight": 15,
+      "weight": 5,
       "channel_percentage_score": 0.0,
       "evidence_screenshot": "assets/aggregators_proof.png",
       "sub_categories": {
@@ -267,7 +267,7 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
     {
       "id": "conversational_ai",
       "name": "Conversational AI Standing",
-      "weight": 15,
+      "weight": 40,
       "channel_percentage_score": 0.0,
       "evidence_screenshot": "assets/chatgpt_proof.png",
       "sub_categories": {
@@ -503,22 +503,22 @@ $$\text{Channel \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \tim
 #### Brand Protection Score
 *   **`brand_protection_score`**: Average of points for the query `[Clinic Name] [city]` across Google and Bing. Evaluated independently from the main visibility score.
 
-#### Channel: `google_seo` (Weight: 25%)
+#### Channel: `google_seo` (Weight: 15%)
 *   **Visibility (50%):** Average of interpolated points across all **6 standard generic queries** on Google Search & Maps.
 *   **Completeness (30%):** Average of `completeness_checks` points.
 *   **Sentiment (20%):** Composite of Google Reviews.
 
-#### Channel: `bing_seo` (Weight: 15%)
+#### Channel: `bing_seo` (Weight: 10%)
 *   **Visibility (50%):** Average of interpolated points across all **6 standard generic queries** on Bing Search & Maps.
 *   **Completeness (30%):** Average of `completeness_checks` points.
 *   **Sentiment (20%):** Bing Reviews.
 
-#### Channel: `aggregators` (Weight: 15%)
+#### Channel: `aggregators` (Weight: 5%)
 *   **Visibility (50%):** Average of listing status and category ranking points.
 *   **Completeness (30%):** Average of profile completeness checks.
 *   **Sentiment (20%):** Aggregator Reviews.
 
-#### Channel: `conversational_ai` (Weight: 15%)
+#### Channel: `conversational_ai` (Weight: 40%)
 *   **Visibility (50%):** Average across 4 AI platforms:
     *   Recommended in Top 3 = 100, Mentioned but not Top 3 = 50, Not Recommended = 0.
 *   **Completeness (30%):** Average of citation quality across 4 platforms:
@@ -613,7 +613,7 @@ The `overall_score` is the **weighted sum** of all 6 channel percentage scores:
 $$\text{overall\_score} = \sum_{i=1}^{6} \left( \text{channel\_percentage\_score}_i \times \frac{\text{weight}_i}{100} \right)$$
 
 **Expanded:**
-$$\text{overall\_score} = (\text{google\_seo} \times 0.25) + (\text{bing\_seo} \times 0.15) + (\text{aggregators} \times 0.15) + (\text{conversational\_ai} \times 0.15) + (\text{eeat\_credentials} \times 0.15) + (\text{website\_schema} \times 0.15)$$
+$$\text{overall\_score} = (\text{google\_seo} \times 0.15) + (\text{bing\_seo} \times 0.10) + (\text{aggregators} \times 0.05) + (\text{conversational\_ai} \times 0.40) + (\text{eeat\_credentials} \times 0.15) + (\text{website\_schema} \times 0.15)$$
 
 Round the final `overall_score` to the nearest integer. Then apply Tier Rules from Section 1.2.
 
