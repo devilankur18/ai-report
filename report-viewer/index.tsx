@@ -1,1 +1,1 @@
-export { ReportViewer as default } from './ReportViewer';
+export { ReportViewerV2 as default } from './ReportViewerV2';

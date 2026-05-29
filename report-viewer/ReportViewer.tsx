@@ -3,6 +3,7 @@ import { ReportSchema } from './types/reportSchema';
 import './report.css';
 
 const DEFAULT_RUNS = [
+  { value: 'v7/dr-saket-saxena-26-05-29-15-15/report.json', label: 'Dr. Saket Saxena — Jhansi (V7.0 Live)' },
   { value: 'v7/dr_vishal_maurya/report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Live)' },
   { value: 'v7/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V7.0 Legacy)' },
   { value: 'v6/dr_vishal_maurya_report.json', label: 'Dr. Vishal Maurya — Naini (V6.0)' },
@@ -48,6 +49,13 @@ const CHANNEL_META: Record<string, { icon: string; color: string; bg: string; bo
   }
 };
 
+const AI_PLATFORM_META: Record<string, { icon: string; color: string }> = {
+  'ChatGPT': { icon: 'fas fa-robot', color: '#10a37f' },       // OpenAI Green
+  'Gemini': { icon: 'fas fa-sparkles', color: '#8ab4f8' },      // Gemini Blue/Indigo
+  'Meta AI': { icon: 'fas fa-infinity', color: '#0081fb' },     // Meta Blue
+  'Grok': { icon: 'fas fa-brain', color: '#f3f4f6' },           // Grok White/Gray
+};
+
 const TABS = [
   { id: 'executive', label: 'Executive Standing', icon: 'fas fa-chart-pie' },
   { id: 'search_seo', label: 'SEO & Search Pack', icon: 'fas fa-magnifying-glass-chart' },
@@ -83,7 +91,7 @@ export const ReportViewer: React.FC = () => {
   const renderInlineEvidence = (channelId: string) => {
     if (!reportData) return null;
     const channel = reportData.channels.find(c => c.id === channelId);
-    if (!channel || !channel.evidence_screenshot) return null;
+    if (!channel) return null;
 
     if (channelId === 'conversational_ai') {
       // In V7, platform-level screenshots exist, so don't duplicate the channel-level screenshot
@@ -91,38 +99,55 @@ export const ReportViewer: React.FC = () => {
       if (hasPlatformEvidence) return null;
     }
     
-    // Find matching proof description from visual_proof_index
-    const proof = reportData.visual_proof_index?.find(
-      p => p.path === channel.evidence_screenshot || channel.evidence_screenshot?.endsWith(p.path)
-    );
-    
-    const label = proof?.label || `${channel.name} Audit Proof`;
-    const description = proof?.description || `${channel.name} verification details.`;
-    const path = getAssetPath(channel.evidence_screenshot);
-    
+    // Compile all screenshots to render
+    const screenshots: { path: string; suffix: string }[] = [];
+    if (channel.evidence_screenshot) {
+      screenshots.push({ path: channel.evidence_screenshot, suffix: '' });
+    }
+    if (channel.evidence_screenshot_brand) {
+      screenshots.push({ path: channel.evidence_screenshot_brand, suffix: '_brand' });
+    }
+
+    if (screenshots.length === 0) return null;
+
     return (
-      <div className="inline-evidence-container" onClick={() => setLightboxImage({ path, caption: description })}>
-        <div className="inline-evidence-header">
-          <div className="inline-evidence-title">
-            <i className="fas fa-camera"></i>
-            <span>{label}</span>
-          </div>
-          <span className="inline-evidence-hint">
-            <i className="fas fa-magnifying-glass-plus"></i> View Full Resolution
-          </span>
-        </div>
-        <div className="inline-evidence-preview">
-          <img 
-            src={path} 
-            alt={label} 
-          />
-          <div className="inline-evidence-overlay">
-            <i className="fas fa-expand"></i>
-          </div>
-        </div>
-        <div className="inline-evidence-footer">
-          <p>{description}</p>
-        </div>
+      <div className="inline-evidences-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1.25rem' }}>
+        {screenshots.map((s, index) => {
+          // Find matching proof description from visual_proof_index
+          const proof = reportData.visual_proof_index?.find(
+            p => p.path === s.path || s.path?.endsWith(p.path)
+          );
+          
+          const label = proof?.label || `${channel.name} Audit Proof ${screenshots.length > 1 ? index + 1 : ''}`;
+          const description = proof?.description || `${channel.name} verification details.`;
+          const path = getAssetPath(s.path);
+
+          return (
+            <div key={index} className="inline-evidence-container" onClick={() => setLightboxImage({ path, caption: description })} style={{ cursor: 'pointer', marginBottom: index < screenshots.length - 1 ? '1rem' : 0 }}>
+              <div className="inline-evidence-header">
+                <div className="inline-evidence-title">
+                  <i className="fas fa-camera"></i>
+                  <span>{label}</span>
+                </div>
+                <span className="inline-evidence-hint">
+                  <i className="fas fa-magnifying-glass-plus"></i> View Full Resolution
+                </span>
+              </div>
+              <div className="inline-evidence-preview">
+                <img 
+                  src={path} 
+                  alt={label} 
+                />
+                <div className="inline-evidence-overlay">
+                  <i className="fas fa-expand"></i>
+                </div>
+              </div>
+              <div className="inline-evidence-footer">
+                <p>{description}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -563,6 +588,24 @@ export const ReportViewer: React.FC = () => {
           <button className="btn" onClick={handleDownloadMarkdown}>
             <i className="fas fa-file-code"></i> Export MD
           </button>
+
+          <button 
+            className="btn" 
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.15) 0%, rgba(13, 148, 136, 0.15) 100%)', 
+              borderColor: 'rgba(34, 211, 238, 0.4)', 
+              color: '#22d3ee',
+              fontWeight: 700,
+              boxShadow: '0 0 12px rgba(34, 211, 238, 0.1)'
+            }}
+            onClick={() => {
+              const currentParams = window.location.search;
+              window.history.pushState(null, '', `/v2${currentParams}`);
+              window.dispatchEvent(new Event('popstate'));
+            }}
+          >
+            <i className="fas fa-scroll"></i> Switch to V2 (Narrative)
+          </button>
         </div>
       </div>
 
@@ -746,41 +789,166 @@ export const ReportViewer: React.FC = () => {
                   <i className="fas fa-cubes"></i>
                   <span>Per-Channel Audit Performance</span>
                 </h2>
-                <div className="channel-grid">
-                  {reportData.channels.map((channel) => {
-                    const meta = CHANNEL_META[channel.id];
+                <div className="channels-categories-wrapper" style={{ width: '100%' }}>
+                  {(() => {
+                    const aiChannel = reportData.channels.find(c => c.id === 'conversational_ai');
+                    const aiPlatforms = aiChannel?.platforms || [];
+                    const itemsToRender: Array<{
+                      id: string;
+                      name: string;
+                      score: number;
+                      weight: number;
+                      icon: string;
+                      color: string;
+                      isAi: boolean;
+                      evidence?: string;
+                    }> = [];
+
+                    // 1. Add individual AI apps first so they are seen first
+                    aiPlatforms.forEach(p => {
+                      const meta = AI_PLATFORM_META[p.name] || { icon: 'fas fa-robot', color: 'var(--accent-color)' };
+                      itemsToRender.push({
+                        id: `ai_${p.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`,
+                        name: `${p.name} AI Standing`,
+                        score: p.points ?? 0,
+                        weight: 10, // 40% parent weight split equally across 4 platforms
+                        icon: meta.icon,
+                        color: meta.color,
+                        isAi: true,
+                        evidence: p.evidence_screenshot
+                      });
+                    });
+
+                    if (aiPlatforms.length === 0 && aiChannel) {
+                      const meta = CHANNEL_META[aiChannel.id];
+                      itemsToRender.push({
+                        id: aiChannel.id,
+                        name: aiChannel.name,
+                        score: aiChannel.channel_percentage_score,
+                        weight: aiChannel.weight,
+                        icon: meta?.icon || 'fas fa-robot',
+                        color: meta?.color || '#a855f7',
+                        isAi: true,
+                        evidence: aiChannel.evidence_screenshot
+                      });
+                    }
+
+                    // 2. Add all non-AI channels
+                    reportData.channels.forEach(ch => {
+                      if (ch.id === 'conversational_ai') return;
+
+                      const meta = CHANNEL_META[ch.id];
+                      itemsToRender.push({
+                        id: ch.id,
+                        name: ch.name,
+                        score: ch.channel_percentage_score,
+                        weight: ch.weight,
+                        icon: meta?.icon || 'fas fa-shield',
+                        color: meta?.color || '#a855f7',
+                        isAi: false,
+                        evidence: ch.evidence_screenshot_brand || ch.evidence_screenshot
+                      });
+                    });
+
+                    const categories = [
+                      {
+                        title: "AI Apps",
+                        icon: "fas fa-robot",
+                        color: "#22d3ee", // Cyan
+                        description: "Direct standing, citation quality, and brand recommendation across top LLM conversational search engines.",
+                        items: itemsToRender.filter(item => item.isAi)
+                      },
+                      {
+                        title: "Search Engine Optimization (SEO)",
+                        icon: "fas fa-magnifying-glass-chart",
+                        color: "#3b82f6", // Blue
+                        description: "Organic search visibility, rankings, and competitor capture across standard search engine crawlers.",
+                        items: itemsToRender.filter(item => !item.isAi && (item.id === 'google_seo' || item.id === 'bing_seo'))
+                      },
+                      {
+                        title: "Local Directory & E-E-A-T Foundation",
+                        icon: "fas fa-hospital",
+                        color: "#ec4899", // Pink
+                        description: "Trust signals, State Dental Council registration registry, medical directories, and local schema compliance.",
+                        items: itemsToRender.filter(item => !item.isAi && item.id !== 'google_seo' && item.id !== 'bing_seo')
+                      }
+                    ];
+
                     return (
-                      <div className="channel-card" key={channel.id} style={{ borderLeft: `4px solid ${meta?.color || 'transparent'}` }}>
-                        <div className="channel-card-header">
-                          <div className="channel-title-icon">
-                            <i className={`${meta?.icon || 'fas fa-shield'}`} style={{ color: meta?.color }}></i>
-                            <span className="channel-name">{channel.name}</span>
-                          </div>
-                          <span className="channel-score" style={{ color: meta?.color }}>{channel.channel_percentage_score}%</span>
-                        </div>
-                        <div className="progress-bar-container">
-                          <div 
-                            className="progress-bar-fill"
-                            style={{ 
-                              width: `${channel.channel_percentage_score}%`,
-                              backgroundColor: meta?.color || 'var(--accent-color)'
-                            }}
-                          ></div>
-                        </div>
-                        <div className="channel-card-footer">
-                          <span className="channel-weight-tag">Weight: {channel.weight}%</span>
-                          {channel.evidence_screenshot && (
-                            <button 
-                              className="btn-card-evidence"
-                              onClick={() => setLightboxImage({ path: getAssetPath(channel.evidence_screenshot), caption: `${channel.name} Audit Evidence Screenshot` })}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' }}>
+                        {categories.map((cat, idx) => {
+                          if (cat.items.length === 0) return null;
+                          return (
+                            <div 
+                              key={idx} 
+                              className="category-section" 
+                              style={{ 
+                                background: 'rgba(255, 255, 255, 0.02)', 
+                                border: '1px solid rgba(255, 255, 255, 0.05)', 
+                                borderRadius: '16px', 
+                                padding: '1.5rem' 
+                              }}
                             >
-                              <i className="fas fa-camera"></i> Audit Proof
-                            </button>
-                          )}
-                        </div>
+                              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.5rem 0', fontFamily: 'Outfit, sans-serif', fontSize: '1.2rem', color: cat.color, fontWeight: 700 }}>
+                                <i className={cat.icon}></i>
+                                <span>{cat.title}</span>
+                              </h3>
+                              <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                                {cat.description}
+                              </p>
+                              
+                              <div className="channel-grid">
+                                {cat.items.map((item) => (
+                                  <div 
+                                    className="channel-card" 
+                                    key={item.id} 
+                                    style={{ 
+                                      borderLeft: `4px solid ${item.color}`, 
+                                      boxShadow: item.isAi ? `inset 0 0 12px ${item.color}12` : 'none',
+                                      margin: 0
+                                    }}
+                                  >
+                                    <div className="channel-card-header">
+                                      <div className="channel-title-icon">
+                                        <i className={item.icon} style={{ color: item.color }}></i>
+                                        <span className="channel-name">
+                                          {item.name}
+                                          {item.isAi && <span style={{ fontSize: '0.65rem', background: `${item.color}20`, color: item.color, padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>AI APP</span>}
+                                        </span>
+                                      </div>
+                                      <span className="channel-score" style={{ color: item.color }}>{item.score}%</span>
+                                    </div>
+                                    <div className="progress-bar-container">
+                                      <div 
+                                        className="progress-bar-fill"
+                                        style={{ 
+                                          width: `${item.score}%`,
+                                          backgroundColor: item.color
+                                        }}
+                                      ></div>
+                                    </div>
+                                    <div className="channel-card-footer">
+                                      <span className="channel-weight-tag">Weight: {item.weight}%</span>
+                                      {item.evidence && (
+                                        <button 
+                                          className="btn-card-evidence"
+                                          onClick={() => {
+                                            setLightboxImage({ path: getAssetPath(item.evidence!), caption: `${item.name} Audit Evidence Screenshot` });
+                                          }}
+                                        >
+                                          <i className="fas fa-camera"></i> Audit Proof
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               </section>
 
@@ -963,7 +1131,7 @@ export const ReportViewer: React.FC = () => {
                 {/* Conversational AI Platform Cards */}
                 <h2 className="section-title">
                   <i className="fas fa-brain"></i>
-                  <span>Conversational AI Discovery Status</span>
+                  <span>AI Apps Discovery Status</span>
                 </h2>
                 
                 {aiChannel && aiChannel.sub_categories && (

@@ -88,6 +88,7 @@ export interface Channel {
   weight: number;
   channel_percentage_score: number;
   evidence_screenshot: string;
+  evidence_screenshot_brand?: string;
   sub_categories?: {
     [key: string]: SubCategory;
   };
