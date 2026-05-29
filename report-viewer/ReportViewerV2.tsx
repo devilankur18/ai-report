@@ -286,7 +286,7 @@ export const ReportViewerV2: React.FC = () => {
 
         {/* Footer */}
         <div className="rv2-footer">
-          <span>&copy; {new Date().getFullYear()} DigiClinic Solutions. All Rights Reserved.</span>
+          <span>&copy; {new Date().getFullYear()} DigiClinic. All Rights Reserved.</span>
         </div>
       </div>
 

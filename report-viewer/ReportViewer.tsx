@@ -1529,7 +1529,7 @@ export const ReportViewer: React.FC = () => {
 
           {/* Footer compliance */}
           <div className="report-footer-compliance">
-            <span>&copy; {new Date().getFullYear()} DigiClinic Solutions. All Rights Reserved.</span>
+            <span>&copy; {new Date().getFullYear()} DigiClinic. All Rights Reserved.</span>
             <span><strong>Technical Compliance:</strong> Flat SEO URLs Verified | Structured JSON-LD Bindings</span>
           </div>
 

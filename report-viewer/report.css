@@ -674,10 +674,9 @@ h1, h2, h3, h4 {
   color: var(--text-secondary);
 }
 
-/* Printing Media Style overrides */
 @page {
   size: A4 portrait;
-  margin: 15mm 20mm;
+  margin: 0 !important;
 }
 
 @media print {
@@ -713,8 +712,13 @@ h1, h2, h3, h4 {
     break-after: avoid !important;
   }
 
-  .btn, .selector-dropdown, .controls-bar, .controls-bar-wrapper, .tabs-container {
+  .btn, .selector-dropdown, .controls-bar, .controls-bar-wrapper, .tabs-container, .version-switcher {
     display: none !important;
+  }
+
+  .report-container {
+    max-width: 100% !important;
+    padding: 0 1.5rem 0 2.5rem !important;
   }
 
   .glass-card {
@@ -925,13 +929,15 @@ h1, h2, h3, h4 {
     break-before: page !important;
     page-break-inside: auto !important;
     break-inside: auto !important;
-    padding-top: 1.5rem !important;
+    padding: 15mm 0 !important;
+    box-sizing: border-box !important;
   }
 
   .report-section:first-of-type {
     page-break-before: avoid !important;
     break-before: avoid !important;
-    padding-top: 0 !important;
+    padding: 15mm 0 !important;
+    box-sizing: border-box !important;
   }
 
   /* Inline Colocated Evidence Print Overrides */
