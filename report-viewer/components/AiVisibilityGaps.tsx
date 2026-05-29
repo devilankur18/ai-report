@@ -1,5 +1,6 @@
 import React from 'react';
 import { ReportSchema } from '../types/reportSchema';
+import { BrandIcon } from './BrandIcon';
 
 const PLAT_META: Record<string, { icon: string; color: string; bg: string }> = {
   ChatGPT: { icon: 'fas fa-robot', color: '#10a37f', bg: 'rgba(16, 163, 127, 0.1)' },
@@ -64,9 +65,7 @@ export const AiVisibilityGaps: React.FC<Props> = ({ data, getAssetPath, onImageC
           <div className="rv2-ai-card" key={idx} style={{ borderTop: `4px solid ${pm.color}` }}>
             <div className="rv2-ai-header">
               <div className="rv2-ai-title">
-                <span className="rv2-ai-icon" style={{ backgroundColor: pm.bg, color: pm.color }}>
-                  <i className={pm.icon}></i>
-                </span>
+                <BrandIcon name={plat.name} size={32} />
                 <span>{plat.name}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

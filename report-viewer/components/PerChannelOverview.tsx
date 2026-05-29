@@ -1,5 +1,6 @@
 import React from 'react';
 import { ReportSchema } from '../types/reportSchema';
+import { BrandIcon } from './BrandIcon';
 
 const CHANNEL_META: Record<string, { icon: string; color: string }> = {
   google_seo: { icon: 'fab fa-google', color: '#3b82f6' },
@@ -146,10 +147,14 @@ export const PerChannelOverview: React.FC<Props> = ({ data }) => {
                     }}
                   >
                     <div className="rv2-channel-header">
-                      <div className="rv2-channel-name">
-                        <i className={item.icon} style={{ color: item.color }}></i>
+                      <div className="rv2-channel-name" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {item.isAi ? (
+                          <BrandIcon name={item.id.replace('ai_', '')} size={20} />
+                        ) : (
+                          <i className={item.icon} style={{ color: item.color }}></i>
+                        )}
                         <span>{item.name}</span>
-                        {item.isAi && <span style={{ fontSize: '0.7rem', background: `${item.color}20`, color: item.color, padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>AI APP</span>}
+                        {item.isAi && <span style={{ fontSize: '0.7rem', background: `${item.color}20`, color: item.color, padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>AI APP</span>}
                       </div>
                       <span className="rv2-channel-score" style={{ color: item.color }}>{item.score}%</span>
                     </div>

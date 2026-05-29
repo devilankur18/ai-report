@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ReportSchema } from './types/reportSchema';
+import { BrandIcon } from './components/BrandIcon';
 import './report.css';
 
 const DEFAULT_RUNS = [
@@ -909,9 +910,13 @@ export const ReportViewer: React.FC = () => {
                                     }}
                                   >
                                     <div className="channel-card-header">
-                                      <div className="channel-title-icon">
-                                        <i className={item.icon} style={{ color: item.color }}></i>
-                                        <span className="channel-name">
+                                      <div className="channel-title-icon" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        {item.isAi ? (
+                                          <BrandIcon name={item.id.replace('ai_', '')} size={20} />
+                                        ) : (
+                                          <i className={item.icon} style={{ color: item.color }}></i>
+                                        )}
+                                        <span className="channel-name" style={{ marginLeft: 0 }}>
                                           {item.name}
                                           {item.isAi && <span style={{ fontSize: '0.65rem', background: `${item.color}20`, color: item.color, padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontWeight: 600 }}>AI APP</span>}
                                         </span>
@@ -1211,11 +1216,9 @@ export const ReportViewer: React.FC = () => {
                       return (
                         <div className="glass-card ai-platform-card-v7" key={idx} style={{ borderTop: `4px solid ${platMeta.color}` }}>
                           <div className="ai-platform-header">
-                            <div className="ai-platform-title-area">
-                              <span className="ai-platform-icon-wrap" style={{ backgroundColor: platMeta.bg, color: platMeta.color }}>
-                                <i className={platMeta.icon}></i>
-                              </span>
-                              <span className="ai-platform-name">{plat.name}</span>
+                            <div className="ai-platform-title-area" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <BrandIcon name={plat.name} size={32} />
+                              <span className="ai-platform-name" style={{ marginLeft: 0 }}>{plat.name}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <span className={`ai-standing-status ${
