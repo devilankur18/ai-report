@@ -948,6 +948,8 @@ $$\text{conversational\_ai \%} = (\text{Visibility} \times 0.5) + (\text{Complet
 *   ✅ **DO** follow the `On Error` column exactly — use the Global Error Handling codes from Section 3.2.
 
 **DONTs:**
+*   🛑 **DO NOT** Dont read or analyse any files in project or reports folder. Dont read/write any code. Dont copy paster any existing reports. Generate the json from scratch. Strictly follow instrucitons. 
+*   🛑 **DO NOT** Dont use any other mcp tools apart from which are mentioned in thsi document.
 *   🛑 **DO NOT** use generic placeholder screenshots. Every screenshot must be captured live.
 *   🛑 **DO NOT** group AI responses into a single screenshot or citation block. Each platform is fully separated.
 *   🛑 **DO NOT** read MCP tool schema files at runtime. All parameter signatures are in Section 3.1.
