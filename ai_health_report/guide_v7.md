@@ -224,7 +224,8 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
       "name": "Medical Aggregators (Practo & Justdial)",
       "weight": 5,
       "channel_percentage_score": 0.0,
-      "evidence_screenshot": "assets/aggregators_proof.png",
+      "evidence_screenshot": "assets/aggregators_generic_proof.png",
+      "evidence_screenshot_brand": "assets/aggregators_brand_proof.png",
       "sub_categories": {
         "visibility": {
           "label": "Aggregator Listing & Rank Visibility",
@@ -447,7 +448,8 @@ The agent must issue this **exact prompt** to ChatGPT, Gemini, Meta AI, and Grok
   "visual_proof_index": [
     { "label": "Google Maps Proof", "path": "assets/maps_proof.png", "description": "Google Maps listing and rank evidence." },
     { "label": "Bing Search & Maps Proof", "path": "assets/bing_proof.png", "description": "Bing Search query and maps ranking." },
-    { "label": "Medical Aggregator Proof", "path": "assets/aggregators_proof.png", "description": "Justdial/Practo claimed status and reviews." },
+    { "label": "Medical Aggregator Generic Search Proof", "path": "assets/aggregators_generic_proof.png", "description": "Justdial/Practo search showing ranking for generic location query." },
+    { "label": "Medical Aggregator Brand Search Proof", "path": "assets/aggregators_brand_proof.png", "description": "Justdial/Practo profile evidence captured via brand/clinic search." },
     { "label": "Medical Registry E-E-A-T Proof", "path": "assets/eeat_proof.png", "description": "Official National/State Council registration registry verification." },
     { "label": "ChatGPT Standing Proof", "path": "assets/chatgpt_proof.png", "description": "ChatGPT response showing local recommendations." },
     { "label": "Gemini Standing Proof", "path": "assets/gemini_proof.png", "description": "Gemini response showing local recommendations." },
@@ -515,6 +517,7 @@ $$\text{Channel \%} = (\text{Visibility} \times 0.5) + (\text{Completeness} \tim
 
 #### Channel: `aggregators` (Weight: 5%)
 *   **Visibility (50%):** Average of listing status and category ranking points.
+    *   **CRITICAL UPDATE:** Category ranking (Justdial/Practo Category Rank) MUST be calculated ONLY on generic location queries (e.g. searching 'dentist in civil lines jhansi') in non-branded search mode. If they do not appear in the top organically ranked results, the rank is "Unranked" and score is 0. NEVER use a branded/clinic name search to evaluate category rank points.
 *   **Completeness (30%):** Average of profile completeness checks.
 *   **Sentiment (20%):** Aggregator Reviews.
 
@@ -748,31 +751,41 @@ After all 6 queries: `visibility.score = average of the 6 generic query points`.
 
 ---
 
-### 🔍 Workflow 3: Medical Aggregators → Channel `aggregators`
+### 🔍 Workflow 3: Medical Aggregators (Practo & Justdial) → Channel `aggregators`
 
-#### 3A: Justdial Profile Inspection
+This workflow evaluates visibility in generic searches as well as profile correctness on Justdial and Practo.
+
+**Screenshots to capture:**
+- `assets/aggregators_generic_proof.png`: Justdial search page showing the generic location query results (evaluating generic ranking).
+- `assets/aggregators_brand_proof.png`: Justdial clinic profile page (evaluating completeness/reviews).
+
+#### 3A: Justdial Profile & Ranking Inspection
 
 | Step | Action | Tool / MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
 | 1 | Generic Search on Justdial | `search_web` | `{"query": "top {SPECIALTY} in {AREA} {CITY} site:justdial.com"}` | Capture results to see if they rank generically. |
-| 2 | Take Generic Screenshot | `browser_navigate` & `browser_screenshot` | Navigate to the Justdial search page and screenshot to prove unranked status. | Save as `aggregators_proof.png`. |
-| 3 | Locate Profile via Brand Search | `search_web` | `{"query": "{CLINIC_NAME} {CITY} site:justdial.com"}` | Direct search to find their profile for the completeness audit. |
-| 4 | Navigate to Justdial profile URL | `browser_navigate` | `{"url": "<actual URL from step 3>"}` | `→ ERR-NAVIGATE` |
-| 5 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
-| 6 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
-| 7 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 8 | Parse metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry with `VERIFIED`/`MISSING` status and points. |
+| 2 | Navigate to Generic Justdial search | `browser_navigate` | `{"url": "https://www.justdial.com/{CITY}/top-{SPECIALTY}-in-{AREA}"}` (or the search result page URL) | `→ ERR-NAVIGATE` |
+| 3 | Take Generic Screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/aggregators_generic_proof.png"}` | This proves their presence/absence in generic organic rankings. |
+| 4 | Evaluate Category Rank | *Agent parsing* | Count the organic rank from Step 1/2. Apply Section 2.1 interpolation. If not in generic results → rank = `"Unranked"`, points = `0`. | **NEVER** calculate this using branded searches. |
+| 5 | Locate Profile via Brand Search | `search_web` | `{"query": "{CLINIC_NAME} {CITY} site:justdial.com"}` | Direct search to find their profile URL for the completeness audit. |
+| 6 | Navigate to Justdial profile URL | `browser_navigate` | `{"url": "<actual URL from step 5>"}` | `→ ERR-NAVIGATE` |
+| 7 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 8 | Wait for profile to load | `browser_wait` | `{"selector": ".store-details, .lng_cont_heading, .resultbox_info", "timeout": 10000}` | `→ ERR-TIMEOUT` |
+| 9 | Take Brand Profile Screenshot | `browser_screenshot` | `{"path": "[OUTPUT_DIR]/assets/aggregators_brand_proof.png"}` | Proof of profile completeness, claimed status, and reviews. |
+| 10 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 11 | Parse completeness metrics | *Agent parsing* | Extract: listing status (claimed/verified/unclaimed), rating, review count, experience years, specialization tags, slot booking availability. | Record each as a `metrics[]` entry. |
 
-#### 3B: Practo Profile Inspection
+#### 3B: Practo Profile & Ranking Inspection
 
 | Step | Action | Tool / MCP Tool | Parameters | On Error |
 |:---:|:---|:---|:---|:---|
-| 1 | Generic Search on Practo | `search_web` | `{"query": "top {SPECIALTY} in {AREA} {CITY} site:practo.com"}` | Evaluate if they rank generically. |
-| 2 | Locate Profile via Brand Search | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} site:practo.com"}` | Direct search to find their profile for the completeness audit. |
-| 3 | Navigate to Practo profile | `browser_navigate` | `{"url": "<actual URL from step 2>"}` | `→ ERR-NAVIGATE` |
-| 4 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
-| 5 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
-| 6 | Parse metrics | *Agent parsing* | Extract: profile active status, rating, review count, consultation fee, specializations. | Record as `metrics[]` entries. |
+| 1 | Generic Search on Practo | `search_web` | `{"query": "top {SPECIALTY} in {AREA} {CITY} site:practo.com"}` | Evaluate if they rank generically (non-branded query). |
+| 2 | Evaluate Category Rank | *Agent parsing* | Check organic position in Step 1. If not found in local generic top listings → rank = `"Unranked"`, points = `0`. | **NEVER** calculate this using branded search. |
+| 3 | Locate Profile via Brand Search | `search_web` | `{"query": "{DOCTOR_NAME} {SPECIALTY} {CITY} site:practo.com"}` | Direct search to find their profile URL for the completeness audit. |
+| 4 | Navigate to Practo profile URL | `browser_navigate` | `{"url": "<actual URL from step 3>"}` | `→ ERR-NAVIGATE` |
+| 5 | Dismiss overlays | `browser_dismiss_overlays` | `{"scope": "non_critical"}` | Ignore |
+| 6 | Extract page content | `browser_get_page_content` | `{"format": "text"}` | `→ ERR-EMPTY` |
+| 7 | Parse completeness metrics | *Agent parsing* | Extract: profile active status, rating, review count, consultation fee, specializations, slot booking. | Record in `metrics[]` entries. |
 
 **Scoring:**
 - `visibility.score` = average of listing status + category ranking points across both platforms.
