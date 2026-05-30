@@ -2,6 +2,7 @@ import argparse
 import subprocess
 import os
 import sys
+import re
 from datetime import datetime
 
 def run_geo_run(city, specialty, prompt_override=None):
@@ -27,19 +28,29 @@ def run_geo_run(city, specialty, prompt_override=None):
     capture_script = os.path.join(engine_dir, "capture.js")
     parser_script = os.path.join(engine_dir, "parser.py")
 
+    def slugify(text):
+        text = text.lower()
+        text = re.sub(r'[^a-z0-9]+', '_', text)
+        text = text.strip('_')
+        words = text.split('_')
+        if len(words) > 6:
+            words = words[:6]
+        return '_'.join(words)
+
     # Generate unique run ID and directory inside geo_engine/outputs
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if prompt_override:
-        city_slug = "custom"
-        spec_slug = "prompt"
+        prompt_slug = slugify(prompt_override)
+        dir_name = f"run_{timestamp}_{prompt_slug}"
     else:
         city_slug = city.lower().replace(" ", "_") if city else "custom"
         spec_slug = specialty.lower().replace(" ", "_") if specialty else "custom"
+        dir_name = f"run_{timestamp}_{city_slug}_{spec_slug}"
     
-    run_dir = os.path.join(engine_dir, "outputs", f"run_{timestamp}_{city_slug}_{spec_slug}")
+    run_dir = os.path.join(engine_dir, "outputs", dir_name)
     os.makedirs(run_dir, exist_ok=True)
     
-    print(f"[✓] Created dynamic outputs directory: geo_engine/outputs/run_{timestamp}_{city_slug}_{spec_slug}/")
+    print(f"[✓] Created dynamic outputs directory: geo_engine/outputs/{dir_name}/")
 
     raw_stream_file = os.path.join(run_dir, "raw_stream.txt")
     geo_data_json = os.path.join(run_dir, "geo_data.json")
