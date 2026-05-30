@@ -4,6 +4,8 @@ import os
 import argparse
 
 def clean_url(url):
+    if not url:
+        return None
     # Replace backslash-escaped control characters first
     url = url.replace('\\n', '').replace('\\t', '').replace('\\r', '')
     
@@ -14,6 +16,19 @@ def clean_url(url):
     # Clean up trailing punctuation, brackets, parentheses or markdown artifacts
     url = url.rstrip(')]}*#.,;:!?% \t\n\r')
     return url
+
+def is_valid_local_entity(name, category):
+    if name in ["<entity_name>", "Display title", "Product A", "Product B", "Product C", "Product D", "Product E", "Product Title", "Product Name"]:
+        return False
+    if category in ["turnXproductY", "<entity_category>", "<ref_id>"]:
+        return False
+    if category.startswith("<") or category.startswith("turnX") or "product" in category.lower():
+        return False
+    
+    valid_categories = ["local_business", "organization", "people", "place", "medical", "business", "health", "hospital", "doctor", "clinic", "cardiologist", "practitioner"]
+    if category in valid_categories or "business" in category or "hospital" in category:
+        return True
+    return False
 
 def parse_geo_logs(input_file, output_json, output_md):
     if not os.path.exists(input_file):
@@ -34,6 +49,7 @@ def parse_geo_logs(input_file, output_json, output_md):
     extracted_data = {
         "original_prompt": original_prompt,
         "search_invoked": False,
+        "routed_model": "Unknown Model",
         "search_queries": [],
         "local_entities": [],
         "web_citations": [],
@@ -66,43 +82,80 @@ def parse_geo_logs(input_file, output_json, output_md):
                 extracted_data["search_queries"].append(q_clean)
                 extracted_data["search_invoked"] = True
 
-    # 2. Parse SSE data lines to extract local entities and citations
-    lines = content.splitlines()
-    all_entities = {}
+    # 2. Precise state machine tracking of content references and JSON patches
+    content_refs = []
+    model_slugs = set()
+    resolved_model_slugs = set()
     all_urls = set()
 
-    def is_valid_local_entity(name, category):
-        if name in ["<entity_name>", "Display title", "Product A", "Product B", "Product C", "Product D", "Product E", "Product Title", "Product Name"]:
-            return False
-        if category in ["turnXproductY", "<entity_category>", "<ref_id>"]:
-            return False
-        if category.startswith("<") or category.startswith("turnX") or "product" in category.lower():
-            return False
+    def handle_patch(patch):
+        nonlocal content_refs
+        p = patch.get("p")
+        o = patch.get("o")
+        v = patch.get("v")
         
-        valid_categories = ["local_business", "organization", "people", "place", "medical", "business", "health", "hospital", "doctor", "clinic", "cardiologist", "practitioner"]
-        if category in valid_categories or "business" in category or "hospital" in category:
-            return True
-        return False
+        if not p:
+            return
+            
+        # Append to references array
+        if p == "/message/metadata/content_references" and o == "append":
+            if isinstance(v, list):
+                content_refs.extend(v)
+        elif p == "/message/metadata/content_references" and o == "add":
+            content_refs.append(v)
+        # Patch specific element attributes
+        elif p.startswith("/message/metadata/content_references/"):
+            parts = p.split('/')
+            if len(parts) >= 5:
+                try:
+                    idx = int(parts[4])
+                    while len(content_refs) <= idx:
+                        content_refs.append({})
+                    
+                    if len(parts) == 5:
+                        if o == "replace":
+                            content_refs[idx] = v
+                        elif o == "append" and isinstance(v, dict):
+                            if isinstance(content_refs[idx], dict):
+                                content_refs[idx].update(v)
+                            else:
+                                content_refs[idx] = v
+                    elif len(parts) == 6:
+                        attr = parts[5]
+                        if o == "replace":
+                            content_refs[idx][attr] = v
+                        elif o == "remove":
+                            if attr in content_refs[idx]:
+                                del content_refs[idx][attr]
+                        elif o == "append":
+                            if isinstance(content_refs[idx].get(attr), list) and isinstance(v, list):
+                                content_refs[idx][attr].extend(v)
+                            elif isinstance(content_refs[idx].get(attr), dict) and isinstance(v, dict):
+                                content_refs[idx][attr].update(v)
+                            else:
+                                content_refs[idx][attr] = v
+                except ValueError:
+                    pass
 
     def traverse(obj):
+        nonlocal all_urls
         if isinstance(obj, dict):
-            name = obj.get("name") or obj.get("title") or obj.get("alt")
-            category = obj.get("category")
-            if name and category and is_valid_local_entity(name, category):
-                location = "Local Region"
-                if obj.get("extra_params") and isinstance(obj["extra_params"], dict):
-                    location = obj["extra_params"].get("location") or obj["extra_params"].get("disambiguation") or location
-                elif obj.get("location"):
-                    location = obj["location"]
+            # Capture model slugs
+            if "model_slug" in obj:
+                model_slugs.add(obj["model_slug"])
+            if "resolved_model_slug" in obj:
+                resolved_model_slugs.add(obj["resolved_model_slug"])
                 
-                if name not in all_entities:
-                    all_entities[name] = {
-                        "name": name,
-                        "category": category,
-                        "address": location
-                    }
+            # Process direct and nested patches
+            if "p" in obj and "o" in obj:
+                handle_patch(obj)
+            
+            v_list = obj.get("v")
+            if isinstance(v_list, list) and obj.get("o") == "patch":
+                for patch in v_list:
+                    handle_patch(patch)
 
-            # Check for URLs
+            # Capture URLs under standard citation keys
             for k, v in obj.items():
                 if k in ["url", "safe_urls", "refs", "citations"]:
                     if isinstance(v, str) and v.startswith("http"):
@@ -119,6 +172,7 @@ def parse_geo_logs(input_file, output_json, output_md):
             for item in obj:
                 traverse(item)
 
+    lines = content.splitlines()
     for line in lines:
         if line.startswith("data: "):
             json_str = line[6:].strip()
@@ -128,12 +182,54 @@ def parse_geo_logs(input_file, output_json, output_md):
             except Exception:
                 pass
 
+    # Resolve Routed Model
+    if resolved_model_slugs:
+        extracted_data["routed_model"] = list(resolved_model_slugs)[-1]
+    elif model_slugs:
+        extracted_data["routed_model"] = list(model_slugs)[-1]
+
+    # Process and build local entities list from precise references
+    for ref in content_refs:
+        name = ref.get("name") or ref.get("alt")
+        category = ref.get("category")
+        if name and category and is_valid_local_entity(name, category):
+            location = "Local Region"
+            entity_data = ref.get("entity_data")
+            if entity_data and isinstance(entity_data, dict):
+                location = entity_data.get("address") or entity_data.get("location") or location
+            if location == "Local Region":
+                if ref.get("extra_params") and isinstance(ref["extra_params"], dict):
+                    location = ref["extra_params"].get("location") or ref["extra_params"].get("disambiguation") or location
+                elif ref.get("location"):
+                    location = ref["location"]
+
+            # Avoid duplicates while retaining index-first mapping
+            if not any(e["name"] == name for e in extracted_data["local_entities"]):
+                entity_dict = {
+                    "name": name,
+                    "category": category,
+                    "address": location
+                }
+                
+                # Populate rich analytics attributes if present
+                if entity_data and isinstance(entity_data, dict):
+                    entity_dict.update({
+                        "rating": entity_data.get("rating"),
+                        "review_count": entity_data.get("review_count"),
+                        "latitude": entity_data.get("latitude"),
+                        "longitude": entity_data.get("longitude"),
+                        "phone": entity_data.get("phone"),
+                        "website_url": clean_url(entity_data.get("website_url")),
+                        "gmb_categories": entity_data.get("categories")
+                    })
+                extracted_data["local_entities"].append(entity_dict)
+
     # Fallback to general URL extraction via regex for links in citations/text
     url_pattern = re.compile(r'https?://[^\s"\'\}]+')
     urls_found = url_pattern.findall(content)
     for url in urls_found:
         url_clean = clean_url(url)
-        if url_clean.startswith("http"):
+        if url_clean and url_clean.startswith("http"):
             all_urls.add(url_clean)
 
     # Classify URLs into Web Citations and UTM Sources
@@ -148,9 +244,6 @@ def parse_geo_logs(input_file, output_json, output_md):
             if url not in extracted_data["web_citations"]:
                 extracted_data["web_citations"].append(url)
 
-    # Convert extracted entities dict to a list
-    extracted_data["local_entities"] = list(all_entities.values())
-
     # Save structured data to json
     with open(output_json, "w", encoding="utf-8") as f:
         json.dump(extracted_data, f, indent=4)
@@ -160,9 +253,16 @@ def parse_geo_logs(input_file, output_json, output_md):
     entity_rows = []
     if extracted_data["local_entities"]:
         for i, ent in enumerate(extracted_data["local_entities"], 1):
-            entity_rows.append(f"| **{i}** | {ent['name']} | {ent['category']} | {ent['address']} |")
+            rating = ent.get("rating") if ent.get("rating") is not None else "N/A"
+            reviews = ent.get("review_count") if ent.get("review_count") is not None else "N/A"
+            phone = ent.get("phone") if ent.get("phone") is not None else "N/A"
+            
+            website_url = ent.get("website_url")
+            website_md = f"[Link]({website_url})" if website_url else "N/A"
+            
+            entity_rows.append(f"| **{i}** | {ent['name']} | {ent['category']} | {ent['address']} | {rating} | {reviews} | {phone} | {website_md} |")
     else:
-        entity_rows.append("| *None* | No structured entities parsed | N/A | N/A |")
+        entity_rows.append("| *None* | No structured entities parsed | N/A | N/A | N/A | N/A | N/A | N/A |")
 
     citations_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["web_citations"]]) if extracted_data["web_citations"] else "* No web citations found."
     utm_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["utm_sources"]]) if extracted_data["utm_sources"] else "* No UTM-tagged sources found."
@@ -170,6 +270,7 @@ def parse_geo_logs(input_file, output_json, output_md):
     report_markdown = f"""# 🧠 GEO (Generative Engine Optimization) Analysis Report
 **Target Prompt**: `{extracted_data["original_prompt"]}`  
 **Analyzed Stream File**: `{os.path.basename(input_file)}`  
+**Routed Model (AI Brain)**: `{extracted_data["routed_model"]}`  
 
 ---
 
@@ -187,12 +288,12 @@ def parse_geo_logs(input_file, output_json, output_md):
 
 ChatGPT fetched and utilized structured local business data from its search providers. The recommendations are ranked as follows:
 
-| Rank | Provider Entity Name | Category / Specialization | Location |
-| :--- | :--- | :--- | :--- |
+| Rank | Provider Entity Name | Category / Specialization | Location | Rating | Reviews | Phone | Website |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 {"\n".join(entity_rows)}
 
 > [!TIP]
-> **AI Directories**: The AI relies heavily on high-authority directories. Flawless directory synchronization is critical.
+> **AI Directories & GMB Optimization**: The AI relies heavily on high-accuracy location signals, review sentiment, and structural optimization (GMB profiles and direct citations).
 
 ---
 
@@ -235,9 +336,21 @@ graph TD
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="GEO stream log parser")
-    parser.add_argument("--input", required=True, help="Path to input raw stream text file")
-    parser.add_argument("--json", required=True, help="Path to output structured json file")
-    parser.add_argument("--md", required=True, help="Path to output markdown report")
+    parser.add_argument("dir", nargs="?", help="Path to the run directory containing raw_stream.txt")
+    parser.add_argument("--input", help="Path to input raw stream text file")
+    parser.add_argument("--json", help="Path to output structured json file")
+    parser.add_argument("--md", help="Path to output markdown report")
     args = parser.parse_args()
     
-    parse_geo_logs(args.input, args.json, args.md)
+    if args.dir:
+        input_file = os.path.join(args.dir, "raw_stream.txt")
+        output_json = os.path.join(args.dir, "geo_data.json")
+        output_md = os.path.join(args.dir, "geo_analysis_report.md")
+    else:
+        if not args.input or not args.json or not args.md:
+            parser.error("Must specify either the run directory as a positional argument, or all three of --input, --json, and --md")
+        input_file = args.input
+        output_json = args.json
+        output_md = args.md
+        
+    parse_geo_logs(input_file, output_json, output_md)

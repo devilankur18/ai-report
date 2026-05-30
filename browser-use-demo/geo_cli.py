@@ -75,9 +75,7 @@ def run_geo_run(city, specialty, prompt_override=None):
     parser_cmd = [
         python_bin,
         parser_script,
-        "--input", raw_stream_file,
-        "--json", geo_data_json,
-        "--md", analysis_report_md
+        run_dir
     ]
     
     try:

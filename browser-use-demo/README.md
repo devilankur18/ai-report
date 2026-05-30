@@ -116,10 +116,7 @@ Because Chrome blocks remote debugging on default profiles, fully quit Chrome (`
 If you already have a captured `raw_stream.txt` and want to re-run the state-machine parser to update/re-generate the dynamic GEO insights (`geo_data.json` and `geo_analysis_report.md`):
 
 ```bash
-.venv/bin/python geo_engine/parser.py \
-  --input geo_engine/outputs/run_<timestamp>_custom_prompt/raw_stream.txt \
-  --json geo_engine/outputs/run_<timestamp>_custom_prompt/geo_data.json \
-  --md geo_engine/outputs/run_<timestamp>_custom_prompt/geo_analysis_report.md
+.venv/bin/python geo_engine/parser.py geo_engine/outputs/run_<timestamp>_custom_prompt
 ```
 
 This runs the precise JSON-Patch log state-machine to compile:
