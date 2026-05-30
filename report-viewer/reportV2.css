@@ -1091,4 +1091,16 @@
   .rv2-footer {
     page-break-before: avoid !important;
   }
+
+  .rv2-no-print-breaks .rv2-page {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+    margin-bottom: 2rem !important;
+    padding: 1rem 0 !important;
+  }
+
+  .rv2-no-print-breaks .rv2-print-break {
+    page-break-before: avoid !important;
+    break-before: avoid !important;
+  }
 }

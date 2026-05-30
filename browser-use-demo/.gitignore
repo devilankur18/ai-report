@@ -1,0 +1,13 @@
+chrome_profile/*
+.venv/*
+node_modules/*
+__pycache__/*
+stream_*.txt
+*.mp3
+*.wav
+*.png
+.env
+*.md
+*.json
+*.pyc
+chrome_profile/*

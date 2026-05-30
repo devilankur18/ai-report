@@ -23,6 +23,7 @@ export const ReportViewerV2: React.FC = () => {
   const [reportData, setReportData] = useState<ReportSchema | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [usePageBreaks, setUsePageBreaks] = useState<boolean>(true);
   const [selectedRun, setSelectedRun] = useState<string>('');
   const [lightboxImage, setLightboxImage] = useState<{ path: string; caption: string } | null>(null);
 
@@ -232,7 +233,7 @@ export const ReportViewerV2: React.FC = () => {
   }
 
   return (
-    <div className="rv2-body">
+    <div className={`rv2-body ${usePageBreaks ? '' : 'rv2-no-print-breaks'}`}>
       {/* Sticky Controls Bar */}
       <div className="rv2-controls">
         <div className="rv2-controls-brand">
@@ -252,6 +253,18 @@ export const ReportViewerV2: React.FC = () => {
           </label>
           <button className="rv2-btn" onClick={handlePrintPDF}>
             <i className="fas fa-file-pdf"></i> PDF
+          </button>
+          <button 
+            className="rv2-btn" 
+            style={{ 
+              borderColor: usePageBreaks ? 'rgba(34, 211, 238, 0.4)' : 'rgba(245, 158, 11, 0.4)',
+              color: usePageBreaks ? 'var(--v2-accent)' : 'var(--v2-warning)' 
+            }}
+            onClick={() => setUsePageBreaks(!usePageBreaks)}
+            title={usePageBreaks ? "Switch to continuous layout (no page breaks for printing)" : "Switch to paginated layout (page breaks for printing)"}
+          >
+            <i className={usePageBreaks ? "fas fa-cut" : "fas fa-scroll"}></i>
+            <span>{usePageBreaks ? "Page Breaks" : "Continuous"}</span>
           </button>
           <button 
             className="rv2-btn" 

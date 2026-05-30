@@ -1,0 +1,110 @@
+[2026-05-30T17:38:23.874Z] #1 | URL: https://chatgpt.com/backend-anon/f/conversation/prepare
+File: stream_1_prepare.txt
+Preview: {"status":"ok","conduit_token":"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25kdWl0X3V1aWQiOiIxNzdhZjc2Yjg2M2M0ZGQwYjY2MzgwNTE5M2FlNzM3YyIsImNvbmR1aXRfb...
+
+[2026-05-30T17:38:25.014Z] #2 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_2_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:25.742Z] #4 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_4_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:25.772Z] #4 | URL: https://chatgpt.com/backend-anon/sentinel/chat-requirements/prepare
+File: stream_4_prepare.txt
+Preview: {"persona":"chatgpt-noauth","prepare_token":"gAAAAABqGyCR-IpC-lR4csXilHkBuejVI-pdisQRq6pkG2sUY30GHono1Fb4TmMJdtqFu8RQD4yJzMEYshYZN3ygXwVzalGeYjIYpfQKI...
+
+[2026-05-30T17:38:25.950Z] #6 | URL: https://chatgpt.com/backend-api/sentinel/ping
+File: stream_6_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:26.077Z] #7 | URL: https://chatgpt.com/backend-anon/sentinel/chat-requirements/finalize
+File: stream_7_finalize.txt
+Preview: {"persona":"chatgpt-noauth","token":"gAAAAABqGyCSP5CPIuTNtGVWckFg5UdukHKIZCgl-j0W8og58ckS15IjnwJe6DMip-wciD4Dt_WAldkhwkLAnn8t8TyYTPz8twEgPUmCnqhWa59tN...
+
+[2026-05-30T17:38:26.217Z] #8 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_8_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:28.219Z] #9 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_9_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:31.240Z] #10 | URL: https://chatgpt.com/backend-api/sentinel/req
+File: stream_10_req.txt
+Preview: {"persona":"chatgpt-noauth","token":"gAAAAABqGyCXqpbsQxL4HZXA9QBabYk2pvG5ady-Oo21_HMF3dhai_U9vpAqtUZGh6AFCrh8wnGzIl6YoXBZqHv3ldufmMvizTDcQbG65XoTCi5vp...
+
+[2026-05-30T17:38:32.941Z] #11 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_11_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:40.961Z] #12 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_12_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:38:45.011Z] #12 | URL: https://chatgpt.com/backend-anon/f/conversation
+File: stream_12_conversation.txt
+Preview: event: delta_encoding
+data: "v1"
+
+data: {"type": "resume_conversation_token", "kind": "topic", "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25k...
+
+[2026-05-30T17:38:45.092Z] #13 | URL: https://chatgpt.com/backend-anon/f/conversation/prepare
+File: stream_13_prepare.txt
+Preview: {"status":"ok","conduit_token":"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25kdWl0X3V1aWQiOiIxM2YwMTM2ZjBmZjQ0MmY1YmYwMGNkMmNhYjlmZWIzYyIsImNvbmR1aXRfb...
+
+[2026-05-30T17:39:03.479Z] #1 | URL: https://chatgpt.com/backend-anon/f/conversation/prepare
+File: stream_1_prepare.txt
+Preview: {"status":"ok","conduit_token":"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25kdWl0X3V1aWQiOiJlOTc5Yzk5OGU2ODU0ZDIyOGQ0YmY1NmZkM2EyNGY3MiIsImNvbmR1aXRfb...
+
+[2026-05-30T17:39:03.652Z] #2 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_2_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:03.947Z] #3 | URL: https://chatgpt.com/backend-anon/sentinel/chat-requirements/prepare
+File: stream_3_prepare.txt
+Preview: {"persona":"chatgpt-noauth","prepare_token":"gAAAAABqGyC3NXVvaHNbFApsWsSqLI30kzrUJInbIWiAhMrooiMqwueVC33NyJsWBwdLunwaXi5Clf4Va_dV_UtmYX9A7PxHkGA-41A-W...
+
+[2026-05-30T17:39:04.144Z] #5 | URL: https://chatgpt.com/backend-api/sentinel/ping
+File: stream_5_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:04.312Z] #6 | URL: https://chatgpt.com/backend-anon/sentinel/chat-requirements/finalize
+File: stream_6_finalize.txt
+Preview: {"persona":"chatgpt-noauth","token":"gAAAAABqGyC4wFWc6Tn--xxOHSjVFa7zS7xyG6zUVXvfA9nqCQ9QIIx35uDBLMbSGMDnWsrYVTDzQARAYSXCHZc7gxs3Vu9tPWYngq9Zw1nEWjQvS...
+
+[2026-05-30T17:39:04.505Z] #7 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_7_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:06.622Z] #8 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_8_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:10.918Z] #9 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_9_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:11.022Z] #10 | URL: https://chatgpt.com/backend-api/sentinel/req
+File: stream_10_req.txt
+Preview: {"persona":"chatgpt-noauth","token":"gAAAAABqGyC-72UqhhFqvrQ_z9q9Juqc0ANJeP1p8Inj3Eifd48oFYnVdRg4iVUKIaZtrDnMWH8--h4iXt30bnzaQhxcbJK4_O4mlsHnBI1JQuSqi...
+
+[2026-05-30T17:39:19.968Z] #11 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_11_ping.txt
+Preview: {"status":"OK"}...
+
+[2026-05-30T17:39:28.066Z] #11 | URL: https://chatgpt.com/backend-anon/f/conversation
+File: stream_11_conversation.txt
+Preview: event: delta_encoding
+data: "v1"
+
+data: {"type": "resume_conversation_token", "kind": "topic", "token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25k...
+
+[2026-05-30T17:39:28.212Z] #12 | URL: https://chatgpt.com/backend-anon/f/conversation/prepare
+File: stream_12_prepare.txt
+Preview: {"status":"ok","conduit_token":"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb25kdWl0X3V1aWQiOiJkN2MxNWI3MzM3ODA0YTQ1OGM0NDgxYjM2YzViYThmNSIsImNvbmR1aXRfb...
+
+[2026-05-30T17:39:29.959Z] #13 | URL: https://chatgpt.com/backend-anon/sentinel/ping
+File: stream_13_ping.txt
+Preview: {"status":"OK"}...
+
