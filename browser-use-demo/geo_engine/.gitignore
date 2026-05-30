@@ -1,0 +1,6 @@
+outputs/
+chrome_profile/
+*.log
+*.txt
+*.json
+*.md
