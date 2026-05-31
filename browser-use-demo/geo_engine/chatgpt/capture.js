@@ -20,6 +20,7 @@ async function run() {
     const args = getArgs();
     const prompt = args.prompt || "My 55-year-old mother is diabetic and experiencing mild chest pain after walking. Who are the most reliable heart doctors in UP/Hardoi with good reviews, and what should I ask them?";
     const outputFile = args.output || path.resolve(process.cwd(), 'chatgpt_raw_stream.txt');
+    const screenshotPath = args.screenshot || outputFile.replace('raw_stream.txt', 'screenshot.png');
 
     console.log(`Connecting to Chrome debugging instance on port 9222...`);
     
@@ -47,6 +48,28 @@ async function run() {
     } else {
         console.log(`Found active ChatGPT tab: ${page.url()}`);
         await page.bringToFront();
+    }
+
+    // --- Start Fresh Chat ---
+    console.log("Starting a fresh conversation room...");
+    try {
+        // Look for New Chat button or links
+        const newChatSelector = 'a[href="/"], button[aria-label="New chat"], [data-testid="new-chat-button"]';
+        const btn = await page.$(newChatSelector);
+        if (btn) {
+            console.log("Clicking New chat button...");
+            await btn.click();
+            // Wait for clean room to load
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+            console.log("New chat button not found. Navigating to clean ChatGPT root URL...");
+            await page.goto('https://chatgpt.com/');
+            await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+    } catch (e) {
+        console.log(`Failed clicking New Chat, falling back to direct navigation: ${e.message}`);
+        await page.goto('https://chatgpt.com/');
+        await new Promise(resolve => setTimeout(resolve, 3000));
     }
 
     // Initialize raw stream file with header info
@@ -96,6 +119,31 @@ async function run() {
         console.log("Waiting for response stream (30s)...");
         await new Promise(resolve => setTimeout(resolve, 30000));
         console.log("Capture completed successfully!");
+
+        // --- Take Conversation Screenshot with Zoomout ---
+        console.log("Taking conversation screenshot in run folder...");
+        try {
+            // Apply zoom-out style (80%) to make conversation fit nicely in one screenshot
+            await page.evaluate(() => {
+                document.body.style.zoom = "0.8";
+            });
+            await new Promise(resolve => setTimeout(resolve, 1000)); // wait for layout calculation
+            
+            // Take full page screenshot
+            await page.screenshot({
+                path: screenshotPath,
+                fullPage: true
+            });
+            
+            // Restore normal zoom
+            await page.evaluate(() => {
+                document.body.style.zoom = "1.0";
+            });
+            console.log(`[✓] Screenshot saved to: ${path.basename(screenshotPath)}`);
+        } catch (screenshotError) {
+            console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
+        }
+
         await browser.disconnect();
         process.exit(0);
 

@@ -5,7 +5,7 @@ import sys
 import re
 from datetime import datetime
 
-def run_geo_run(city, specialty, prompt_override=None):
+def run_single_engine(engine, city, specialty, prompt_override=None):
     # Formulate prompt if not overridden
     if prompt_override:
         prompt = prompt_override
@@ -16,7 +16,7 @@ def run_geo_run(city, specialty, prompt_override=None):
         )
 
     print("\n" + "="*60)
-    print(" 🧠  GEO (GENERATIVE ENGINE OPTIMIZATION) SEARCH DEMAND PIPELINE")
+    print(f" 🧠  GEO PIPELINE - RUNNING ENGINE: {engine.upper()}")
     print("="*60)
     print(f"Target City:      {city}")
     print(f"Target Specialty: {specialty}")
@@ -25,8 +25,10 @@ def run_geo_run(city, specialty, prompt_override=None):
     # Locate child scripts relative to this file's directory
     base_dir = os.path.dirname(os.path.abspath(__file__))
     engine_dir = os.path.join(base_dir, "geo_engine")
-    capture_script = os.path.join(engine_dir, "capture.js")
-    parser_script = os.path.join(engine_dir, "parser.py")
+    
+    # Specific engine directory structure
+    capture_script = os.path.join(engine_dir, engine, "capture.js")
+    parser_script = os.path.join(engine_dir, engine, "parser.py")
 
     def slugify(text):
         text = text.lower()
@@ -41,11 +43,11 @@ def run_geo_run(city, specialty, prompt_override=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if prompt_override:
         prompt_slug = slugify(prompt_override)
-        dir_name = f"run_{timestamp}_{prompt_slug}"
+        dir_name = f"run_{timestamp}_{engine}_{prompt_slug}"
     else:
         city_slug = city.lower().replace(" ", "_") if city else "custom"
         spec_slug = specialty.lower().replace(" ", "_") if specialty else "custom"
-        dir_name = f"run_{timestamp}_{city_slug}_{spec_slug}"
+        dir_name = f"run_{timestamp}_{engine}_{city_slug}_{spec_slug}"
     
     run_dir = os.path.join(engine_dir, "outputs", dir_name)
     os.makedirs(run_dir, exist_ok=True)
@@ -53,33 +55,35 @@ def run_geo_run(city, specialty, prompt_override=None):
     print(f"[✓] Created dynamic outputs directory: geo_engine/outputs/{dir_name}/")
 
     raw_stream_file = os.path.join(run_dir, "raw_stream.txt")
+    screenshot_file = os.path.join(run_dir, "screenshot.png")
     geo_data_json = os.path.join(run_dir, "geo_data.json")
     analysis_report_md = os.path.join(run_dir, "geo_analysis_report.md")
 
-    # 1. Trigger the stream capture using capture.js
-    print("\n--- STEP 1: Launching Network Stream Capture ---")
+    # 1. Trigger the stream capture using capture.js inside the engine folder
+    print(f"\n--- STEP 1: Launching Network Stream Capture [{engine}] ---")
     capture_cmd = [
         "node",
         capture_script,
         "--prompt", prompt,
-        "--output", raw_stream_file
+        "--output", raw_stream_file,
+        "--screenshot", screenshot_file
     ]
     
     try:
-        # Run node capture script inside the geo_engine directory scope
-        result = subprocess.run(capture_cmd, cwd=engine_dir, check=True)
+        # Run node capture script inside the engine directory scope
+        result = subprocess.run(capture_cmd, cwd=os.path.dirname(capture_script), check=True)
         if result.returncode != 0:
-            print("[!] Capture script failed.")
-            return False
+            print(f"[!] Capture script failed for {engine}.")
+            return None
     except subprocess.CalledProcessError as e:
-        print(f"[!] Error executing capture.js: {e}")
-        return False
+        print(f"[!] Error executing capture.js for {engine}: {e}")
+        return None
     except FileNotFoundError:
         print("[!] Error: 'node' command not found. Please ensure Node.js is installed.")
-        return False
+        return None
 
-    # 2. Trigger the stream log parser
-    print("\n--- STEP 2: Running Structured Information Extraction ---")
+    # 2. Trigger the stream log parser inside the engine folder
+    print(f"\n--- STEP 2: Running Structured Information Extraction [{engine}] ---")
     
     # Use python interpreter from venv if active
     python_bin = sys.executable if sys.executable else "python3"
@@ -90,22 +94,58 @@ def run_geo_run(city, specialty, prompt_override=None):
     ]
     
     try:
-        result = subprocess.run(parser_cmd, cwd=engine_dir, check=True)
+        result = subprocess.run(parser_cmd, cwd=os.path.dirname(parser_script), check=True)
         if result.returncode != 0:
-            print("[!] Parser script failed.")
-            return False
+            print(f"[!] Parser script failed for {engine}.")
+            return None
     except subprocess.CalledProcessError as e:
-        print(f"[!] Error executing parser.py: {e}")
+        print(f"[!] Error executing parser.py for {engine}: {e}")
+        return None
+
+    print(f"\n[✓] ENGINE {engine.upper()} RUN SUCCESSFUL!")
+    return {
+        "engine": engine,
+        "run_dir": run_dir,
+        "raw_stream": raw_stream_file,
+        "screenshot": screenshot_file,
+        "geo_data": geo_data_json,
+        "report": analysis_report_md
+    }
+
+def run_geo_run(engines_list, city, specialty, prompt_override=None):
+    results = []
+    
+    print("\n" + "="*60)
+    print(" 🧠  GEO (GENERATIVE ENGINE OPTIMIZATION) MULTI-ENGINE PIPELINE")
+    print("="*60)
+    print(f"Target Engines:   {', '.join(engines_list)}")
+    print(f"Target City:      {city}")
+    print(f"Target Specialty: {specialty}")
+    print(f"Prompt Override:  {prompt_override if prompt_override else 'None'}")
+    print("="*60 + "\n")
+
+    for eng in engines_list:
+        res = run_single_engine(eng, city, specialty, prompt_override)
+        if res:
+            results.append(res)
+            
+    if not results:
+        print("\n[!] All target engine runs failed.")
         return False
 
+    # Print beautiful consolidated summary report
     print("\n" + "="*60)
-    print(" 🎉  GEO PIPELINE RUN SUCCESSFUL!")
+    print(" 🎉  ALL GEO PIPELINE RUNS COMPLETED SUCCESSFUL!")
     print("="*60)
-    print("All extraction artifacts have been compiled:")
-    print(f" 📂  Run Directory:    {os.path.relpath(run_dir, base_dir)}")
-    print(f" 🗃️  Raw Event Log:    {os.path.relpath(raw_stream_file, base_dir)}")
-    print(f" 📊  Structured JSON:  {os.path.relpath(geo_data_json, base_dir)}")
-    print(f" 📝  Analysis Report:  {os.path.relpath(analysis_report_md, base_dir)}")
+    print("Compiled Run Artifacts:")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    for r in results:
+        print(f"\n 🤖  ENGINE: {r['engine'].upper()}")
+        print(f"     📂  Run Directory:    {os.path.relpath(r['run_dir'], base_dir)}")
+        print(f"     🗃️  Raw Event Log:    {os.path.relpath(r['raw_stream'], base_dir)}")
+        print(f"     📸  Full Screenshot:  {os.path.relpath(r['screenshot'], base_dir)}")
+        print(f"     📊  Structured JSON:  {os.path.relpath(r['geo_data'], base_dir)}")
+        print(f"     📝  Analysis Report:  {os.path.relpath(r['report'], base_dir)}")
     print("="*60 + "\n")
     return True
 
@@ -114,8 +154,16 @@ if __name__ == "__main__":
     parser.add_argument("--city", default="Hardoi", help="Target city (default: Hardoi)")
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
+    parser.add_argument("--engine", default="both", choices=["chatgpt", "gemini", "both"], 
+                        help="Target generative search engine (default: both)")
     
     args = parser.parse_args()
     
+    # Determine engines to run
+    if args.engine == "both":
+        engines = ["chatgpt", "gemini"]
+    else:
+        engines = [args.engine]
+        
     # Run the dynamic pipeline
-    run_geo_run(args.city, args.specialty, args.prompt)
+    run_geo_run(engines, args.city, args.specialty, args.prompt)
