@@ -154,16 +154,25 @@ if __name__ == "__main__":
     parser.add_argument("--city", default="Hardoi", help="Target city (default: Hardoi)")
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
-    parser.add_argument("--engine", default="both", choices=["chatgpt", "gemini", "both"], 
-                        help="Target generative search engine (default: both)")
+    parser.add_argument("--engine", default="chatgpt,gemini", 
+                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity; default: chatgpt,gemini)")
     
     args = parser.parse_args()
     
     # Determine engines to run
-    if args.engine == "both":
-        engines = ["chatgpt", "gemini"]
-    else:
-        engines = [args.engine]
+    valid_engines = ["chatgpt", "gemini", "google", "bing", "perplexity"]
+    requested_engines = [e.strip().lower() for e in args.engine.split(",") if e.strip()]
+    
+    invalid_engines = [e for e in requested_engines if e not in valid_engines]
+    if invalid_engines:
+        print(f"[!] Error: Invalid engine(s) specified: {', '.join(invalid_engines)}")
+        print(f"    Available valid options: {', '.join(valid_engines)}")
+        sys.exit(1)
+        
+    if not requested_engines:
+        print("[!] Error: No search engines specified to run.")
+        sys.exit(1)
         
     # Run the dynamic pipeline
-    run_geo_run(engines, args.city, args.specialty, args.prompt)
+    run_geo_run(requested_engines, args.city, args.specialty, args.prompt)
+

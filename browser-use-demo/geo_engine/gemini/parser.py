@@ -114,6 +114,21 @@ def parse_gemini_logs(input_file, output_json, output_md):
     if model_names:
         extracted_data["routed_model"] = list(model_names)[-1]
 
+    all_urls = set()
+    url_to_title = {}
+
+    def get_fallback_title(url):
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc.replace("www.", "")
+            parts = domain.split(".")
+            if len(parts) > 1:
+                domain = parts[0]
+            return domain.capitalize() + " Article"
+        except Exception:
+            return "Web Resource"
+
     # Process and build citations and outbound URLs
     for src in citations_data:
         if not isinstance(src, list):
@@ -121,8 +136,6 @@ def parse_gemini_logs(input_file, output_json, output_md):
         # source format: [url, title, favicon, snippet, ..., name]
         url = src[0] if (len(src) > 0 and src[0]) else None
         title = src[1] if (len(src) > 1 and src[1]) else ""
-        snippet = src[3] if (len(src) > 3 and src[3]) else ""
-        brand = src[6] if (len(src) > 6 and src[6]) else ""
 
         if url:
             cleaned = clean_url(url)
@@ -130,14 +143,9 @@ def parse_gemini_logs(input_file, output_json, output_md):
                 # Avoid raw google domains
                 if "google.com" in cleaned or "gstatic.com" in cleaned or "googleapis.com" in cleaned:
                     continue
-                
-                # Capture UTMs or classify
-                if "utm_" in cleaned:
-                    if cleaned not in extracted_data["utm_sources"]:
-                        extracted_data["utm_sources"].append(cleaned)
-                else:
-                    if cleaned not in extracted_data["web_citations"]:
-                        extracted_data["web_citations"].append(cleaned)
+                all_urls.add(cleaned)
+                if title:
+                    url_to_title[cleaned] = str(title).strip()
 
     # Walk general URLs in the stream as fallback
     url_pattern = re.compile(r'https?://[^\s"\'\}]+')
@@ -147,12 +155,19 @@ def parse_gemini_logs(input_file, output_json, output_md):
         if cleaned and cleaned.startswith("http"):
             if "google.com" in cleaned or "gstatic.com" in cleaned or "googleapis.com" in cleaned:
                 continue
-            if "utm_" in cleaned:
-                if cleaned not in extracted_data["utm_sources"]:
-                    extracted_data["utm_sources"].append(cleaned)
-            else:
-                if cleaned not in extracted_data["web_citations"]:
-                    extracted_data["web_citations"].append(cleaned)
+            all_urls.add(cleaned)
+
+    # Classify URLs into Web Citations and UTM Sources
+    for url in sorted(all_urls):
+        title = url_to_title.get(url) or get_fallback_title(url)
+        cit_obj = {"title": title, "url": url}
+
+        if "utm_" in url:
+            if not any(u["url"] == url for u in extracted_data["utm_sources"]):
+                extracted_data["utm_sources"].append(cit_obj)
+        else:
+            if not any(c["url"] == url for c in extracted_data["web_citations"]):
+                extracted_data["web_citations"].append(cit_obj)
 
     # 5. Parse Local Entities directly from the generated response markdown
     # Gemini regularly formats recommendations as:
@@ -245,8 +260,8 @@ def parse_gemini_logs(input_file, output_json, output_md):
     else:
         entity_rows.append("| *None* | No structured entities parsed | N/A | N/A | N/A | N/A | N/A | N/A |")
 
-    citations_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["web_citations"]]) if extracted_data["web_citations"] else "* No web citations found."
-    utm_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["utm_sources"]]) if extracted_data["utm_sources"] else "* No UTM-tagged sources found."
+    citations_list = "\n".join([f"* [{cit['title']}]({cit['url']})" for cit in extracted_data["web_citations"]]) if extracted_data["web_citations"] else "* No web citations found."
+    utm_list = "\n".join([f"* [{cit['title']}]({cit['url']})" for cit in extracted_data["utm_sources"]]) if extracted_data["utm_sources"] else "* No UTM-tagged sources found."
 
     report_markdown = f"""# 🧠 GEO (Generative Engine Optimization) Analysis Report [Google Gemini]
 **Target Prompt**: `{extracted_data["original_prompt"]}`  

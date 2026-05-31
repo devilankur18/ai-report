@@ -87,6 +87,19 @@ def parse_geo_logs(input_file, output_json, output_md):
     model_slugs = set()
     resolved_model_slugs = set()
     all_urls = set()
+    url_to_title = {}
+
+    def get_fallback_title(url):
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            domain = parsed.netloc.replace("www.", "")
+            parts = domain.split(".")
+            if len(parts) > 1:
+                domain = parts[0]
+            return domain.capitalize() + " Article"
+        except Exception:
+            return "Web Resource"
 
     def handle_patch(patch):
         nonlocal content_refs
@@ -138,7 +151,7 @@ def parse_geo_logs(input_file, output_json, output_md):
                     pass
 
     def traverse(obj):
-        nonlocal all_urls
+        nonlocal all_urls, url_to_title
         if isinstance(obj, dict):
             # Capture model slugs
             if "model_slug" in obj:
@@ -155,6 +168,12 @@ def parse_geo_logs(input_file, output_json, output_md):
                 for patch in v_list:
                     handle_patch(patch)
 
+            # Match URL + title if side-by-side
+            url = obj.get("url")
+            title = obj.get("title") or obj.get("name") or obj.get("alt") or obj.get("display_name")
+            if isinstance(url, str) and url.startswith("http") and title and not isinstance(title, (dict, list)):
+                url_to_title[url] = str(title).strip()
+
             # Capture URLs under standard citation keys
             for k, v in obj.items():
                 if k in ["url", "safe_urls", "refs", "citations"]:
@@ -166,6 +185,8 @@ def parse_geo_logs(input_file, output_json, output_md):
                                 all_urls.add(item)
                             elif isinstance(item, dict) and item.get("url"):
                                 all_urls.add(item["url"])
+                                if item.get("title"):
+                                    url_to_title[item["url"]] = str(item["title"]).strip()
                 else:
                     traverse(v)
         elif isinstance(obj, list):
@@ -190,6 +211,13 @@ def parse_geo_logs(input_file, output_json, output_md):
 
     # Process and build local entities list from precise references
     for ref in content_refs:
+        # Resolve titles from content references
+        url = ref.get("url")
+        if url:
+            title = ref.get("title") or ref.get("name") or ref.get("alt") or ref.get("display_name")
+            if title and not isinstance(title, (dict, list)):
+                url_to_title[url] = str(title).strip()
+
         name = ref.get("name") or ref.get("alt")
         category = ref.get("category")
         if name and category and is_valid_local_entity(name, category):
@@ -237,12 +265,16 @@ def parse_geo_logs(input_file, output_json, output_md):
         # Ignore raw chatgpt.com API endpoints
         if "chatgpt.com/backend" in url or "chatgpt.com/api" in url:
             continue
+        
+        title = url_to_title.get(url) or get_fallback_title(url)
+        cit_obj = {"title": title, "url": url}
+
         if "utm_source" in url:
-            if url not in extracted_data["utm_sources"]:
-                extracted_data["utm_sources"].append(url)
+            if not any(u["url"] == url for u in extracted_data["utm_sources"]):
+                extracted_data["utm_sources"].append(cit_obj)
         else:
-            if url not in extracted_data["web_citations"]:
-                extracted_data["web_citations"].append(url)
+            if not any(c["url"] == url for c in extracted_data["web_citations"]):
+                extracted_data["web_citations"].append(cit_obj)
 
     # Save structured data to json
     with open(output_json, "w", encoding="utf-8") as f:
@@ -264,8 +296,8 @@ def parse_geo_logs(input_file, output_json, output_md):
     else:
         entity_rows.append("| *None* | No structured entities parsed | N/A | N/A | N/A | N/A | N/A | N/A |")
 
-    citations_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["web_citations"]]) if extracted_data["web_citations"] else "* No web citations found."
-    utm_list = "\n".join([f"* [{url.split('?')[0]}]({url})" for url in extracted_data["utm_sources"]]) if extracted_data["utm_sources"] else "* No UTM-tagged sources found."
+    citations_list = "\n".join([f"* [{cit['title']}]({cit['url']})" for cit in extracted_data["web_citations"]]) if extracted_data["web_citations"] else "* No web citations found."
+    utm_list = "\n".join([f"* [{cit['title']}]({cit['url']})" for cit in extracted_data["utm_sources"]]) if extracted_data["utm_sources"] else "* No UTM-tagged sources found."
 
     report_markdown = f"""# 🧠 GEO (Generative Engine Optimization) Analysis Report
 **Target Prompt**: `{extracted_data["original_prompt"]}`  
