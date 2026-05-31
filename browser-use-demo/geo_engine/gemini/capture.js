@@ -77,6 +77,7 @@ async function run() {
     fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n\n`, 'utf8');
 
     let captureCount = 0;
+    let streamFinished = false;
 
     // Set up network response listener specifically for StreamGenerate
     page.on('response', async (response) => {
@@ -97,6 +98,10 @@ async function run() {
                 
                 fs.appendFileSync(outputFile, header + body + "\n", 'utf8');
                 console.log(`[✓] Appended response to: ${path.basename(outputFile)}`);
+                
+                // Set streamFinished to true once StreamGenerate completes
+                streamFinished = true;
+                console.log(`[✓] Detected Gemini conversation stream completion via network.`);
             } catch (e) {
                 console.error(`[!] Could not read body of ${url}: ${e.message}`);
             }
@@ -124,9 +129,72 @@ async function run() {
         await page.waitForSelector(sendButtonSelector, { timeout: 8000 });
         await page.click(sendButtonSelector);
 
-        // Wait for response to stream and complete (35s)
-        console.log("Waiting for response stream (35s)...");
-        await new Promise(resolve => setTimeout(resolve, 35000));
+        // --- Dynamic Wait for Response Stream to Complete ---
+        console.log("Waiting for response stream to complete dynamically (max 120s)...");
+        const startTime = Date.now();
+        const maxWaitMs = 120000; // 120 seconds maximum safety timeout
+        const stableIntervalMs = 3000; // Text must be stable for 3 seconds
+        
+        let lastTextLength = 0;
+        let lastStableTime = Date.now();
+        
+        while (Date.now() - startTime < maxWaitMs) {
+            // First check if network stream completed successfully
+            if (streamFinished) {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                console.log(`[✓] Streaming completed dynamically via network-level event in ${elapsed}s!`);
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Check status inside the page
+            const status = await page.evaluate(() => {
+                // Find latest message elements in Gemini
+                const messages = document.querySelectorAll('.message-content, ms-chat-chunk, .message-content-turn, div.query-content');
+                let latestMessageText = "";
+                if (messages.length > 0) {
+                    latestMessageText = messages[messages.length - 1].innerText || "";
+                } else {
+                    latestMessageText = document.body.innerText || "";
+                }
+                
+                // Check if stop button exists
+                const stopBtn = document.querySelector('button[aria-label="Stop generating"], button[aria-label="Stop response"], button[aria-label="Stop"]');
+                const isStopVisible = !!(stopBtn && (stopBtn.offsetWidth > 0 || stopBtn.offsetHeight > 0));
+                
+                // Check if send button is active (not disabled)
+                const sendBtn = document.querySelector('button[aria-label="Send message"], button[aria-label="Send prompt"]');
+                const isSendDisabled = sendBtn ? sendBtn.disabled || sendBtn.getAttribute('aria-disabled') === 'true' : true;
+                
+                return {
+                    textLength: latestMessageText.length,
+                    isStopVisible,
+                    isSendDisabled
+                };
+            });
+            
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            
+            // Only consider stability if we have actually started streaming text
+            if (status.textLength > 0) {
+                if (status.textLength !== lastTextLength) {
+                    // Still growing, update stability baseline
+                    lastTextLength = status.textLength;
+                    lastStableTime = Date.now();
+                } else {
+                    const stableDuration = Date.now() - lastStableTime;
+                    // Finish if text is stable and UI indicators (stop/send button) confirm completion
+                    if (stableDuration >= stableIntervalMs && !status.isStopVisible && !status.isSendDisabled) {
+                        console.log(`[✓] Streaming completed dynamically at ${elapsed}s! (Text stable at ${status.textLength} chars)`);
+                        break;
+                    }
+                }
+            } else {
+                // Keep updating baseline while text length is 0 (waiting for first chunk)
+                lastStableTime = Date.now();
+            }
+        }
         console.log("Capture completed successfully!");
 
         // --- Take Conversation Screenshot with Zoomout ---
