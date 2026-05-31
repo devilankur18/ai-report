@@ -4,6 +4,7 @@ import os
 import sys
 import re
 from datetime import datetime
+import geo_config
 
 def run_single_engine(engine, city, specialty, prompt_override=None):
     # Formulate prompt if not overridden
@@ -49,15 +50,16 @@ def run_single_engine(engine, city, specialty, prompt_override=None):
         spec_slug = specialty.lower().replace(" ", "_") if specialty else "custom"
         dir_name = f"run_{timestamp}_{engine}_{city_slug}_{spec_slug}"
     
-    run_dir = os.path.join(engine_dir, "outputs", dir_name)
+    run_dir = os.path.join(geo_config.OUTPUTS_DIR, dir_name)
     os.makedirs(run_dir, exist_ok=True)
     
-    print(f"[✓] Created dynamic outputs directory: geo_engine/outputs/{dir_name}/")
+    print(f"[✓] Created dynamic outputs directory: outputs/{dir_name}/")
 
-    raw_stream_file = os.path.join(run_dir, "raw_stream.txt")
-    screenshot_file = os.path.join(run_dir, "screenshot.png")
-    geo_data_json = os.path.join(run_dir, "geo_data.json")
-    analysis_report_md = os.path.join(run_dir, "geo_analysis_report.md")
+    paths = geo_config.get_run_paths(run_dir)
+    raw_stream_file = paths["raw_stream"]
+    screenshot_file = paths["screenshot"]
+    geo_data_json = paths["geo_data"]
+    analysis_report_md = paths["report"]
 
     # 1. Trigger the stream capture using capture.js inside the engine folder
     print(f"\n--- STEP 1: Launching Network Stream Capture [{engine}] ---")

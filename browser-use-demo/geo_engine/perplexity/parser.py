@@ -2,6 +2,9 @@ import json
 import re
 import os
 import argparse
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+import geo_config
 
 def clean_url(url):
     if not url or not isinstance(url, str):
@@ -277,9 +280,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.dir:
-        input_file = os.path.join(args.dir, "raw_stream.txt")
-        output_json = os.path.join(args.dir, "geo_data.json")
-        output_md = os.path.join(args.dir, "geo_analysis_report.md")
+        paths = geo_config.get_run_paths(args.dir)
+        input_file = paths["raw_stream"]
+        output_json = paths["geo_data"]
+        output_md = paths["report"]
     else:
         if not args.input or not args.json or not args.md:
             parser.error("Must specify either the run directory as a positional argument, or all three of --input, --json, and --md")

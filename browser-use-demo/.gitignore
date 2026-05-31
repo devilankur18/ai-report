@@ -11,3 +11,4 @@ stream_*.txt
 *.json
 *.pyc
 chrome_profile/*
+outputs/
