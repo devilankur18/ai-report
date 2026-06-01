@@ -227,7 +227,9 @@ def format_json_to_ui(parsed_json, engine):
             fee = ent.get("consultation_fee", "N/A")
             exp = ent.get("experience", "N/A")
             
-            html.append('    <div class="ui-entity-mini-card">')
+            slug_name = slugify(name)
+            item_id = f"item-{engine}-{slug_name}"
+            html.append(f'    <div class="ui-entity-mini-card" id="{item_id}">')
             html.append('      <div class="ui-card-top">')
             html.append(f'        <h5 class="ui-entity-name">{name}</h5>')
             if rating != "N/A" and rating:
@@ -441,7 +443,7 @@ class RunConsolidator:
                     })
             
             # Process entities
-            for ent in r.get("local_entities", []):
+            for rank_idx, ent in enumerate(r.get("local_entities", []), 1):
                 ent_name = ent.get("name", "").strip()
                 if not ent_name:
                     continue
@@ -463,7 +465,8 @@ class RunConsolidator:
                 for merged in merged_entities:
                     if match_entities(merged["name"], ent_name):
                         matched = True
-                        merged["sources"].append(engine)
+                        if engine not in merged["sources"]:
+                            merged["sources"].append(engine)
                         # Keep the most detailed fields
                         if ent.get("address") and (not merged.get("address") or len(ent["address"]) > len(merged["address"])):
                             merged["address"] = ent["address"]
@@ -480,6 +483,11 @@ class RunConsolidator:
                             "experience": ent.get("experience", "N/A"),
                             "recommendation_rate": ent.get("recommendation_rate", "N/A")
                         }
+                        
+                        # Store rank (keeping the best rank if it's found multiple times)
+                        current_rank = merged["ranks"].get(engine)
+                        if current_rank is None or rank_idx < current_rank:
+                            merged["ranks"][engine] = rank_idx
                         break
                         
                 if not matched:
@@ -491,6 +499,7 @@ class RunConsolidator:
                         "phone": ent.get("phone", "N/A"),
                         "website_url": ent.get("website_url", "N/A"),
                         "sources": [engine],
+                        "ranks": {engine: rank_idx},
                         "detailed_ratings": {
                             engine: {
                                 "rating": ent.get("rating", "N/A"),
@@ -645,14 +654,20 @@ class RunConsolidator:
             for s in ent["sources"]:
                 c_type = CHANNEL_MAP.get(s, "Other")
                 badge_c = "pill-ai" if c_type == "Generative AI" else "pill-map" if c_type == "Local Maps" else "pill-dir"
-                source_pills += f'<span class="badge {badge_c}">{CHANNEL_ICONS.get(s, "")} {s}</span>'
+                slug_name = slugify(ent["name"])
+                item_id = f"item-{s}-{slug_name}"
+                rank = ent["ranks"].get(s, "N/A")
+                rank_suffix = f" (#{rank})" if rank != "N/A" else ""
+                source_pills += f'<a href="#{item_id}" class="badge {badge_c}" onclick="highlightDebugItem(\'{s}\', \'{item_id}\')" style="text-decoration: none; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform=\'scale(1.05)\'" onmouseout="this.style.transform=\'scale(1)\'">{CHANNEL_ICONS.get(s, "")} {s}{rank_suffix}</a> '
                 
             # Build ratings list
             ratings_details = ""
             for s, det in ent["detailed_ratings"].items():
                 rating_str = f"⭐ {det['rating']}" if det['rating'] != "N/A" else "No rating"
                 rev_str = f"({det['review_count']} reviews)" if det['review_count'] != "N/A" else ""
-                ratings_details += f'<div class="rating-row"><strong>{s.title()}:</strong> {rating_str} {rev_str}</div>'
+                rank = ent["ranks"].get(s, "N/A")
+                rank_str = f' | <span style="color: var(--neon-blue); font-weight: 700;">Rank #{rank}</span>' if rank != "N/A" else ""
+                ratings_details += f'<div class="rating-row"><strong>{s.title()}:</strong> {rating_str} {rev_str}{rank_str}</div>'
                 
             # Experience or Fee check
             extra_details = ""
@@ -1556,6 +1571,26 @@ class RunConsolidator:
             font-family: monospace;
         }}
         
+        @keyframes highlight-glow {{
+            0% {{
+                border-color: var(--neon-violet);
+                box-shadow: 0 0 25px rgba(139, 92, 246, 0.6);
+                transform: scale(1.02);
+                background: rgba(139, 92, 246, 0.1);
+            }}
+            100% {{
+                border-color: rgba(255, 255, 255, 0.05);
+                box-shadow: none;
+                transform: scale(1);
+                background: rgba(255, 255, 255, 0.02);
+            }}
+        }}
+        
+        .glowing-highlight {{
+            animation: highlight-glow 2.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            z-index: 10;
+        }}
+        
         .debug-screenshot-col {{
             flex: 1;
             display: flex;
@@ -1860,6 +1895,31 @@ class RunConsolidator:
                 target.style.display = 'block';
                 target.classList.add('active');
             }}
+        }}
+        
+        // 4. Smooth scroll and glow flash for deep dive linking
+        function highlightDebugItem(engine, itemId) {{
+            const target = document.getElementById(itemId);
+            const panel = target ? target.closest('.debug-panel') : document.getElementById('ui-' + engine)?.closest('.debug-panel');
+            
+            if (panel) {{
+                const tabButtons = panel.querySelectorAll('.debug-tab-btn');
+                const uiTabBtn = Array.from(tabButtons).find(btn => btn.innerText.includes('UI') || btn.innerText.includes('Extracted'));
+                
+                if (uiTabBtn && !uiTabBtn.classList.contains('active')) {{
+                    switchDebugTab(uiTabBtn, `ui-${{engine}}`);
+                }}
+            }}
+            
+            setTimeout(() => {{
+                const element = document.getElementById(itemId);
+                if (element) {{
+                    element.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                    element.classList.remove('glowing-highlight');
+                    void element.offsetWidth; // Trigger reflow to restart animation
+                    element.classList.add('glowing-highlight');
+                }}
+            }}, 80);
         }}
     </script>
 </body>
