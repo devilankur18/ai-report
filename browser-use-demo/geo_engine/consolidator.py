@@ -107,12 +107,38 @@ def slugify(text):
     return text.strip('_')
 
 def is_image_url(url):
-    """Checks if a given citation URL points to an image file or is a data URI."""
+    """Checks if a given citation URL points to an image file, is a data URI, or is from an image domain."""
     if not url:
         return False
+    url_lower = url.lower()
+    
+    # 1. Check data URIs
+    if url_lower.startswith('data:image/'):
+        return True
+        
+    # 2. Check standard image extensions on clean URL
     clean_url = url.split('?')[0].split('#')[0].lower()
     image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.tiff', '.ico')
-    return clean_url.endswith(image_extensions) or url.startswith('data:image/')
+    if clean_url.endswith(image_extensions):
+        return True
+        
+    # 3. Check known image host patterns / path substrings (like openai images or search engine image CDN urls)
+    if 'images.openai.com' in url_lower:
+        return True
+    if '/static-rsc-' in url_lower:  # Common image resource prefix
+        return True
+    if 'googleusercontent.com' in url_lower and '/p/' in url_lower:  # Google local/business photo paths
+        return True
+    if 'lh3.googleusercontent.com' in url_lower or 'lh5.googleusercontent.com' in url_lower:
+        return True
+        
+    # 4. Fallback check for general image domains / paths
+    if 'images.' in url_lower or '/images/' in url_lower:
+        # Exclude standard web pages just in case
+        if not clean_url.endswith(('.html', '.htm', '.php', '.aspx', '.jsp')):
+            return True
+            
+    return False
 
 def normalize_entity_name(name):
     """Cleans a provider's name by removing unicode stylings, prefixes, punctuation, and suffixes for deduplication."""
@@ -210,40 +236,41 @@ def get_beautiful_topic_title(prompt, key):
     return f"{city} {specialty}"
         
 def format_json_to_ui(parsed_json, engine):
-    """Generates a premium, clean, human-readable list and interactive UI from the geo_data JSON object."""
+    """Generates premium metadata and content HTML components from the geo_data JSON object."""
     if not parsed_json or not isinstance(parsed_json, dict):
-        return "<p class='no-data'>No structured data extracted.</p>"
+        return ("<p class='no-data'>No metadata extracted.</p>", "<p class='no-data'>No structured data extracted.</p>")
         
-    html = []
+    meta_html = []
+    content_html = []
     
     # 1. Model & Query Metadata
     routed_model = parsed_json.get("routed_model", "Unknown Model")
     search_invoked = parsed_json.get("search_invoked", False)
     queries = parsed_json.get("search_queries", [])
     
-    html.append('<div class="ui-section">')
-    html.append('  <div class="ui-meta-card">')
-    html.append(f'    <div class="ui-meta-row"><strong>🤖 Routed Model:</strong> <span>{routed_model}</span></div>')
-    html.append(f'    <div class="ui-meta-row"><strong>🌐 Search Triggered:</strong> <span>{"Yes ✅" if search_invoked else "No ❌"}</span></div>')
+    meta_html.append('<div class="ui-section">')
+    meta_html.append('  <div class="ui-meta-card">')
+    meta_html.append(f'    <div class="ui-meta-row"><strong>🤖 Routed Model:</strong> <span>{routed_model}</span></div>')
+    meta_html.append(f'    <div class="ui-meta-row"><strong>🌐 Search Triggered:</strong> <span>{"Yes ✅" if search_invoked else "No ❌"}</span></div>')
     if queries:
-        html.append('    <div class="ui-queries-box">')
-        html.append(f'      <strong>🔍 Search Queries ({len(queries)}):</strong>')
-        html.append('      <ul class="ui-queries-list">')
+        meta_html.append('    <div class="ui-queries-box">')
+        meta_html.append(f'      <strong>🔍 Search Queries ({len(queries)}):</strong>')
+        meta_html.append('      <ul class="ui-queries-list">')
         for q in queries:
-            html.append(f'        <li>"{q}"</li>')
-        html.append('      </ul>')
-        html.append('    </div>')
-    html.append('  </div>')
-    html.append('</div>')
+            meta_html.append(f'        <li>"{q}"</li>')
+        meta_html.append('      </ul>')
+        meta_html.append('    </div>')
+    meta_html.append('  </div>')
+    meta_html.append('</div>')
     
     # 2. Extracted Entities List
     entities = parsed_json.get("local_entities", [])
-    html.append('<div class="ui-section" style="margin-top: 20px;">')
-    html.append(f'  <h4 class="ui-section-title">📇 Extracted Profiles ({len(entities)})</h4>')
+    content_html.append('<div class="ui-section">')
+    content_html.append(f'  <h4 class="ui-section-title">📇 Extracted Profiles ({len(entities)})</h4>')
     if not entities:
-        html.append('  <p class="ui-no-profiles">No local business or professional profiles extracted from this stream.</p>')
+        content_html.append('  <p class="ui-no-profiles">No local business or professional profiles extracted from this stream.</p>')
     else:
-        html.append('  <div class="ui-entities-list">')
+        content_html.append('  <div class="ui-entities-list">')
         for ent in entities:
             name = ent.get("name", "Unnamed Provider")
             category = ent.get("category", "Healthcare Specialist")
@@ -254,28 +281,26 @@ def format_json_to_ui(parsed_json, engine):
             web_url = ent.get("website_url", "N/A")
             badge = ent.get("verified_badge", "")
             
-            # Additional keys if any (like consultation_fee, experience)
             fee = ent.get("consultation_fee", "N/A")
             exp = ent.get("experience", "N/A")
             
             slug_name = slugify(name)
             item_id = f"item-{engine}-{slug_name}"
-            html.append(f'    <div class="ui-entity-mini-card" id="{item_id}">')
-            html.append('      <div class="ui-card-top">')
-            html.append(f'        <h5 class="ui-entity-name">{name}</h5>')
+            content_html.append(f'    <div class="ui-entity-mini-card" id="{item_id}">')
+            content_html.append('      <div class="ui-card-top">')
+            content_html.append(f'        <h5 class="ui-entity-name">{name}</h5>')
             if rating != "N/A" and rating:
-                html.append(f'        <span class="ui-rating-tag">⭐ {rating} <span style="opacity: 0.7; font-size: 0.75rem;">({review_count})</span></span>')
-            html.append('      </div>')
+                content_html.append(f'        <span class="ui-rating-tag">⭐ {rating} <span style="opacity: 0.7; font-size: 0.75rem;">({review_count})</span></span>')
+            content_html.append('      </div>')
             
-            html.append('      <div class="ui-card-body">')
-            html.append(f'        <p><strong>🩺 Specialty:</strong> {category}</p>')
-            html.append(f'        <p><strong>📍 Address:</strong> {address}</p>')
+            content_html.append('      <div class="ui-card-body">')
+            content_html.append(f'        <p><strong>🩺 Specialty:</strong> {category}</p>')
+            content_html.append(f'        <p><strong>📍 Address:</strong> {address}</p>')
             if phone != "N/A" and phone:
-                html.append(f'        <p><strong>📞 Phone:</strong> <code>{phone}</code></p>')
+                content_html.append(f'        <p><strong>📞 Phone:</strong> <code>{phone}</code></p>')
             if web_url != "N/A" and web_url:
-                html.append(f'        <p><strong>🔗 Website:</strong> <a href="{web_url}" target="_blank">{web_url}</a></p>')
+                content_html.append(f'        <p><strong>🔗 Website:</strong> <a href="{web_url}" target="_blank">{web_url}</a></p>')
                 
-            # Render fee or experience if present
             extra_lines = []
             if exp != "N/A" and exp:
                 extra_lines.append(f'💼 Experience: {exp}')
@@ -285,42 +310,53 @@ def format_json_to_ui(parsed_json, engine):
                 extra_lines.append(f'✅ Badge: {badge}')
                 
             if extra_lines:
-                html.append(f'        <div class="ui-card-extra">{" | ".join(extra_lines)}</div>')
+                content_html.append(f'        <div class="ui-card-extra">{" | ".join(extra_lines)}</div>')
                 
-            html.append('      </div>')
-            html.append('    </div>')
-        html.append('  </div>')
-    html.append('</div>')
+            content_html.append('      </div>')
+            content_html.append('    </div>')
+        content_html.append('  </div>')
+    content_html.append('</div>')
     
     # 3. Outbound Citations list
     citations = parsed_json.get("web_citations", [])
     if citations:
-        html.append('<div class="ui-section" style="margin-top: 20px;">')
-        html.append(f'  <h4 class="ui-section-title">📑 Outbound Citations ({len(citations)})</h4>')
-        html.append('  <div class="ui-citations-list">')
+        content_html.append('<div class="ui-section" style="margin-top: 20px;">')
+        content_html.append(f'  <h4 class="ui-section-title">📑 Outbound Citations ({len(citations)})</h4>')
+        content_html.append('  <div class="ui-citations-list">')
         for cit in citations:
             c_title = cit.get("title", "Resource Page")
             c_url = cit.get("url", "")
             if c_url:
-                html.append('    <div class="ui-citation-item">')
-                html.append(f'      <a href="{c_url}" target="_blank">🔗 {c_title}</a>')
-                html.append(f'      <span class="ui-citation-url">{c_url}</span>')
-                html.append('    </div>')
-        html.append('  </div>')
-        html.append('</div>')
+                if is_image_url(c_url):
+                    content_html.append('    <div class="ui-citation-item image-citation" style="gap: 8px;">')
+                    content_html.append(f'      <div style="border-radius: 8px; overflow: hidden; background: #070b13; border: 1px solid rgba(255,255,255,0.05); height: 120px; display: flex; align-items: center; justify-content: center;">')
+                    content_html.append(f'        <a href="{c_url}" target="_blank" style="display: block; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">')
+                    content_html.append(f'          <img src="{c_url}" alt="{c_title}" style="max-width: 100%; max-height: 100%; object-fit: contain;">')
+                    content_html.append(f'        </a>')
+                    content_html.append(f'      </div>')
+                    content_html.append(f'      <span style="font-size: 0.8rem; font-weight: 600; color: #ffffff;">🖼️ {c_title}</span>')
+                    content_html.append(f'      <span class="ui-citation-url">{c_url}</span>')
+                    content_html.append('    </div>')
+                else:
+                    content_html.append('    <div class="ui-citation-item">')
+                    content_html.append(f'      <a href="{c_url}" target="_blank">🔗 {c_title}</a>')
+                    content_html.append(f'      <span class="ui-citation-url">{c_url}</span>')
+                    content_html.append('    </div>')
+        content_html.append('  </div>')
+        content_html.append('</div>')
         
     # 4. UTM Tracking list
     utm = parsed_json.get("utm_sources", [])
     if utm:
-        html.append('<div class="ui-section" style="margin-top: 20px;">')
-        html.append(f'  <h4 class="ui-section-title">🏷️ Tracking Sources (UTMs) ({len(utm)})</h4>')
-        html.append('  <div class="ui-utm-list">')
+        meta_html.append('<div class="ui-section" style="margin-top: 20px;">')
+        meta_html.append(f'  <h4 class="ui-section-title">🏷️ Tracking Sources (UTMs) ({len(utm)})</h4>')
+        meta_html.append('  <div class="ui-utm-list">')
         for item in utm:
-            html.append(f'    <div class="ui-utm-item">🎯 <code>{item}</code></div>')
-        html.append('  </div>')
-        html.append('</div>')
+            meta_html.append(f'    <div class="ui-utm-item">🎯 <code>{item}</code></div>')
+        meta_html.append('  </div>')
+        meta_html.append('</div>')
         
-    return "\n".join(html)
+    return ("\n".join(meta_html), "\n".join(content_html))
 
 class RunConsolidator:
     def __init__(self):
@@ -601,7 +637,7 @@ class RunConsolidator:
                     except Exception as e:
                         json_text = f"Error reading/formatting geo_data.json: {e}"
                 
-                ui_html = format_json_to_ui(parsed_json, engine)
+                meta_html, content_html = format_json_to_ui(parsed_json, engine)
                 
                 # Get relative screenshot path
                 screenshot_rel = ""
@@ -614,8 +650,11 @@ class RunConsolidator:
                 screenshot_html_detail = ""
                 if screenshot_rel:
                     screenshot_html_detail = f"""
-                    <div class="screenshot-container-box">
-                        <img src="{screenshot_rel}" alt="{engine.upper()} Screenshot Capture" class="screenshot-box-img">
+                    <div class="screenshot-container-box" style="position: relative; cursor: zoom-in;" onclick="openScreenshotModal('{screenshot_rel}', '{engine.upper()}')" title="Click to zoom / view details">
+                        <img src="{screenshot_rel}" alt="{engine.upper()} Screenshot Capture" class="screenshot-box-img" style="transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <div style="position: absolute; bottom: 12px; right: 12px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px 12px; color: #fff; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; pointer-events: none; backdrop-filter: blur(4px);">
+                            <span>🔍 Click to Zoom</span>
+                        </div>
                     </div>
                     """
                 else:
@@ -632,34 +671,33 @@ class RunConsolidator:
                         <span class="badge {badge_class_detail}">{c_type_detail}</span>
                     </div>
                     <div class="debug-split">
-                        <div class="debug-info-col">
+                        <!-- Left Column: Screenshot and Summary of doctors, citations below it -->
+                        <div class="debug-screenshot-col" style="flex: 1.2; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+                            <h5 style="margin-bottom: 4px; font-size: 0.85rem; text-transform: uppercase; color: var(--neon-blue); letter-spacing: 0.5px;">📷 Agent Dynamic Screen Capture:</h5>
+                            {screenshot_html_detail}
+                            
+                            <!-- Extracted Doctors Summary & Citation Previews shown below image -->
+                            <div class="debug-extracted-content" style="margin-top: 10px;">
+                                {content_html}
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Tech Meta info and raw JSON data -->
+                        <div class="debug-info-col" style="flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
                             <div class="debug-meta-box">
                                 <p><strong>Routed Source:</strong> {engine.upper()}</p>
                                 <p><strong>Run Folder Name:</strong> <code>{os.path.basename(run_dir)}</code></p>
                             </div>
                             
-                            <!-- Tabs Segment -->
-                            <div class="debug-tabs">
-                                <button class="debug-tab-btn active" onclick="switchDebugTab(this, 'ui-{engine}')">📇 Extracted Data UI</button>
-                                <button class="debug-tab-btn" onclick="switchDebugTab(this, 'raw-{engine}')">💻 Raw JSON Data</button>
-                            </div>
+                            {meta_html}
                             
-                            <div class="debug-report-box">
-                                <!-- Human Readable UI Tab -->
-                                <div id="ui-{engine}" class="debug-tab-content active">
-                                    {ui_html}
-                                </div>
-                                
-                                <!-- Raw JSON Tab -->
-                                <div id="raw-{engine}" class="debug-tab-content" style="display: none;">
-                                    <pre class="debug-report-text">{json_text}</pre>
-                                </div>
+                            <!-- Raw JSON data box -->
+                            <div class="debug-tabs" style="margin-top: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding-bottom: 8px;">
+                                <span class="debug-tab-btn active" style="cursor: default;">💻 Raw JSON Data</span>
                             </div>
-                        </div>
-
-                        <div class="debug-screenshot-col">
-                            <h5 style="margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase; color: var(--neon-blue); letter-spacing: 0.5px;">📷 Agent Dynamic Screen Capture:</h5>
-                            {screenshot_html_detail}
+                            <div class="debug-report-box" style="flex: 1; min-height: 250px;">
+                                <pre class="debug-report-text">{json_text}</pre>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1626,6 +1664,135 @@ class RunConsolidator:
             display: block;
         }}
         
+        /* Modal Lightbox styles */
+        .modal-overlay {{
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(3, 7, 18, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }}
+        
+        .modal-overlay.active {{
+            opacity: 1;
+        }}
+        
+        .modal-card {{
+            width: 90vw;
+            height: 90vh;
+            background: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }}
+        
+        .modal-overlay.active .modal-card {{
+            transform: scale(1);
+        }}
+        
+        .modal-header {{
+            padding: 16px 28px;
+            background: rgba(15, 23, 42, 0.9);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .modal-header h3 {{
+            font-size: 1.1rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #f472b6 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
+        }}
+        
+        .modal-controls {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }}
+        
+        .modal-btn {{
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #f3f4f6;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+        
+        .modal-btn:hover {{
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }}
+        
+        .modal-close-btn {{
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+        
+        .modal-close-btn:hover {{
+            background: rgba(239, 68, 68, 0.25);
+            color: #ffffff;
+        }}
+        
+        .modal-body {{
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            background: #020617;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .modal-image-container {{
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }}
+        
+        .modal-image-container img {{
+            max-width: 95%;
+            max-height: 95%;
+            object-fit: contain;
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+            user-select: none;
+            -webkit-user-drag: none;
+        }}
+        
         @media (max-width: 1200px) {{
             .debug-split {{
                 flex-direction: column;
@@ -1793,6 +1960,27 @@ class RunConsolidator:
         
     </div>
 
+    <!-- Screenshot Zoom Lightbox Modal -->
+    <div id="screenshot-modal" class="modal-overlay" onclick="closeScreenshotModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title">📷 ENGINE SCREENSHOT</h3>
+                <div class="modal-controls">
+                    <button class="modal-btn" onclick="zoomModalImg(1.25)">➕ Zoom In</button>
+                    <button class="modal-btn" onclick="zoomModalImg(0.8)">➖ Zoom Out</button>
+                    <button class="modal-btn" onclick="resetModalImg()">🔄 Reset</button>
+                    <a id="modal-download" href="#" download class="modal-btn" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">⬇️ Download</a>
+                    <button class="modal-close-btn" onclick="closeScreenshotModal(null)">✕</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="modal-image-container" id="modal-img-container">
+                    <img id="modal-image" src="" alt="Screenshot" draggable="false">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Client-side Interactive Scripts -->
     <script>
         // 1. Interactive real-time search filtering
@@ -1861,18 +2049,6 @@ class RunConsolidator:
         
         // 4. Smooth scroll and glow flash for deep dive linking
         function highlightDebugItem(engine, itemId) {{
-            const target = document.getElementById(itemId);
-            const panel = target ? target.closest('.debug-panel') : document.getElementById('ui-' + engine)?.closest('.debug-panel');
-            
-            if (panel) {{
-                const tabButtons = panel.querySelectorAll('.debug-tab-btn');
-                const uiTabBtn = Array.from(tabButtons).find(btn => btn.innerText.includes('UI') || btn.innerText.includes('Extracted'));
-                
-                if (uiTabBtn && !uiTabBtn.classList.contains('active')) {{
-                    switchDebugTab(uiTabBtn, `ui-${{engine}}`);
-                }}
-            }}
-            
             setTimeout(() => {{
                 const element = document.getElementById(itemId);
                 if (element) {{
@@ -1883,6 +2059,97 @@ class RunConsolidator:
                 }}
             }}, 80);
         }}
+
+        // 5. Interactive Fullscreen Screenshot Zoom & Panning (Lightbox)
+        let currentZoom = 1;
+        let isDragging = false;
+        let startX = 0, startY = 0;
+        let translateX = 0, translateY = 0;
+        const modalImg = document.getElementById('modal-image');
+        const modalContainer = document.getElementById('modal-img-container');
+
+        function openScreenshotModal(imgSrc, engineName) {{
+            const modal = document.getElementById('screenshot-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalDownload = document.getElementById('modal-download');
+            
+            modalImg.src = imgSrc;
+            modalTitle.innerText = `📷 ${{engineName}} Agent Dynamic Capture`;
+            modalDownload.href = imgSrc;
+            modalDownload.download = `screenshot_${{engineName.toLowerCase()}}.png`;
+            
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+            resetModalImg();
+        }}
+
+        function closeScreenshotModal(event) {{
+            if (!event || event.target === document.getElementById('screenshot-modal')) {{
+                const modal = document.getElementById('screenshot-modal');
+                modal.classList.remove('active');
+                setTimeout(() => {{
+                    modal.style.display = 'none';
+                }}, 300);
+            }}
+        }}
+
+        function zoomModalImg(factor) {{
+            currentZoom = Math.min(Math.max(currentZoom * factor, 0.5), 6);
+            updateModalImgTransform();
+        }}
+
+        function resetModalImg() {{
+            currentZoom = 1;
+            translateX = 0;
+            translateY = 0;
+            updateModalImgTransform();
+        }}
+
+        function updateModalImgTransform() {{
+            modalImg.style.transform = `translate(${{translateX}}px, ${{translateY}}px) scale(${{currentZoom}})`;
+            if (currentZoom > 1) {{
+                modalImg.style.cursor = 'grab';
+            }} else {{
+                modalImg.style.cursor = 'default';
+            }}
+        }}
+
+        // Drag / Pan mouse events
+        modalContainer.addEventListener('mousedown', (e) => {{
+            if (currentZoom <= 1) return;
+            isDragging = true;
+            modalImg.style.cursor = 'grabbing';
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        }});
+
+        window.addEventListener('mousemove', (e) => {{
+            if (!isDragging) return;
+            translateX = e.clientX - startX;
+            translateY = e.clientY - startY;
+            updateModalImgTransform();
+        }});
+
+        window.addEventListener('mouseup', () => {{
+            if (isDragging) {{
+                isDragging = false;
+                modalImg.style.cursor = 'grab';
+            }}
+        }});
+
+        // Mousewheel zoom support
+        modalContainer.addEventListener('wheel', (e) => {{
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.15 : 0.85;
+            zoomModalImg(factor);
+        }}, {{ passive: false }});
+
+        // Close on Escape key press
+        window.addEventListener('keydown', (e) => {{
+            if (e.key === 'Escape') {{
+                closeScreenshotModal(null);
+            }}
+        }});
     </script>
 </body>
 </html>
