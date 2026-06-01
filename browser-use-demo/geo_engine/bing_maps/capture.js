@@ -37,21 +37,6 @@ async function run() {
         process.exit(1);
     }
 
-    const pages = await browser.pages();
-    let page = pages.find(p => p.url().includes('bing.com/maps'));
-
-    if (!page) {
-        console.log("No active Bing Maps tab found. Opening a new tab...");
-        page = await browser.newPage();
-        await page.goto('https://www.bing.com/maps', { waitUntil: 'networkidle2' });
-    } else {
-        console.log(`Found active Bing Maps tab: ${page.url()}`);
-        await page.bringToFront();
-        await page.goto('https://www.bing.com/maps', { waitUntil: 'networkidle2' });
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
     // Extract City and Specialty from the Prompt if it is a long conversational sentence
     let searchTerm = prompt;
     if (prompt.length > 50) {
@@ -78,6 +63,19 @@ async function run() {
     fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');
     fs.appendFileSync(outputFile, `SEARCH_QUERY: ${searchTerm}\n\n`, 'utf8');
 
+    // Open a fresh tab for the direct query navigation (most stable approach)
+    let page;
+    try {
+        page = await browser.newPage();
+    } catch (e) {
+        const pages = await browser.pages();
+        page = pages[0] || await browser.newPage();
+    }
+
+    const searchUrl = `https://www.bing.com/maps?q=${encodeURIComponent(searchTerm)}`;
+    console.log(`Navigating directly to Bing Maps URL: ${searchUrl}`);
+    await page.goto(searchUrl, { waitUntil: 'networkidle2' });
+
     // Handle Bing Consent/Cookie Dialog if present
     try {
         console.log("Checking for Bing Consent Dialog/Banner...");
@@ -97,148 +95,221 @@ async function run() {
         console.log(`[!] Consent dialog check skipped: ${consentErr.message}`);
     }
 
-    console.log(`Searching for "${searchTerm}" on Bing Maps...`);
+    console.log("Waiting for Bing Maps results list to load (max 15s)...");
+    const listSelector = 'li.listingItem_fPE1q, li[class*="listingItem"], .b_lstcards, [role="listitem"]';
+    try {
+        await page.waitForSelector(listSelector, { timeout: 15000 });
+        console.log("[✓] Bing Maps search results successfully loaded!");
+    } catch (e) {
+        console.log("[!] Timeout waiting for Bing listing elements. Proceeding with DOM snapshot anyway.");
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    let localResults = [];
 
     try {
-        // Bing Maps Search Box Selector
-        const searchInputSelector = 'input#searchBoxInput, input#maps_sb, input[title*="Search"], input[aria-label*="Search"]';
-        
-        // Wait for search box using evaluate for maximum reliability
-        let searchBoxFound = false;
-        for (let i = 0; i < 5; i++) {
-            searchBoxFound = await page.evaluate((sel) => {
-                const el = document.querySelector(sel);
-                return !!el;
-            }, 'input#searchBoxInput, input#maps_sb, input[title*="Search"], input[aria-label*="Search"]');
+        // Scroll the list sidebar to trigger dynamic loading (same as Google Maps sidebar scrolling)
+        console.log("Scrolling results sidebar to load entries...");
+        await page.evaluate(async () => {
+            const sidebar = document.querySelector('.contentPane_DBp6Q') || document.querySelector('.b_lstcards') || window;
+            if (sidebar) {
+                sidebar.scrollBy(0, 500);
+                await new Promise(r => setTimeout(r, 800));
+                sidebar.scrollBy(0, 500);
+                await new Promise(r => setTimeout(r, 800));
+                sidebar.scrollBy(0, -1000);
+                await new Promise(r => setTimeout(r, 800));
+            }
+        });
+
+        // Extract a list of result listing elements
+        const listItemsCount = await page.evaluate(() => {
+            return document.querySelectorAll('li.listingItem_fPE1q, li[class*="listingItem"]').length;
+        });
+
+        console.log(`Found ${listItemsCount} local listings in list view. Clicking each sequentially...`);
+
+        // Click and scrape up to 5-10 listings
+        const maxToScrape = Math.min(listItemsCount, 6);
+        for (let i = 0; i < maxToScrape; i++) {
+            console.log(`Scraping listing #${i + 1} of ${maxToScrape}...`);
             
-            if (searchBoxFound) break;
-            await new Promise(resolve => setTimeout(resolve, 1500));
-        }
+            // Extract listing baseline from card text first as a highly structured fallback
+            const cardFallback = await page.evaluate((idx) => {
+                const li = document.querySelectorAll('li.listingItem_fPE1q, li[class*="listingItem"]')[idx];
+                if (!li) return null;
 
-        if (!searchBoxFound) {
-            throw new Error("Failed to find Bing Maps search input box after multiple retries.");
-        }
+                const nameEl = li.querySelector('.l_magTitle') || li.querySelector('h3') || li.querySelector('[class*="Title"]');
+                const name = nameEl ? nameEl.innerText.trim() : "N/A";
+                
+                const factRows = Array.from(li.querySelectorAll('.b_factrow'));
+                const category = factRows[0] ? factRows[0].innerText.trim() : "Healthcare Specialist";
+                const address = factRows[1] ? factRows[1].innerText.trim() : "Local Area";
+                const phone = li.querySelector('span.nowrap')?.innerText.trim() || "N/A";
 
-        // Get the active search box selector
-        const activeSelector = await page.evaluate(() => {
-            const sels = ['input#searchBoxInput', 'input#maps_sb', 'input[title*="Search"]', 'input[aria-label*="Search"]'];
-            for (const s of sels) {
-                if (document.querySelector(s)) return s;
+                return { name, category, address, phone };
+            }, i);
+
+            if (!cardFallback || cardFallback.name === "N/A") {
+                continue;
             }
-            return 'input#searchBoxInput';
-        });
 
-        await page.focus(activeSelector);
-        
-        // Clear input first
-        await page.evaluate((sel) => {
-            const el = document.querySelector(sel);
-            if (el) el.value = '';
-        }, activeSelector);
-
-        // Type query
-        await page.keyboard.type(searchTerm, { delay: 15 });
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Press Enter or click search icon
-        await page.keyboard.press('Enter');
-        
-        console.log("Search query submitted. Waiting for Bing Maps to load results (max 15s)...");
-        await new Promise(resolve => setTimeout(resolve, 8000)); // Dynamic loading safety wait
-
-        let localResults = [];
-
-        // ---------- NEW OVERLAY‑BFPR FETCH ----------
-        console.log("Fetching detailed data via Bing overlaybfpr endpoint...");
-        // 1️⃣ Get a list of result cards (same selector groups as before) to obtain the internal ypid for each place
-        const resultCards = await page.evaluate(() => {
-            const selectors = [
-                'a[href*="/maps/detail"], a[href*="/maps/place"], .b_entityTitle, .list_item, .ent-card',
-                '.entityTitle, .entityCard, .place-card',
-                'div[role="listitem"] a'
-            ];
-            const elems = [];
-            selectors.forEach(sel => {
-                document.querySelectorAll(sel).forEach(node => elems.push(node));
-            });
-            // Extract the display name and the internal ypid (local_ypid) if present in the href
-            return elems.map(el => {
-                const name = el.innerText.trim();
-                const href = el.getAttribute('href') || '';
-                const ypidMatch = href.match(/local_ypid%3A%22([^\"]+)\%22/);
-                const ypid = ypidMatch ? decodeURIComponent(ypidMatch[1]) : null;
-                return {name, ypid, href};
-            }).filter(o => o.name && o.ypid);
-        });
-
-        // 2️⃣ For each card (up to 10) request the overlay endpoint directly
-        const enriched = [];
-        for (let i = 0; i < resultCards.length && enriched.length < 10; i++) {
-            const {name, ypid} = resultCards[i];
-            // Construct the overlay URL – most parameters can be static; only the ypid varies
-            const overlayUrl = `https://www.bing.com/maps/overlaybfpr?local_ypid="${ypid}"&cardType=details&count=20&ecount=20&first=0&efirst=1&form=MPSRBX&mapsV10=1`;
-            console.log(`Fetching overlay for "${name}" → ${overlayUrl}`);
             try {
-                const response = await page.goto(overlayUrl, {waitUntil: 'networkidle2'});
-                const json = await response.json();
-                // The JSON structure varies; we pick common fields with graceful fallbacks
-                const entry = {
-                    name: name,
-                    category: 'Medical',
-                    address: json.address?.freeformAddress || json.address?.addressLine || 'N/A',
-                    rating: json.rating?.value?.toString() || 'N/A',
-                    review_count: json.userRatingCount?.toString() || 'N/A',
-                    phone: json.phoneNumber?.toString() || 'N/A',
-                    website_url: json.websiteUrl?.toString() || 'N/A',
-                    claimed_status: json.claimed ? 'Claimed' : 'Unclaimed',
-                    opening_hours: json.openingHours?.join(', ') || 'N/A'
-                };
-                console.log('Overlay entry extracted:', entry);
-                enriched.push(entry);
-            } catch (err) {
-                console.warn(`Failed overlay fetch for "${name}": ${err.message}`);
+                // Click on the listing card button to open the details view bubble
+                await page.evaluate((idx) => {
+                    const li = document.querySelectorAll('li.listingItem_fPE1q, li[class*="listingItem"]')[idx];
+                    if (li) {
+                        const btn = li.querySelector('button');
+                        if (btn) {
+                            btn.scrollIntoView({ block: 'center' });
+                            btn.click();
+                        } else {
+                            li.scrollIntoView({ block: 'center' });
+                            li.click();
+                        }
+                    }
+                }, i);
+
+                // Wait for the detailed card (b_lcmgzinfocard) to load/render
+                await new Promise(resolve => setTimeout(resolve, 2500));
+
+                // Scrape all detailed data out of the DOM
+                const details = await page.evaluate((fallback) => {
+                    const detailCard = document.querySelector('div.b_lcmgzinfocard, [class*="lcmgzinfocard"], div.b_magInfoCard');
+                    if (!detailCard) return null;
+
+                    // Name
+                    const nameEl = detailCard.querySelector('h2') || detailCard.querySelector('h3') || detailCard.querySelector('.b_entityTitle');
+                    const name = nameEl ? nameEl.innerText.trim() : fallback.name;
+
+                    // Category
+                    const categoryEl = detailCard.querySelector('.b_factrow');
+                    const category = categoryEl ? categoryEl.innerText.trim() : fallback.category;
+
+                    // Address
+                    const addressEl = detailCard.querySelector('.b_wrapaddress, [class*="address"]');
+                    const address = addressEl ? addressEl.innerText.trim() : fallback.address;
+
+                    // Phone Link Extraction
+                    let phone = fallback.phone;
+                    const phoneLink = detailCard.querySelector('a[href^="tel:"]');
+                    if (phoneLink) {
+                        phone = phoneLink.innerText.trim();
+                    }
+
+                    // Website URL & Decode
+                    let website_url = "N/A";
+                    const websiteLink = detailCard.querySelector('a[href*="/alink/link"]');
+                    if (websiteLink) {
+                        const href = websiteLink.getAttribute('href') || '';
+                        const match = href.match(/url=([^&]+)/);
+                        if (match) {
+                            website_url = decodeURIComponent(match[1]);
+                        } else {
+                            website_url = websiteLink.innerText.trim() || websiteLink.getAttribute('href') || "N/A";
+                        }
+                    }
+
+                    // Claimed Status
+                    const claimEl = detailCard.querySelector('a[href*="bingplaces.com"]');
+                    const claimedStatus = claimEl ? "Unclaimed" : "Claimed/Verified";
+
+                    // Rating & Reviews Extract
+                    let rating = "N/A";
+                    let reviewCount = "N/A";
+                    const ratingEl = detailCard.querySelector('.b_rating, [class*="rating"], [class*="star"]');
+                    if (ratingEl) {
+                        const text = ratingEl.innerText || ratingEl.getAttribute('title') || '';
+                        const match = text.match(/([0-9.]+)\s*(?:stars?|\s*\(?([0-9,]+)\)?)/i);
+                        if (match) {
+                            rating = match[1];
+                            if (match[2]) reviewCount = match[2];
+                        }
+                    }
+
+                    return {
+                        name,
+                        category,
+                        address,
+                        rating,
+                        review_count: reviewCount,
+                        phone,
+                        website_url,
+                        claimed_status: claimedStatus
+                    };
+                }, cardFallback);
+
+                if (details) {
+                    localResults.push(details);
+                    console.log(`[✓] Scraped detailed GBP for: ${details.name}`);
+                } else {
+                    // Detail bubble check failed; append fallback record
+                    localResults.push({
+                        ...cardFallback,
+                        rating: "N/A",
+                        review_count: "N/A",
+                        website_url: "N/A",
+                        claimed_status: "Verified/Claimed"
+                    });
+                    console.log(`[✓] Scraped baseline card (fallback) for: ${cardFallback.name}`);
+                }
+
+            } catch (cardClickErr) {
+                console.log(`[!] Error clicking listing #${i + 1}: ${cardClickErr.message}`);
+                localResults.push({
+                    ...cardFallback,
+                    rating: "N/A",
+                    review_count: "N/A",
+                    website_url: "N/A",
+                    claimed_status: "Verified/Claimed"
+                });
             }
         }
-        // Return the enriched list (already limited to 10)
-        localResults = enriched;
+
         console.log(`[✓] Scraped ${localResults.length} business profile entries from Bing Maps!`);
 
-        // Output structured results to log stream
-        const pageData = {
-            ai_overview: "",
-            local_results: localResults,
-            organic_results: []
-        };
+        // Close the page we opened to clean up browser memory
+        await page.close();
 
-        const logContent = `\n============================================================\n` +
-                           `[BING_MAPS DOM EXTRACTION RESULTS]\n` +
-                           `Timestamp: ${new Date().toISOString()}\n` +
-                           `============================================================\n` +
-                           JSON.stringify(pageData, null, 4) + "\n";
-        
-        fs.appendFileSync(outputFile, logContent, 'utf8');
-        console.log(`[✓] Appended extracted DOM metadata to: ${path.basename(outputFile)}`);
-
-        // Take Full Page/Viewport Screenshot
-        console.log("Taking Bing Maps screenshot in run folder...");
-        try {
-            await page.screenshot({
-                path: screenshotPath,
-                fullPage: false
-            });
-            console.log(`[✓] Screenshot saved to: ${path.basename(screenshotPath)}`);
-        } catch (screenshotError) {
-            console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
-        }
-
-        await browser.disconnect();
-        process.exit(0);
-
-    } catch (err) {
-        console.error(`Error interacting with Bing Maps: ${err.message}`);
-        await browser.disconnect();
-        process.exit(1);
+    } catch (scrapingErr) {
+        console.error(`Error during Bing Maps listing extraction: ${scrapingErr.message}`);
     }
+
+    // Output structured results to log stream
+    const pageData = {
+        ai_overview: "",
+        local_results: localResults,
+        organic_results: []
+    };
+
+    const logContent = `\n============================================================\n` +
+                       `[BING_MAPS DOM EXTRACTION RESULTS]\n` +
+                       `Timestamp: ${new Date().toISOString()}\n` +
+                       `============================================================\n` +
+                       JSON.stringify(pageData, null, 4) + "\n";
+    
+    fs.appendFileSync(outputFile, logContent, 'utf8');
+    console.log(`[✓] Appended extracted DOM metadata to: ${path.basename(outputFile)}`);
+
+    // Take Full Page/Viewport Screenshot on a newly-navigated page for high-fidelity debugging
+    console.log("Taking Bing Maps screenshot in run folder...");
+    try {
+        const screenshotPage = await browser.newPage();
+        await screenshotPage.goto(searchUrl, { waitUntil: 'networkidle2' });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        await screenshotPage.screenshot({
+            path: screenshotPath,
+            fullPage: false
+        });
+        await screenshotPage.close();
+        console.log(`[✓] Screenshot saved to: ${path.basename(screenshotPath)}`);
+    } catch (screenshotError) {
+        console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
+    }
+
+    await browser.disconnect();
+    process.exit(0);
 }
 
 run();
