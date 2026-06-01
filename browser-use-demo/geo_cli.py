@@ -155,8 +155,9 @@ def main():
     parser.add_argument("--city", default="Hardoi", help="Target city (default: Hardoi)")
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
-    parser.add_argument("--engine", default="chatgpt,gemini", 
-                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, google_maps, bing_maps, practo, justdial; default: chatgpt,gemini)")
+    parser.add_argument("--engine", default="chatgpt,gemini,google,bing,perplexity,google_maps,bing_maps,practo,justdial", 
+                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, google_maps, bing_maps, practo, justdial; default: all engines)")
+
     
     args = parser.parse_args()
     
