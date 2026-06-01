@@ -37,26 +37,32 @@ async function run() {
         process.exit(1);
     }
 
-    // Extract City and Specialty from prompt
-    let city = "Lucknow";
-    let specialty = "orthopedician";
+    // Extract City and Specialty from arguments or prompt
+    let city = args.city;
+    let specialty = args.specialty;
 
-    const cityMatch = prompt.match(/in\s+([A-Za-z\s]+?)(?:\s+with|\s+and|\s*$|\?)/i);
-    if (cityMatch) {
-        city = cityMatch[1].trim();
-    }
-    
-    const specMatch = prompt.match(/most\s+reliable\s+([A-Za-z\s\-]+?)\s+in/i) || 
-                      prompt.match(/Who\s+are\s+the\s+([A-Za-z\s\-]+?)\s+in/i) ||
-                      prompt.match(/([A-Za-z\s\-]+?)\s+in/i);
-    if (specMatch) {
-        specialty = specMatch[1].trim();
-    }
+    if (!city || !specialty) {
+        city = "Lucknow";
+        specialty = "orthopedician";
 
-    specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
+        const cityMatch = prompt.match(/in\s+([^,with?]+?)(?:\s+with|\s+and|\s*$|\?)/i);
+        if (cityMatch) {
+            city = cityMatch[1].trim();
+        }
+        
+        const specMatch = prompt.match(/most\s+reliable\s+([A-Za-z\s\-]+?)\s+in/i) || 
+                          prompt.match(/Who\s+are\s+the\s+([A-Za-z\s\-]+?)\s+in/i) ||
+                          prompt.match(/([A-Za-z\s\-]+?)\s+in/i);
+        if (specMatch) {
+            specialty = specMatch[1].trim();
+        }
+        specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
+    }
 
     // Map to canonical Justdial URL slugs
-    const formattedCity = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+    // If city contains a comma (e.g. "Naini, Prayagraj"), directories index by the main parent city (e.g. "Prayagraj")
+    let parentCity = city.includes(',') ? city.split(',').pop().trim() : city;
+    const formattedCity = parentCity.charAt(0).toUpperCase() + parentCity.slice(1).toLowerCase();
     let formattedSpecialty = specialty.charAt(0).toUpperCase() + specialty.slice(1).toLowerCase();
 
     if (formattedSpecialty.toLowerCase() === 'orthopedician' || formattedSpecialty.toLowerCase() === 'orthopedicians' || formattedSpecialty.toLowerCase() === 'orthopedist' || formattedSpecialty.toLowerCase() === 'orthopedists') {

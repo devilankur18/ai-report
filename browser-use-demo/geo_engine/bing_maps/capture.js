@@ -37,17 +37,18 @@ async function run() {
         process.exit(1);
     }
 
-    // Extract City and Specialty from the Prompt if it is a long conversational sentence
-    let searchTerm = prompt;
-    if (prompt.length > 50) {
-        let city = "Lucknow";
-        let specialty = "orthopedicians";
-
-        const cityMatch = prompt.match(/in\s+([A-Za-z\s]+?)(?:\s+with|\s+and|\s*$|\?)/i);
+    // Extract City and Specialty from arguments or Prompt
+    let city = args.city;
+    let specialty = args.specialty;
+    
+    if (!city || !specialty) {
+        // Fallback to regex parsing if not passed directly
+        city = "Lucknow";
+        specialty = "orthopedicians";
+        const cityMatch = prompt.match(/in\s+([^,with?]+?)(?:\s+with|\s+and|\s*$|\?)/i);
         if (cityMatch) {
             city = cityMatch[1].trim();
         }
-        
         const specMatch = prompt.match(/most\s+reliable\s+([A-Za-z\s\-]+?)\s+in/i) || 
                           prompt.match(/Who\s+are\s+the\s+([A-Za-z\s\-]+?)\s+in/i) ||
                           prompt.match(/([A-Za-z\s\-]+?)\s+in/i);
@@ -55,9 +56,10 @@ async function run() {
             specialty = specMatch[1].trim();
         }
         specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
-        searchTerm = `${specialty} in ${city}`;
-        console.log(`[Parser] Parsed long prompt into local maps query: "${searchTerm}"`);
     }
+    
+    let searchTerm = `${specialty} in ${city}`;
+    console.log(`[Parser] Formulated local maps query: "${searchTerm}"`);
 
     fs.writeFileSync(outputFile, `=== Bing Maps Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
     fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');

@@ -67,6 +67,8 @@ def run_single_engine(engine, city, specialty, prompt_override=None):
         "node",
         capture_script,
         "--prompt", prompt,
+        "--city", city,
+        "--specialty", specialty,
         "--output", raw_stream_file,
         "--screenshot", screenshot_file
     ]

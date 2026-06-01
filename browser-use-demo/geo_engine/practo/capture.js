@@ -37,27 +37,32 @@ async function run() {
         process.exit(1);
     }
 
-    // Extract City and Specialty from the Prompt
-    let city = "Lucknow";
-    let specialty = "orthopedician";
+    // Extract City and Specialty from arguments or prompt
+    let city = args.city;
+    let specialty = args.specialty;
 
-    const cityMatch = prompt.match(/in\s+([A-Za-z\s]+?)(?:\s+with|\s+and|\s*$|\?)/i);
-    if (cityMatch) {
-        city = cityMatch[1].trim();
-    }
-    
-    const specMatch = prompt.match(/most\s+reliable\s+([A-Za-z\s\-]+?)\s+in/i) || 
-                      prompt.match(/Who\s+are\s+the\s+([A-Za-z\s\-]+?)\s+in/i) ||
-                      prompt.match(/([A-Za-z\s\-]+?)\s+in/i);
-    if (specMatch) {
-        specialty = specMatch[1].trim();
-    }
+    if (!city || !specialty) {
+        city = "Lucknow";
+        specialty = "orthopedician";
 
-    // Clean up specialty string
-    specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
+        const cityMatch = prompt.match(/in\s+([^,with?]+?)(?:\s+with|\s+and|\s*$|\?)/i);
+        if (cityMatch) {
+            city = cityMatch[1].trim();
+        }
+        
+        const specMatch = prompt.match(/most\s+reliable\s+([A-Za-z\s\-]+?)\s+in/i) || 
+                          prompt.match(/Who\s+are\s+the\s+([A-Za-z\s\-]+?)\s+in/i) ||
+                          prompt.match(/([A-Za-z\s\-]+?)\s+in/i);
+        if (specMatch) {
+            specialty = specMatch[1].trim();
+        }
+        specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
+    }
 
     // Map city and specialty to canonical Practo SEO slugs
-    const formattedCity = city.toLowerCase().replace(/\s+/g, '-');
+    // If city contains a comma (e.g. "Naini, Prayagraj"), directories index by the main parent city (e.g. "Prayagraj")
+    let parentCity = city.includes(',') ? city.split(',').pop().trim() : city;
+    const formattedCity = parentCity.toLowerCase().replace(/\s+/g, '-');
     let formattedSpecialty = specialty.toLowerCase();
 
     if (formattedSpecialty === 'orthopedician' || formattedSpecialty === 'orthopedicians' || formattedSpecialty === 'orthopedist' || formattedSpecialty === 'orthopedists') {
