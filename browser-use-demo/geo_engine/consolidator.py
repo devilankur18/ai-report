@@ -74,6 +74,15 @@ def clean_unicode_bold(text):
             out.append(c)
     return "".join(out)
 
+def slugify(text):
+    """Converts a string to a clean alphanumeric snake_case token for consistent HTML IDs."""
+    if not text:
+        return ""
+    text = text.lower()
+    text = clean_unicode_bold(text)
+    text = re.sub(r'[^a-z0-9]+', '_', text)
+    return text.strip('_')
+
 def normalize_entity_name(name):
     """Cleans a provider's name by removing unicode stylings, prefixes, punctuation, and suffixes for deduplication."""
     if not name:
@@ -168,6 +177,117 @@ def get_beautiful_topic_title(prompt, key):
         return "Unified GEO Audit Report"
         
     return f"{city} {specialty}"
+        
+def format_json_to_ui(parsed_json, engine):
+    """Generates a premium, clean, human-readable list and interactive UI from the geo_data JSON object."""
+    if not parsed_json or not isinstance(parsed_json, dict):
+        return "<p class='no-data'>No structured data extracted.</p>"
+        
+    html = []
+    
+    # 1. Model & Query Metadata
+    routed_model = parsed_json.get("routed_model", "Unknown Model")
+    search_invoked = parsed_json.get("search_invoked", False)
+    queries = parsed_json.get("search_queries", [])
+    
+    html.append('<div class="ui-section">')
+    html.append('  <div class="ui-meta-card">')
+    html.append(f'    <div class="ui-meta-row"><strong>🤖 Routed Model:</strong> <span>{routed_model}</span></div>')
+    html.append(f'    <div class="ui-meta-row"><strong>🌐 Search Triggered:</strong> <span>{"Yes ✅" if search_invoked else "No ❌"}</span></div>')
+    if queries:
+        html.append('    <div class="ui-queries-box">')
+        html.append(f'      <strong>🔍 Search Queries ({len(queries)}):</strong>')
+        html.append('      <ul class="ui-queries-list">')
+        for q in queries:
+            html.append(f'        <li>"{q}"</li>')
+        html.append('      </ul>')
+        html.append('    </div>')
+    html.append('  </div>')
+    html.append('</div>')
+    
+    # 2. Extracted Entities List
+    entities = parsed_json.get("local_entities", [])
+    html.append('<div class="ui-section" style="margin-top: 20px;">')
+    html.append(f'  <h4 class="ui-section-title">📇 Extracted Profiles ({len(entities)})</h4>')
+    if not entities:
+        html.append('  <p class="ui-no-profiles">No local business or professional profiles extracted from this stream.</p>')
+    else:
+        html.append('  <div class="ui-entities-list">')
+        for ent in entities:
+            name = ent.get("name", "Unnamed Provider")
+            category = ent.get("category", "Healthcare Specialist")
+            address = ent.get("address", "N/A")
+            rating = ent.get("rating", "N/A")
+            review_count = ent.get("review_count", "N/A")
+            phone = ent.get("phone", "N/A")
+            web_url = ent.get("website_url", "N/A")
+            badge = ent.get("verified_badge", "")
+            
+            # Additional keys if any (like consultation_fee, experience)
+            fee = ent.get("consultation_fee", "N/A")
+            exp = ent.get("experience", "N/A")
+            
+            html.append('    <div class="ui-entity-mini-card">')
+            html.append('      <div class="ui-card-top">')
+            html.append(f'        <h5 class="ui-entity-name">{name}</h5>')
+            if rating != "N/A" and rating:
+                html.append(f'        <span class="ui-rating-tag">⭐ {rating} <span style="opacity: 0.7; font-size: 0.75rem;">({review_count})</span></span>')
+            html.append('      </div>')
+            
+            html.append('      <div class="ui-card-body">')
+            html.append(f'        <p><strong>🩺 Specialty:</strong> {category}</p>')
+            html.append(f'        <p><strong>📍 Address:</strong> {address}</p>')
+            if phone != "N/A" and phone:
+                html.append(f'        <p><strong>📞 Phone:</strong> <code>{phone}</code></p>')
+            if web_url != "N/A" and web_url:
+                html.append(f'        <p><strong>🔗 Website:</strong> <a href="{web_url}" target="_blank">{web_url}</a></p>')
+                
+            # Render fee or experience if present
+            extra_lines = []
+            if exp != "N/A" and exp:
+                extra_lines.append(f'💼 Experience: {exp}')
+            if fee != "N/A" and fee:
+                extra_lines.append(f'🪙 Fee: {fee}')
+            if badge:
+                extra_lines.append(f'✅ Badge: {badge}')
+                
+            if extra_lines:
+                html.append(f'        <div class="ui-card-extra">{" | ".join(extra_lines)}</div>')
+                
+            html.append('      </div>')
+            html.append('    </div>')
+        html.append('  </div>')
+    html.append('</div>')
+    
+    # 3. Outbound Citations list
+    citations = parsed_json.get("web_citations", [])
+    if citations:
+        html.append('<div class="ui-section" style="margin-top: 20px;">')
+        html.append(f'  <h4 class="ui-section-title">📑 Outbound Citations ({len(citations)})</h4>')
+        html.append('  <div class="ui-citations-list">')
+        for cit in citations:
+            c_title = cit.get("title", "Resource Page")
+            c_url = cit.get("url", "")
+            if c_url:
+                html.append('    <div class="ui-citation-item">')
+                html.append(f'      <a href="{c_url}" target="_blank">🔗 {c_title}</a>')
+                html.append(f'      <span class="ui-citation-url">{c_url}</span>')
+                html.append('    </div>')
+        html.append('  </div>')
+        html.append('</div>')
+        
+    # 4. UTM Tracking list
+    utm = parsed_json.get("utm_sources", [])
+    if utm:
+        html.append('<div class="ui-section" style="margin-top: 20px;">')
+        html.append(f'  <h4 class="ui-section-title">🏷️ Tracking Sources (UTMs) ({len(utm)})</h4>')
+        html.append('  <div class="ui-utm-list">')
+        for item in utm:
+            html.append(f'    <div class="ui-utm-item">🎯 <code>{item}</code></div>')
+        html.append('  </div>')
+        html.append('</div>')
+        
+    return "\n".join(html)
 
 class RunConsolidator:
     def __init__(self):
@@ -426,16 +546,20 @@ class RunConsolidator:
                 engine = r.get("engine", "unknown")
                 run_dir = r.get("run_dir", "")
                 screenshot = r.get("screenshot", "")
-                report_path = r.get("report", "")
+                geo_data_path = r.get("geo_data", "")
                 
-                # Load markdown report content if exists
-                report_text = "No individual analysis report file found."
-                if report_path and os.path.exists(report_path):
+                # Load structured JSON extraction content if exists
+                json_text = "No individual geo_data.json file found."
+                parsed_json = None
+                if geo_data_path and os.path.exists(geo_data_path):
                     try:
-                        with open(report_path, "r", encoding="utf-8") as f:
-                            report_text = f.read()
+                        with open(geo_data_path, "r", encoding="utf-8") as f:
+                            parsed_json = json.load(f)
+                        json_text = json.dumps(parsed_json, indent=4)
                     except Exception as e:
-                        report_text = f"Error reading report: {e}"
+                        json_text = f"Error reading/formatting geo_data.json: {e}"
+                
+                ui_html = format_json_to_ui(parsed_json, engine)
                 
                 # Get relative screenshot path
                 screenshot_rel = ""
@@ -471,11 +595,26 @@ class RunConsolidator:
                                 <p><strong>Routed Source:</strong> {engine.upper()}</p>
                                 <p><strong>Run Folder Name:</strong> <code>{os.path.basename(run_dir)}</code></p>
                             </div>
+                            
+                            <!-- Tabs Segment -->
+                            <div class="debug-tabs">
+                                <button class="debug-tab-btn active" onclick="switchDebugTab(this, 'ui-{engine}')">📇 Extracted Data UI</button>
+                                <button class="debug-tab-btn" onclick="switchDebugTab(this, 'raw-{engine}')">💻 Raw JSON Data</button>
+                            </div>
+                            
                             <div class="debug-report-box">
-                                <h5 style="margin-bottom: 12px; font-size: 0.85rem; text-transform: uppercase; color: var(--neon-violet); letter-spacing: 0.5px;">📝 Individual Extraction Report:</h5>
-                                <pre class="debug-report-text">{report_text}</pre>
+                                <!-- Human Readable UI Tab -->
+                                <div id="ui-{engine}" class="debug-tab-content active">
+                                    {ui_html}
+                                </div>
+                                
+                                <!-- Raw JSON Tab -->
+                                <div id="raw-{engine}" class="debug-tab-content" style="display: none;">
+                                    <pre class="debug-report-text">{json_text}</pre>
+                                </div>
                             </div>
                         </div>
+
                         <div class="debug-screenshot-col">
                             <h5 style="margin-bottom: 8px; font-size: 0.85rem; text-transform: uppercase; color: var(--neon-blue); letter-spacing: 0.5px;">📷 Agent Dynamic Screen Capture:</h5>
                             {screenshot_html_detail}
@@ -1197,6 +1336,226 @@ class RunConsolidator:
             line-height: 1.6;
         }}
         
+        /* Debug Tabs */
+        .debug-tabs {{
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 8px;
+        }}
+        
+        .debug-tab-btn {{
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+        
+        .debug-tab-btn:hover {{
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+        }}
+        
+        .debug-tab-btn.active {{
+            color: #ffffff;
+            background: rgba(139, 92, 246, 0.15);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.1);
+        }}
+        
+        /* Human Readable UI elements */
+        .ui-section {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        
+        .ui-section-title {{
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--neon-violet);
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }}
+        
+        .ui-meta-card {{
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+        
+        .ui-meta-row {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.82rem;
+        }}
+        
+        .ui-meta-row strong {{
+            color: var(--text-muted);
+        }}
+        
+        .ui-meta-row span {{
+            color: #ffffff;
+            font-weight: 500;
+        }}
+        
+        .ui-queries-box {{
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 8px;
+            font-size: 0.8rem;
+        }}
+        
+        .ui-queries-box strong {{
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 4px;
+        }}
+        
+        .ui-queries-list {{
+            list-style-type: disc;
+            padding-left: 18px;
+            color: #d1d5db;
+        }}
+        
+        .ui-queries-list li {{
+            margin-bottom: 2px;
+        }}
+        
+        .ui-no-profiles {{
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-style: italic;
+        }}
+        
+        .ui-entities-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        
+        .ui-entity-mini-card {{
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            transition: all 0.2s ease;
+        }}
+        
+        .ui-entity-mini-card:hover {{
+            border-color: rgba(139, 92, 246, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+        }}
+        
+        .ui-card-top {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }}
+        
+        .ui-entity-name {{
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #ffffff;
+        }}
+        
+        .ui-rating-tag {{
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }}
+        
+        .ui-card-body {{
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+        }}
+        
+        .ui-card-body a {{
+            color: var(--neon-blue);
+            text-decoration: none;
+        }}
+        
+        .ui-card-body a:hover {{
+            text-decoration: underline;
+        }}
+        
+        .ui-card-extra {{
+            margin-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
+            padding-top: 4px;
+            font-size: 0.72rem;
+            color: var(--neon-emerald);
+            font-weight: 600;
+        }}
+        
+        .ui-citations-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }}
+        
+        .ui-citation-item {{
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }}
+        
+        .ui-citation-item a {{
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #ffffff;
+            text-decoration: none;
+        }}
+        
+        .ui-citation-item a:hover {{
+            color: var(--neon-violet);
+        }}
+        
+        .ui-citation-url {{
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }}
+        
+        .ui-utm-list {{
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }}
+        
+        .ui-utm-item {{
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-family: monospace;
+        }}
+        
         .debug-screenshot-col {{
             flex: 1;
             display: flex;
@@ -1482,6 +1841,26 @@ class RunConsolidator:
                 }}
             }});
         }});
+        
+        // 3. Tab switching for Debug Center
+        function switchDebugTab(btn, targetId) {{
+            const panel = btn.closest('.debug-panel');
+            const tabs = panel.querySelectorAll('.debug-tab-btn');
+            const contents = panel.querySelectorAll('.debug-tab-content');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => {{
+                c.style.display = 'none';
+                c.classList.remove('active');
+            }});
+            
+            btn.classList.add('active');
+            const target = panel.querySelector('#' + targetId);
+            if (target) {{
+                target.style.display = 'block';
+                target.classList.add('active');
+            }}
+        }}
     </script>
 </body>
 </html>
@@ -1604,6 +1983,15 @@ def run_retroactive_consolidation():
         base_dir = os.path.dirname(os.path.abspath(__file__))
         print(f" 📂  Unified HTML Report:  {os.path.relpath(report_file, base_dir)}")
         print("="*70 + "\n")
+        
+        # Automatically open the report in the default browser on completion
+        try:
+            import webbrowser
+            report_abs_path = os.path.abspath(report_file)
+            print(f"[🌐] Opening report in default web browser...")
+            webbrowser.open(f"file://{report_abs_path}")
+        except Exception as e:
+            print(f"[!] Warning: Could not open browser automatically: {e}")
 
 
 if __name__ == "__main__":
