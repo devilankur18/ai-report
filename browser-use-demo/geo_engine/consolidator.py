@@ -16,13 +16,13 @@ STOP_WORDS = {
 }
 
 CHANNEL_MAP = {
-    "chatgpt": "Generative AI",
-    "gemini": "Generative AI",
-    "google": "Generative AI",
-    "bing": "Generative AI",
-    "perplexity": "Generative AI",
-    "google_maps": "Local Maps",
-    "bing_maps": "Local Maps",
+    "chatgpt": "AI Apps",
+    "gemini": "AI Apps",
+    "perplexity": "AI Apps",
+    "google": "Search Apps",
+    "bing": "Search Apps",
+    "google_maps": "Maps Apps",
+    "bing_maps": "Maps Apps",
     "practo": "Directories",
     "justdial": "Directories"
 }
@@ -30,14 +30,37 @@ CHANNEL_MAP = {
 CHANNEL_ICONS = {
     "chatgpt": "💬",
     "gemini": "✦",
-    "google": "G",
-    "bing": "B",
     "perplexity": "𐄂",
+    "google": "🔍",
+    "bing": "🔎",
     "google_maps": "📍",
     "bing_maps": "🗺️",
     "practo": "🩺",
     "justdial": "JD"
 }
+
+PREFERRED_ENGINE_ORDER = [
+    "chatgpt", "gemini", "perplexity",
+    "google", "bing",
+    "google_maps", "bing_maps",
+    "practo", "justdial"
+]
+
+def sort_engines(engine_list):
+    """Sorts the engines in the preferred order requested by the user."""
+    order = {name: i for i, name in enumerate(PREFERRED_ENGINE_ORDER)}
+    return sorted(engine_list, key=lambda e: order.get(e, 999))
+
+def get_badge_class(c_type):
+    """Returns the CSS badge class for a given channel type."""
+    if c_type == "AI Apps":
+        return "pill-ai"
+    elif c_type == "Search Apps":
+        return "pill-search"
+    elif c_type == "Maps Apps":
+        return "pill-map"
+    else:
+        return "pill-dir"
 
 def clean_unicode_bold(text):
     """Translates mathematical bold/italic unicode characters (often used by engines) to plain standard ASCII."""
@@ -82,6 +105,14 @@ def slugify(text):
     text = clean_unicode_bold(text)
     text = re.sub(r'[^a-z0-9]+', '_', text)
     return text.strip('_')
+
+def is_image_url(url):
+    """Checks if a given citation URL points to an image file or is a data URI."""
+    if not url:
+        return False
+    clean_url = url.split('?')[0].split('#')[0].lower()
+    image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.tiff', '.ico')
+    return clean_url.endswith(image_extensions) or url.startswith('data:image/')
 
 def normalize_entity_name(name):
     """Cleans a provider's name by removing unicode stylings, prefixes, punctuation, and suffixes for deduplication."""
@@ -326,7 +357,7 @@ class RunConsolidator:
                     engine_name = "unknown"
                     
                     # Deduce engine name from directory name e.g. run_20260601_justdial_patna_dentist
-                    for candidate in CHANNEL_MAP.keys():
+                    for candidate in sorted(CHANNEL_MAP.keys(), key=len, reverse=True):
                         if f"_{candidate}_" in item:
                             engine_name = candidate
                             break
@@ -513,7 +544,7 @@ class RunConsolidator:
                     merged_entities.append(merged_rec)
         
         # Render the HTML template
-        engines_audited = sorted(list(set(engines_audited)))
+        engines_audited = sort_engines(list(set(engines_audited)))
         html_content = self.render_premium_scroll_html(
             title=title,
             prompt=prompt,
@@ -545,13 +576,15 @@ class RunConsolidator:
         engine_pills = ""
         for eng in engines:
             c_type = CHANNEL_MAP.get(eng, "Other")
-            pill_class = "pill-ai" if c_type == "Generative AI" else "pill-map" if c_type == "Local Maps" else "pill-dir"
+            pill_class = get_badge_class(c_type)
             engine_pills += f'<span class="badge {pill_class}">{CHANNEL_ICONS.get(eng, "")} {eng.upper()}</span> '
 
         # Build individual engine deep dive panels with screenshots
         debug_panels_html = ""
         if results_list:
-            for r in results_list:
+            # Sort results list by preferred order
+            sorted_results = sorted(results_list, key=lambda x: PREFERRED_ENGINE_ORDER.index(x["engine"]) if x.get("engine") in PREFERRED_ENGINE_ORDER else 999)
+            for r in sorted_results:
                 engine = r.get("engine", "unknown")
                 run_dir = r.get("run_dir", "")
                 screenshot = r.get("screenshot", "")
@@ -576,7 +609,7 @@ class RunConsolidator:
                     screenshot_rel = os.path.relpath(screenshot, self.consolidated_dir)
                 
                 c_type_detail = CHANNEL_MAP.get(engine, "Other")
-                badge_class_detail = "pill-ai" if c_type_detail == "Generative AI" else "pill-map" if c_type_detail == "Local Maps" else "pill-dir"
+                badge_class_detail = get_badge_class(c_type_detail)
                 
                 screenshot_html_detail = ""
                 if screenshot_rel:
@@ -651,9 +684,11 @@ class RunConsolidator:
         
         for i, ent in enumerate(sorted_merged, 1):
             source_pills = ""
-            for s in ent["sources"]:
+            # Sort sources by preferred order
+            sorted_sources = sort_engines(ent["sources"])
+            for s in sorted_sources:
                 c_type = CHANNEL_MAP.get(s, "Other")
-                badge_c = "pill-ai" if c_type == "Generative AI" else "pill-map" if c_type == "Local Maps" else "pill-dir"
+                badge_c = get_badge_class(c_type)
                 slug_name = slugify(ent["name"])
                 item_id = f"item-{s}-{slug_name}"
                 rank = ent["ranks"].get(s, "N/A")
@@ -662,7 +697,10 @@ class RunConsolidator:
                 
             # Build ratings list
             ratings_details = ""
-            for s, det in ent["detailed_ratings"].items():
+            # Sort detailed ratings sources by preferred order
+            sorted_rating_sources = sort_engines(ent["detailed_ratings"].keys())
+            for s in sorted_rating_sources:
+                det = ent["detailed_ratings"][s]
                 rating_str = f"⭐ {det['rating']}" if det['rating'] != "N/A" else "No rating"
                 rev_str = f"({det['review_count']} reviews)" if det['review_count'] != "N/A" else ""
                 rank = ent["ranks"].get(s, "N/A")
@@ -711,75 +749,37 @@ class RunConsolidator:
             </div>
             """
 
-        # Build Directory Listings Section Stack
-        dir_cards_html = ""
-        if directory_entities:
-            for ent in directory_entities:
-                fee = ent.get("consultation_fee", "N/A")
-                exp = ent.get("experience", "N/A")
-                rec = ent.get("recommendation_rate", "N/A")
-                dir_cards_html += f"""
-                <div class="channel-entity-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h4>{ent['name']}</h4>
-                        <span class="badge pill-dir">{ent['_source'].upper()}</span>
-                    </div>
-                    <p class="meta-line">📍 {ent['address']}</p>
-                    <p class="meta-line">💼 Experience: {exp} | ⭐ Rating: {ent['rating']} ({ent['review_count']} reviews)</p>
-                    {f"<p class='meta-line'>🪙 Fee: {fee} | 👍 Recommend: {rec}</p>" if fee != "N/A" or rec != "N/A" else ""}
-                </div>
-                """
-        else:
-            dir_cards_html = "<p class='no-data'>No directory entities extracted in this group.</p>"
-
-        # Build Maps Section Stack
-        maps_cards_html = ""
-        if maps_entities:
-            for ent in maps_entities:
-                maps_cards_html += f"""
-                <div class="channel-entity-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h4>{ent['name']}</h4>
-                        <span class="badge pill-map">{ent['_source'].upper()}</span>
-                    </div>
-                    <p class="meta-line">📍 {ent['address']}</p>
-                    <p class="meta-line">⭐ Rating: {ent['rating']} ({ent['review_count']} reviews)</p>
-                    {f"<p class='meta-line'>📞 Phone: {ent['phone']}</p>" if ent['phone'] != "N/A" else ""}
-                </div>
-                """
-        else:
-            maps_cards_html = "<p class='no-data'>No map profiles extracted in this group.</p>"
-
-        # Build LLM Section Stack
-        llm_cards_html = ""
-        if llm_entities:
-            for ent in llm_entities:
-                llm_cards_html += f"""
-                <div class="channel-entity-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h4>{ent['name']}</h4>
-                        <span class="badge pill-ai">{ent['_source'].upper()}</span>
-                    </div>
-                    <p class="meta-line">📍 {ent['address']}</p>
-                    <p class="meta-line">💬 Mention Category: {ent['category']}</p>
-                </div>
-                """
-        else:
-            llm_cards_html = "<p class='no-data'>No AI-model mentions parsed in this group.</p>"
-
         # Build Citations
         citations_html = ""
         if web_citations:
             for cit in web_citations:
-                citations_html += f"""
-                <div class="citation-card">
-                    <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <a href="{cit['url']}" target="_blank" class="citation-title">🔗 {cit['title']}</a>
-                        <span class="badge pill-ai" style="font-size: 0.7rem;">{cit['source'].upper()}</span>
+                if is_image_url(cit['url']):
+                    citations_html += f"""
+                    <div class="citation-card image-citation">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="citation-image-wrapper" style="border-radius: 12px; overflow: hidden; background: #070b13; border: 1px solid var(--border-color); height: 160px; display: flex; align-items: center; justify-content: center; position: relative;">
+                                <a href="{cit['url']}" target="_blank" style="display: block; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                    <img src="{cit['url']}" alt="{cit['title']}" style="max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                </a>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span class="citation-title" style="font-size: 0.85rem; font-weight: 600; color: #ffffff;">🖼️ {cit['title']}</span>
+                                <span class="badge pill-ai" style="font-size: 0.7rem;">{cit['source'].upper()}</span>
+                            </div>
+                            <p class="citation-url" style="margin-top: 0; font-size: 0.72rem; word-break: break-all;">{cit['url']}</p>
+                        </div>
                     </div>
-                    <p class="citation-url">{cit['url']}</p>
-                </div>
-                """
+                    """
+                else:
+                    citations_html += f"""
+                    <div class="citation-card">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <a href="{cit['url']}" target="_blank" class="citation-title">🔗 {cit['title']}</a>
+                            <span class="badge pill-ai" style="font-size: 0.7rem;">{cit['source'].upper()}</span>
+                        </div>
+                        <p class="citation-url">{cit['url']}</p>
+                    </div>
+                    """
         else:
             citations_html = "<p class='no-data'>No outgoing web citations detected in stream.</p>"
 
@@ -975,6 +975,12 @@ class RunConsolidator:
             background: rgba(59, 130, 246, 0.15);
             color: #60a5fa;
             border: 1px solid rgba(59, 130, 246, 0.3);
+        }}
+        
+        .pill-search {{
+            background: rgba(244, 63, 94, 0.15);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.3);
         }}
         
         .pill-dir {{
@@ -1674,9 +1680,6 @@ class RunConsolidator:
             
             <nav class="nav-links">
                 <a href="#overview" class="active">📊 Unified Overview</a>
-                <a href="#directories">📂 Directory Listings</a>
-                <a href="#maps">🗺️ Maps Listings</a>
-                <a href="#generative-ai">🤖 Generative Mentions</a>
                 <a href="#citations">📑 Outbound Citations</a>
                 <a href="#deep-dives">⚙️ Debug Deep Dives</a>
             </nav>
@@ -1752,48 +1755,7 @@ class RunConsolidator:
                     {merged_cards_html}
                 </div>
             </section>
-            
-            <!-- SECTION 2: Directory Listings -->
-            <section id="directories" class="scroll-section">
-                <div class="section-header">
-                    <h2>📂 Local Directory Listings</h2>
-                    <span class="badge pill-dir">Directory Grid</span>
-                </div>
-                <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 0.9rem;">
-                    Local medical and business directories (Practo, Justdial) that power search indices and grounding layers.
-                </p>
-                <div class="channels-stack">
-                    {dir_cards_html}
-                </div>
-            </section>
-            
-            <!-- SECTION 3: Maps Listings -->
-            <section id="maps" class="scroll-section">
-                <div class="section-header">
-                    <h2>🗺️ Local Map Listings</h2>
-                    <span class="badge pill-map">Maps Grid</span>
-                </div>
-                <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 0.9rem;">
-                    Scraped data points from Google Maps and Bing Maps local listing packs, essential for localized voice searches.
-                </p>
-                <div class="channels-stack">
-                    {maps_cards_html}
-                </div>
-            </section>
-            
-            <!-- SECTION 4: Generative Mentions -->
-            <section id="generative-ai" class="scroll-section">
-                <div class="section-header">
-                    <h2>🤖 Generative AI Mentions</h2>
-                    <span class="badge pill-ai">AI Streams</span>
-                </div>
-                <p style="margin-bottom: 24px; color: var(--text-muted); font-size: 0.9rem;">
-                    Direct recommendations from conversational search streams (ChatGPT, Gemini) showing routed model names.
-                </p>
-                <div class="channels-stack">
-                    {llm_cards_html}
-                </div>
-            </section>
+
             
             <!-- SECTION 5: Outbound Citations -->
             <section id="citations" class="scroll-section">
@@ -2006,7 +1968,7 @@ def run_retroactive_consolidation():
             # Check if within 30 minutes time window of the latest run mtime
             if abs(r["mtime"] - latest_mtime) <= 1800:
                 engine_name = "unknown"
-                for candidate in CHANNEL_MAP.keys():
+                for candidate in sorted(CHANNEL_MAP.keys(), key=len, reverse=True):
                     if f"_{candidate}_" in os.path.basename(r["path"]):
                         engine_name = candidate
                         break
