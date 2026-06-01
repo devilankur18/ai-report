@@ -38,7 +38,6 @@ async function run() {
     }
 
     // Extract City and Specialty from the Prompt
-    // Expected patterns: "most reliable orthopedicians in Lucknow", "dentists in Patna"
     let city = "Lucknow";
     let specialty = "orthopedician";
 
@@ -57,67 +56,47 @@ async function run() {
     // Clean up specialty string
     specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
 
-    // Mapping common plural terms to singular search terms for Practo compatibility
-    if (specialty.toLowerCase() === 'dentists') specialty = 'dentist';
-    if (specialty.toLowerCase() === 'orthopedicians') specialty = 'orthopedician';
-    if (specialty.toLowerCase() === 'cardiologists') specialty = 'cardiologist';
-    if (specialty.toLowerCase() === 'heart doctors') specialty = 'cardiologist';
-    if (specialty.toLowerCase() === 'pediatricians') specialty = 'pediatrician';
+    // Map city and specialty to canonical Practo SEO slugs
+    const formattedCity = city.toLowerCase().replace(/\s+/g, '-');
+    let formattedSpecialty = specialty.toLowerCase();
 
-    console.log(`Extracted Search Target: Specialty = "${specialty}", City = "${city}"`);
-
-    const targetUrl = `https://www.practo.com`;
-    console.log(`Navigating to Practo Homepage: ${targetUrl}`);
-
-    const pages = await browser.pages();
-    let page = pages.find(p => p.url().includes('practo.com'));
-
-    if (!page) {
-        console.log("Opening new tab for Practo...");
-        page = await browser.newPage();
+    if (formattedSpecialty === 'orthopedician' || formattedSpecialty === 'orthopedicians' || formattedSpecialty === 'orthopedist' || formattedSpecialty === 'orthopedists') {
+        formattedSpecialty = "orthopedist";
+    } else if (formattedSpecialty === 'dentist' || formattedSpecialty === 'dentists') {
+        formattedSpecialty = "dentist";
+    } else if (formattedSpecialty === 'cardiologist' || formattedSpecialty === 'cardiologists' || formattedSpecialty === 'heart doctors' || formattedSpecialty === 'heart doctor') {
+        formattedSpecialty = "cardiologist";
+    } else if (formattedSpecialty === 'pediatrician' || formattedSpecialty === 'pediatricians') {
+        formattedSpecialty = "pediatrician";
     } else {
-        await page.bringToFront();
+        // Safe fallback slugification
+        formattedSpecialty = formattedSpecialty.replace(/\s+/g, '-');
     }
 
-    // Setup network/user agent simulation to avoid bot detection blocks
+    const targetUrl = `https://www.practo.com/${encodeURIComponent(formattedCity)}/${encodeURIComponent(formattedSpecialty)}`;
+    console.log(`Extracted Search Target: Specialty = "${specialty}", City = "${city}"`);
+    console.log(`Navigating directly to Practo SEO URL: ${targetUrl}`);
+
+    // Clean close any other stale Practo pages to avoid memory/tab leak
+    const pages = await browser.pages();
+    for (const p of pages) {
+        if (p.url().includes('practo.com')) {
+            console.log(`Closing existing Practo tab to avoid stale state: ${p.url()}`);
+            await p.close().catch(() => {});
+        }
+    }
+
+    // Open a fresh tab
+    let page = await browser.newPage();
+
+    // Setup browser simulator settings
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
 
-    // Go to Practo homepage
+    // Go to Practo page directly
     await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // 1. Set Location
-    console.log("Locating search location input box...");
-    const locSel = 'input[data-qa-id="omni-searchbox-locality"]';
-    await page.waitForSelector(locSel);
-    await page.focus(locSel);
-    await page.evaluate((sel) => {
-        document.querySelector(sel).value = '';
-    }, locSel);
-    console.log(`Typing Location: "${city}"...`);
-    await page.keyboard.type(city, { delay: 30 });
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Click first suggestion
-    await page.evaluate(() => {
-        const item = document.querySelector('.c-omni-suggestion-item, .c-omni-suggestion-list div');
-        if (item) item.click();
-    });
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // 2. Set Keyword
-    console.log("Locating doctor search input box...");
-    const keySel = 'input[data-qa-id="omni-searchbox-keyword"]';
-    await page.waitForSelector(keySel);
-    await page.focus(keySel);
-    console.log(`Typing Specialty/Keyword: "${specialty}"...`);
-    await page.keyboard.type(specialty, { delay: 30 });
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Press Enter to submit
-    console.log("Submitting query...");
-    await page.keyboard.press('Enter');
-    await new Promise(resolve => setTimeout(resolve, 6000)); // Wait for results page load
+    
+    console.log("Waiting 6s for Practo doctor cards to load...");
+    await new Promise(resolve => setTimeout(resolve, 6000));
 
     // Initialize raw stream file
     fs.writeFileSync(outputFile, `=== Practo India Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
@@ -127,22 +106,26 @@ async function run() {
     try {
         console.log("Checking for doctor cards in the Practo listings...");
         
-        // Wait for doctor cards to load
-        const cardSelector = 'div[data-qa-id="doctor_card"], .listing-doctor-card';
-        await page.waitForSelector(cardSelector, { timeout: 10000 }).catch(() => {
+        // Wait for doctor cards to render
+        const cardSelector = 'div[data-qa-id="doctor_card"], .listing-doctor-card, div[class*="doctor-card"]';
+        try {
+            await page.waitForSelector(cardSelector, { timeout: 10000 });
+            console.log("[✓] Practo listings successfully loaded!");
+        } catch (e) {
             console.log("[!] Timeout waiting for doctor card selector. Proceeding with DOM dump.");
-        });
+        }
 
-        // Scrape listings
+        // Scrape listings directly
         const localResults = await page.evaluate(() => {
             const results = [];
-            const cards = document.querySelectorAll('div[data-qa-id="doctor_card"], .listing-doctor-card');
+            const cards = document.querySelectorAll('div[data-qa-id="doctor_card"], .listing-doctor-card, div[class*="doctor-card"]');
             
             cards.forEach(card => {
                 // Name
-                const nameEl = card.querySelector('[data-qa-id="doctor_name"], h2.doctor-name, h2[class*="name"]');
+                const nameEl = card.querySelector('[data-qa-id="doctor_name"], h2.doctor-name, h2[class*="name"], h2');
                 if (!nameEl) return;
                 const name = nameEl.innerText.trim();
+                if (!name || results.some(r => r.name === name)) return;
                 
                 // Qualifications / Specialty
                 const specEl = card.querySelector('[data-qa-id="doctor_speciality"], .doctor-speciality, .u-grey_3-text');
@@ -155,12 +138,15 @@ async function run() {
                 const expEl = card.querySelector('[data-qa-id="doctor_experience"], .doctor-experience, p[class*="experience"]');
                 const experience = expEl ? expEl.innerText.trim() : "N/A";
 
-                // Recommendation rating (green recommendation text / patient stories)
+                // Recommendation rating
                 let recommendationRate = "N/A";
                 let reviewCount = "N/A";
                 
                 const recEl = card.querySelector('[data-qa-id="doctor_recommendation"], .u-green-text, span[class*="recommendation"]');
-                if (recEl) recommendationRate = recEl.innerText.trim();
+                if (recEl) {
+                    // Normalize rating values e.g. "98%"
+                    recommendationRate = recEl.innerText.trim();
+                }
 
                 const reviewsEl = card.querySelector('[data-qa-id="total_feedback"], .total-feedback, span[class*="feedback"]');
                 if (reviewsEl) {
@@ -188,12 +174,12 @@ async function run() {
                     clinic_name: clinicName,
                     address: `${clinicName}, ${locality}`,
                     consultation_fee: consultationFee,
-                    phone: "Available on Practo", // Practo does not show direct phone numbers openly, booked via app
-                    rating: recommendationRate // Used for schema consistency
+                    phone: "Available on Practo",
+                    rating: recommendationRate // Used for parser compatibility
                 });
             });
 
-            return results;
+            return results.slice(0, 6); // Limit to top 6 entries
         });
 
         console.log(`[✓] Scraped ${localResults.length} doctor profiles from Practo India!`);
@@ -226,11 +212,13 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
+        await page.close();
         await browser.disconnect();
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Practo: ${err.message}`);
+        if (page) await page.close();
         await browser.disconnect();
         process.exit(1);
     }

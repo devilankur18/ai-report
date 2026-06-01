@@ -59,7 +59,7 @@ async function run() {
     const formattedCity = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
     let formattedSpecialty = specialty.charAt(0).toUpperCase() + specialty.slice(1).toLowerCase();
 
-    if (formattedSpecialty.toLowerCase() === 'orthopedician' || formattedSpecialty.toLowerCase() === 'orthopedicians') {
+    if (formattedSpecialty.toLowerCase() === 'orthopedician' || formattedSpecialty.toLowerCase() === 'orthopedicians' || formattedSpecialty.toLowerCase() === 'orthopedist' || formattedSpecialty.toLowerCase() === 'orthopedists') {
         formattedSpecialty = "Orthopedic-Doctors";
     } else if (formattedSpecialty.toLowerCase() === 'dentist' || formattedSpecialty.toLowerCase() === 'dentists') {
         formattedSpecialty = "Dentists";
@@ -72,24 +72,25 @@ async function run() {
     }
 
     const targetUrl = `https://www.justdial.com/${encodeURIComponent(formattedCity)}/${encodeURIComponent(formattedSpecialty)}`;
-    console.log(`Navigating to Justdial URL: ${targetUrl}`);
+    console.log(`Navigating directly to Justdial URL: ${targetUrl}`);
 
+    // Clean close any other stale Justdial pages to avoid memory/tab leak
     const pages = await browser.pages();
-    let page = pages.find(p => p.url().includes('justdial.com'));
-
-    if (!page) {
-        console.log("Opening new tab for Justdial...");
-        page = await browser.newPage();
-    } else {
-        await page.bringToFront();
+    for (const p of pages) {
+        if (p.url().includes('justdial.com')) {
+            console.log(`Closing existing Justdial tab to avoid stale state: ${p.url()}`);
+            await p.close().catch(() => {});
+        }
     }
 
-    // Standard user-agent mapping to avoid bot detection blocks
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36');
+    // Open a fresh tab for the direct navigation
+    let page = await browser.newPage();
 
-    // Go to Justdial page
+    // DO NOT override the User Agent with a mismatched OS! Let Chrome use its real, native Mac user agent & session to bypass Akamai blocks.
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await new Promise(resolve => setTimeout(resolve, 6000)); // Justdial dynamic overlay protection wait
+    
+    console.log("Waiting 8s for Justdial results sidebar to render...");
+    await new Promise(resolve => setTimeout(resolve, 8000));
 
     // Initialize raw stream file
     fs.writeFileSync(outputFile, `=== Justdial India Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
@@ -99,58 +100,53 @@ async function run() {
     try {
         console.log("Scraping local Justdial results list...");
         
-        // Extract results
+        // Extract results using correct up-to-date DOM selectors from inspection
         const localResults = await page.evaluate(() => {
             const results = [];
-            // Justdial result list selectors
-            const cards = document.querySelectorAll('div.result-box, li.cntanr, div.store-details, div[class*="store-box"], div[class*="result-box"]');
+            const cards = document.querySelectorAll('div.resultbox, [class*="resultbox"]');
             
             cards.forEach(card => {
                 // Name
-                const nameEl = card.querySelector('.store-name, h2 a span, h2 span, h2, a[class*="jcn"], .jcn');
+                const nameEl = card.querySelector('.resultbox_title_anchor, h2.resultbox_title, h2, [class*="title"]');
                 if (!nameEl) return;
                 const name = nameEl.innerText.trim();
                 if (!name || results.some(r => r.name === name)) return;
 
                 // Ratings and reviews count
                 let rating = "N/A";
-                let reviewCount = "N/A";
-                const ratingEl = card.querySelector('.green-box, .rating-value, span[class*="green-box"]');
+                const ratingEl = card.querySelector('.resultbox_totalrate, [class*="totalrate"]');
                 if (ratingEl) rating = ratingEl.innerText.trim();
 
-                const countEl = card.querySelector('.rt_count, span[class*="vote"], span[class*="count"]');
+                let reviewCount = "N/A";
+                const countEl = card.querySelector('.resultbox_countrate, [class*="countrate"]');
                 if (countEl) {
                     const match = countEl.innerText.match(/([0-9,]+)/);
                     if (match) reviewCount = match[1];
                 }
 
                 // Verified Badge Status
-                // JD shows checkmark icons or span elements for verified / trust stamp
-                const verifiedEl = card.querySelector('.verified, .trust, span[title*="Verified"], span[class*="verified"]');
+                const verifiedEl = card.querySelector('.results_jdverified, [class*="jdverified"]');
                 const verifiedStatus = verifiedEl ? "Verified" : "Standard Listing";
 
                 // Address / Locality
                 let address = "Local Area, India";
-                const addrEl = card.querySelector('.cont_fl_addr, .address, span[class*="address"]');
+                const addrEl = card.querySelector('.resultbox_address, [class*="address"]');
                 if (addrEl) address = addrEl.innerText.trim();
 
-                // Contact Phone Number
+                // Contact Phone Number (highly structured call Now span)
                 let phone = "N/A";
-                const phoneEl = card.querySelector('.contact-info, .call-btn, span[class*="mobile"], span.mobiles');
+                const phoneEl = card.querySelector('.callcontent, [class*="callcontent"]');
                 if (phoneEl) {
                     phone = phoneEl.innerText.replace(/\s+/g, ' ').trim();
-                } else {
-                    // Try getting title or button content
-                    const callBtn = card.querySelector('a[href*="tel:"]');
-                    if (callBtn) {
-                        const href = callBtn.getAttribute('href');
-                        phone = href.replace('tel:', '').trim();
-                    }
                 }
+
+                // Category
+                const catEl = card.querySelector('.resultbox_catalogue, [class*="catalogue"]');
+                const category = catEl ? catEl.innerText.replace(/\n/g, ' ').trim() : "Medical Clinic";
 
                 results.push({
                     name,
-                    category: "Medical Clinic",
+                    category,
                     address,
                     rating,
                     review_count: reviewCount,
@@ -160,9 +156,8 @@ async function run() {
                 });
             });
 
-            // Fallback for JD layout variations
+            // General headers fallback if standard selectors are missing
             if (results.length === 0) {
-                // Scrape general header elements as fallback
                 const headers = document.querySelectorAll('h2');
                 headers.forEach(h => {
                     const txt = h.innerText.trim();
@@ -181,7 +176,7 @@ async function run() {
                 });
             }
 
-            return results.slice(0, 5); // Limit to top 5
+            return results.slice(0, 6); // Limit to top 6 entries
         });
 
         console.log(`[✓] Scraped ${localResults.length} profiles from Justdial India!`);
@@ -196,7 +191,7 @@ async function run() {
         const logContent = `\n============================================================\n` +
                            `[JUSTDIAL DOM EXTRACTION RESULTS]\n` +
                            `Timestamp: ${new Date().toISOString()}\n` +
-                           `============================================================\n` +
+                       `============================================================\n` +
                            JSON.stringify(pageData, null, 4) + "\n";
         
         fs.appendFileSync(outputFile, logContent, 'utf8');
@@ -214,11 +209,13 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
+        await page.close();
         await browser.disconnect();
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Justdial: ${err.message}`);
+        if (page) await page.close();
         await browser.disconnect();
         process.exit(1);
     }
