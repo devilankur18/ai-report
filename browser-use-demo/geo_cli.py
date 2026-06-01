@@ -133,13 +133,12 @@ def run_geo_run(engines_list, city, specialty, prompt_override=None):
             
     if not results:
         print("\n[!] All target engine runs failed.")
-        return False
+        return []
 
     # Print beautiful consolidated summary report
     print("\n" + "="*60)
     print(" 🎉  ALL GEO PIPELINE RUNS COMPLETED SUCCESSFUL!")
     print("="*60)
-    print("Compiled Run Artifacts:")
     base_dir = os.path.dirname(os.path.abspath(__file__))
     for r in results:
         print(f"\n 🤖  ENGINE: {r['engine'].upper()}")
@@ -149,9 +148,9 @@ def run_geo_run(engines_list, city, specialty, prompt_override=None):
         print(f"     📊  Structured JSON:  {os.path.relpath(r['geo_data'], base_dir)}")
         print(f"     📝  Analysis Report:  {os.path.relpath(r['report'], base_dir)}")
     print("="*60 + "\n")
-    return True
+    return results
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Interactive GEO Search Demand Pipeline CLI")
     parser.add_argument("--city", default="Hardoi", help="Target city (default: Hardoi)")
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
@@ -176,5 +175,15 @@ if __name__ == "__main__":
         sys.exit(1)
         
     # Run the dynamic pipeline
-    run_geo_run(requested_engines, args.city, args.specialty, args.prompt)
+    active_results = run_geo_run(requested_engines, args.city, args.specialty, args.prompt)
+    
+    # Automatically consolidate ONLY the active session runs by default
+    if active_results:
+        try:
+            from geo_engine.consolidator import run_consolidation_for_active_session
+            run_consolidation_for_active_session(active_results)
+        except Exception as e:
+            print(f"[!] Warning: Session run consolidation failed: {e}")
 
+if __name__ == "__main__":
+    main()
