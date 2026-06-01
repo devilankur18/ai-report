@@ -12,3 +12,4 @@ stream_*.txt
 *.pyc
 chrome_profile/*
 outputs/
+outputs-old/

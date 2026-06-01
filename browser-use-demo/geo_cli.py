@@ -157,12 +157,12 @@ if __name__ == "__main__":
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
     parser.add_argument("--engine", default="chatgpt,gemini", 
-                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity; default: chatgpt,gemini)")
+                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, google_maps, bing_maps, practo, justdial; default: chatgpt,gemini)")
     
     args = parser.parse_args()
     
     # Determine engines to run
-    valid_engines = ["chatgpt", "gemini", "google", "bing", "perplexity"]
+    valid_engines = ["chatgpt", "gemini", "google", "bing", "perplexity", "google_maps", "bing_maps", "practo", "justdial"]
     requested_engines = [e.strip().lower() for e in args.engine.split(",") if e.strip()]
     
     invalid_engines = [e for e in requested_engines if e not in valid_engines]
