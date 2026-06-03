@@ -351,14 +351,17 @@ def format_json_to_ui(parsed_json, engine):
             c_url = cit.get("url", "")
             if c_url:
                 if is_image_url(c_url):
-                    content_html.append('    <div class="ui-citation-item image-citation" style="gap: 8px;">')
-                    content_html.append(f'      <div style="border-radius: 8px; overflow: hidden; background: #070b13; border: 1px solid rgba(255,255,255,0.05); height: 120px; display: flex; align-items: center; justify-content: center;">')
+                    content_html.append('    <div class="ui-citation-item image-citation" style="gap: 6px;">')
+                    content_html.append(f'      <div style="border-radius: 8px; overflow: hidden; background: #070b13; border: 1px solid rgba(255,255,255,0.05); height: 100px; display: flex; align-items: center; justify-content: center;">')
                     content_html.append(f'        <a href="{c_url}" target="_blank" style="display: block; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">')
                     content_html.append(f'          <img src="{c_url}" alt="{c_title}" style="max-width: 100%; max-height: 100%; object-fit: contain;">')
                     content_html.append(f'        </a>')
                     content_html.append(f'      </div>')
-                    content_html.append(f'      <span style="font-size: 0.8rem; font-weight: 600; color: #ffffff;">🖼️ {c_title}</span>')
-                    content_html.append(f'      <span class="ui-citation-url">{c_url}</span>')
+                    content_html.append(f'      <span style="font-size: 0.75rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="{c_title}">🖼️ {c_title}</span>')
+                    content_html.append(f'      <div class="ui-url-tooltip-wrapper">')
+                    content_html.append(f'        <a href="{c_url}" target="_blank" class="ui-url-btn">🔗 Link</a>')
+                    content_html.append(f'        <div class="ui-url-tooltip">{c_url}</div>')
+                    content_html.append(f'      </div>')
                     content_html.append('    </div>')
                 else:
                     content_html.append('    <div class="ui-citation-item">')
@@ -831,17 +834,20 @@ class RunConsolidator:
                 if is_image_url(cit['url']):
                     citations_html += f"""
                     <div class="citation-card image-citation">
-                        <div style="display: flex; flex-direction: column; gap: 10px;">
-                            <div class="citation-image-wrapper" style="border-radius: 12px; overflow: hidden; background: #070b13; border: 1px solid var(--border-color); height: 160px; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="citation-image-wrapper" style="border-radius: 12px; overflow: hidden; background: #070b13; border: 1px solid var(--border-color); height: 120px; display: flex; align-items: center; justify-content: center; position: relative;">
                                 <a href="{cit['url']}" target="_blank" style="display: block; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
                                     <img src="{cit['url']}" alt="{cit['title']}" style="max-width: 100%; max-height: 100%; object-fit: contain; transition: transform 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
                                 </a>
                             </div>
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span class="citation-title" style="font-size: 0.85rem; font-weight: 600; color: #ffffff;">🖼️ {cit['title']}</span>
-                                <span class="badge pill-ai" style="font-size: 0.7rem;">{cit['source'].upper()}</span>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                <span class="citation-title" style="font-size: 0.78rem; font-weight: 600; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;" title="{cit['title']}">🖼️ {cit['title']}</span>
+                                <span class="badge pill-ai" style="font-size: 0.65rem; flex-shrink: 0;">{cit['source'].upper()}</span>
                             </div>
-                            <p class="citation-url" style="margin-top: 0; font-size: 0.72rem; word-break: break-all;">{cit['url']}</p>
+                            <div class="ui-url-tooltip-wrapper">
+                                <a href="{cit['url']}" target="_blank" class="ui-url-btn">🔗 Link</a>
+                                <div class="ui-url-tooltip">{cit['url']}</div>
+                            </div>
                         </div>
                     </div>
                     """
@@ -1292,8 +1298,8 @@ class RunConsolidator:
         
         /* Citation Grid */
         .citations-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            display: flex;
+            flex-wrap: wrap;
             gap: 20px;
         }}
         
@@ -1303,6 +1309,16 @@ class RunConsolidator:
             border-radius: 16px;
             padding: 20px 24px;
             transition: all 0.3s ease;
+            flex: 1 1 calc(50% - 10px);
+            min-width: 320px;
+        }}
+        
+        .citation-card.image-citation {{
+            flex: 0 0 200px;
+            width: 200px;
+            min-width: 200px;
+            padding: 12px 16px;
+            border-radius: 12px;
         }}
         
         .citation-card:hover {{
@@ -1605,8 +1621,9 @@ class RunConsolidator:
         
         .ui-citations-list {{
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 12px;
         }}
         
         .ui-citation-item {{
@@ -1617,6 +1634,15 @@ class RunConsolidator:
             display: flex;
             flex-direction: column;
             gap: 2px;
+            flex: 1 1 100%;
+        }}
+        
+        .ui-citation-item.image-citation {{
+            flex: 0 0 160px;
+            width: 160px;
+            min-width: 160px;
+            padding: 8px;
+            border-radius: 8px;
         }}
         
         .ui-citation-item a {{
@@ -1634,6 +1660,78 @@ class RunConsolidator:
             font-size: 0.7rem;
             color: var(--text-muted);
             word-break: break-all;
+        }}
+        
+        /* Tooltip and Button for URLs */
+        .ui-url-tooltip-wrapper {{
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin-top: 4px;
+        }}
+        
+        .ui-url-btn {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-decoration: none;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            text-align: center;
+        }}
+        
+        .ui-url-btn:hover {{
+            background: rgba(139, 92, 246, 0.2);
+            border-color: rgba(139, 92, 246, 0.4);
+            color: #c084fc !important;
+        }}
+        
+        .ui-url-tooltip {{
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translate(-50%, 6px);
+            background: #0f172a;
+            color: #f1f5f9;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            line-height: 1.3;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 999;
+            width: 220px;
+            word-break: break-all;
+            text-align: center;
+            margin-bottom: 6px;
+        }}
+        
+        .ui-url-tooltip::after {{
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: #0f172a transparent transparent transparent;
+        }}
+        
+        .ui-url-tooltip-wrapper:hover .ui-url-tooltip {{
+            opacity: 1;
+            transform: translate(-50%, 0);
         }}
         
         .ui-utm-list {{

@@ -9,27 +9,27 @@ import geo_config
 PROMPT_TEMPLATES = {
     "cardio": (
         "My 55-year-old mother is diabetic and experiencing mild chest pain after walking. "
-        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+        "Who are the most reliable {specialty} in {location} with good reviews."
     ),
     "dental": (
         "My 60-year-old father needs dental implants and has sensitive gums. "
-        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+        "Who are the most reliable {specialty} in {location} with good reviews"
     ),
     "ortho": (
         "My 65-year-old mother has severe knee pain and difficulty climbing stairs due to arthritis. "
-        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+        "Who are the most reliable {specialty} in {location} with good reviews"
     ),
     "ent": (
         "My 10-year-old child has recurring ear infections and chronic nasal congestion. "
-        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+        "Who are the most reliable {specialty} in {location} with good reviews."
     ),
     "medical": (
         "I am looking for the most reliable and highly-rated {specialty} in {location}. "
-        "Who would you recommend based on patient reviews and success rates, and what questions should I ask during my first visit?"
+        "Who would you recommend based on patient reviews and success rates"
     ),
     "general": (
         "I am looking for the most reliable and highly-rated {specialty} in {location}. "
-        "Who would you recommend based on customer reviews and reputation, and what questions should I ask them when getting in touch?"
+        "Recommend based on customer reviews and reputation"
     )
 }
 
