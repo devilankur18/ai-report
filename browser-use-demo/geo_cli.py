@@ -233,14 +233,14 @@ def main():
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
     parser.add_argument("--query", help="Direct search query override")
     parser.add_argument("--prompt-type", choices=["cardio", "dental", "ortho", "ent", "medical", "general"], help="Select default prompt scenario template")
-    parser.add_argument("--engine", default="chatgpt,gemini,google,bing,perplexity,google_maps,bing_maps,practo,justdial,seranking", 
-                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, google_maps, bing_maps, practo, justdial, seranking; default: all engines)")
+    parser.add_argument("--engine", default="chatgpt,gemini,google,bing,perplexity,meta_ai,google_maps,bing_maps,practo,justdial,seranking", 
+                        help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, meta_ai, google_maps, bing_maps, practo, justdial, seranking; default: all engines)")
 
     
     args = parser.parse_args()
     
     # Determine engines to run
-    valid_engines = ["chatgpt", "gemini", "google", "bing", "perplexity", "google_maps", "bing_maps", "practo", "justdial", "seranking"]
+    valid_engines = ["chatgpt", "gemini", "google", "bing", "perplexity", "meta_ai", "google_maps", "bing_maps", "practo", "justdial", "seranking"]
     requested_engines = [e.strip().lower() for e in args.engine.split(",") if e.strip()]
     
     invalid_engines = [e for e in requested_engines if e not in valid_engines]

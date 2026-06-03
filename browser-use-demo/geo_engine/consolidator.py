@@ -19,6 +19,7 @@ CHANNEL_MAP = {
     "chatgpt": "AI Apps",
     "gemini": "AI Apps",
     "perplexity": "AI Apps",
+    "meta_ai": "AI Apps",
     "google": "Search Apps",
     "bing": "Search Apps",
     "google_maps": "Maps Apps",
@@ -32,6 +33,7 @@ CHANNEL_ICONS = {
     "chatgpt": "💬",
     "gemini": "✦",
     "perplexity": "𐄂",
+    "meta_ai": "♾️",
     "google": "🔍",
     "bing": "🔎",
     "google_maps": "📍",
@@ -42,7 +44,7 @@ CHANNEL_ICONS = {
 }
 
 PREFERRED_ENGINE_ORDER = [
-    "chatgpt", "gemini", "perplexity",
+    "chatgpt", "gemini", "perplexity", "meta_ai",
     "google", "bing",
     "google_maps", "bing_maps",
     "practo", "justdial",
