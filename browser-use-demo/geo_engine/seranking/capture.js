@@ -24,9 +24,13 @@ async function run() {
 
     let city = args.city || "gurgaon";
     let specialty = args.specialty || "ent specialist";
+    let area = args.area || "";
 
     // Formulate identical query: "specialty in city"
-    let searchTerm = `${specialty} in ${city}`;
+    let searchTerm = args.query;
+    if (!searchTerm) {
+        searchTerm = area ? `${specialty} in ${area}, ${city}` : `${specialty} in ${city}`;
+    }
     console.log(`[SE Ranking Engine] Formulated aligned query: "${searchTerm}"`);
 
     console.log(`Connecting to Chrome debugging instance on port 9222...`);

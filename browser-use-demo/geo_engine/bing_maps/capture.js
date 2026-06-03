@@ -40,6 +40,7 @@ async function run() {
     // Extract City and Specialty from arguments or Prompt
     let city = args.city;
     let specialty = args.specialty;
+    let area = args.area || "";
     
     if (!city || !specialty) {
         // Fallback to regex parsing if not passed directly
@@ -58,7 +59,10 @@ async function run() {
         specialty = specialty.replace(/are the/i, '').replace(/who is the/i, '').replace(/who are the/i, '').trim();
     }
     
-    let searchTerm = `${specialty} in ${city}`;
+    let searchTerm = args.query;
+    if (!searchTerm) {
+        searchTerm = area ? `${specialty} in ${area}, ${city}` : `${specialty} in ${city}`;
+    }
     console.log(`[Parser] Formulated local maps query: "${searchTerm}"`);
 
     fs.writeFileSync(outputFile, `=== Bing Maps Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
@@ -310,7 +314,7 @@ async function run() {
         console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
     }
 
-    await browser.disconnect();
+    await browser.disconnect().catch(() => {});
     process.exit(0);
 }
 

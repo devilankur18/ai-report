@@ -44,6 +44,11 @@ def parse_gemini_logs(input_file, output_json, output_md):
     if prompt_match:
         original_prompt = prompt_match.group(1).strip()
 
+    search_query = None
+    query_match = re.search(r"SEARCH_QUERY:\s*(.+)\n", content)
+    if query_match:
+        search_query = query_match.group(1).strip()
+
     extracted_data = {
         "original_prompt": original_prompt,
         "search_invoked": False,
@@ -234,13 +239,9 @@ def parse_gemini_logs(input_file, output_json, output_md):
 
     # Synthesize search queries based on the prompt if no exact chips were loaded
     if extracted_data["search_invoked"]:
-        # Fallback to smart query extraction from prompt keywords
-        query = original_prompt.replace("My 55-year-old mother is diabetic and experiencing mild chest pain after walking.", "").strip()
-        query = query.replace("Who are the most reliable ", "").replace("Who is the most reliable ", "")
-        query = query.replace("with good reviews, and what should I ask them?", "").replace("with top ratings?", "").strip()
-        if query and query not in extracted_data["search_queries"]:
-            extracted_data["search_queries"].append(query)
-        else:
+        if search_query and search_query not in extracted_data["search_queries"]:
+            extracted_data["search_queries"].append(search_query)
+        elif original_prompt and original_prompt != "Unknown Prompt":
             extracted_data["search_queries"].append(original_prompt[:100] + "...")
 
     # Save structured data to json

@@ -98,92 +98,114 @@ async function run() {
     console.log("Waiting 8s for Justdial results sidebar to render...");
     await new Promise(resolve => setTimeout(resolve, 8000));
 
+    // Formulate Search Query/Term
+    let searchTerm = args.query;
+    if (!searchTerm) {
+        searchTerm = args.area ? `${specialty} in ${args.area}, ${city}` : `${specialty} in ${city}`;
+    }
+
     // Initialize raw stream file
     fs.writeFileSync(outputFile, `=== Justdial India Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
     fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');
+    fs.appendFileSync(outputFile, `SEARCH_QUERY: ${searchTerm}\n`, 'utf8');
     fs.appendFileSync(outputFile, `EXTRACTED_TARGET: specialty="${specialty}", slug="${formattedSpecialty}", city="${formattedCity}"\n\n`, 'utf8');
 
     try {
         console.log("Scraping local Justdial results list...");
         
-        // Extract results using correct up-to-date DOM selectors from inspection
-        const localResults = await page.evaluate(() => {
-            const results = [];
-            const cards = document.querySelectorAll('div.resultbox, [class*="resultbox"]');
-            
-            cards.forEach(card => {
-                // Name
-                const nameEl = card.querySelector('.resultbox_title_anchor, h2.resultbox_title, h2, [class*="title"]');
-                if (!nameEl) return;
-                const name = nameEl.innerText.trim();
-                if (!name || results.some(r => r.name === name)) return;
+        let localResults = [];
+        let retries = 3;
+        while (retries > 0) {
+            try {
+                // Wait for body to be loaded
+                await page.waitForSelector('body', { timeout: 5000 }).catch(() => {});
+                
+                // Extract results using correct up-to-date DOM selectors from inspection
+                localResults = await page.evaluate(() => {
+                    const results = [];
+                    const cards = document.querySelectorAll('div.resultbox, [class*="resultbox"]');
+                    
+                    cards.forEach(card => {
+                        // Name
+                        const nameEl = card.querySelector('.resultbox_title_anchor, h2.resultbox_title, h2, [class*="title"]');
+                        if (!nameEl) return;
+                        const name = nameEl.innerText.trim();
+                        if (!name || results.some(r => r.name === name)) return;
 
-                // Ratings and reviews count
-                let rating = "N/A";
-                const ratingEl = card.querySelector('.resultbox_totalrate, [class*="totalrate"]');
-                if (ratingEl) rating = ratingEl.innerText.trim();
+                        // Ratings and reviews count
+                        let rating = "N/A";
+                        const ratingEl = card.querySelector('.resultbox_totalrate, [class*="totalrate"]');
+                        if (ratingEl) rating = ratingEl.innerText.trim();
 
-                let reviewCount = "N/A";
-                const countEl = card.querySelector('.resultbox_countrate, [class*="countrate"]');
-                if (countEl) {
-                    const match = countEl.innerText.match(/([0-9,]+)/);
-                    if (match) reviewCount = match[1];
-                }
+                        let reviewCount = "N/A";
+                        const countEl = card.querySelector('.resultbox_countrate, [class*="countrate"]');
+                        if (countEl) {
+                            const match = countEl.innerText.match(/([0-9,]+)/);
+                            if (match) reviewCount = match[1];
+                        }
 
-                // Verified Badge Status
-                const verifiedEl = card.querySelector('.results_jdverified, [class*="jdverified"]');
-                const verifiedStatus = verifiedEl ? "Verified" : "Standard Listing";
+                        // Verified Badge Status
+                        const verifiedEl = card.querySelector('.results_jdverified, [class*="jdverified"]');
+                        const verifiedStatus = verifiedEl ? "Verified" : "Standard Listing";
 
-                // Address / Locality
-                let address = "Local Area, India";
-                const addrEl = card.querySelector('.resultbox_address, [class*="address"]');
-                if (addrEl) address = addrEl.innerText.trim();
+                        // Address / Locality
+                        let address = "Local Area, India";
+                        const addrEl = card.querySelector('.resultbox_address, [class*="address"]');
+                        if (addrEl) address = addrEl.innerText.trim();
 
-                // Contact Phone Number (highly structured call Now span)
-                let phone = "N/A";
-                const phoneEl = card.querySelector('.callcontent, [class*="callcontent"]');
-                if (phoneEl) {
-                    phone = phoneEl.innerText.replace(/\s+/g, ' ').trim();
-                }
+                        // Contact Phone Number (highly structured call Now span)
+                        let phone = "N/A";
+                        const phoneEl = card.querySelector('.callcontent, [class*="callcontent"]');
+                        if (phoneEl) {
+                            phone = phoneEl.innerText.replace(/\s+/g, ' ').trim();
+                        }
 
-                // Category
-                const catEl = card.querySelector('.resultbox_catalogue, [class*="catalogue"]');
-                const category = catEl ? catEl.innerText.replace(/\n/g, ' ').trim() : "Medical Clinic";
+                        // Category
+                        const catEl = card.querySelector('.resultbox_catalogue, [class*="catalogue"]');
+                        const category = catEl ? catEl.innerText.replace(/\n/g, ' ').trim() : "Medical Clinic";
 
-                results.push({
-                    name,
-                    category,
-                    address,
-                    rating,
-                    review_count: reviewCount,
-                    phone,
-                    website_url: "N/A",
-                    verified_badge: verifiedStatus
-                });
-            });
-
-            // General headers fallback if standard selectors are missing
-            if (results.length === 0) {
-                const headers = document.querySelectorAll('h2');
-                headers.forEach(h => {
-                    const txt = h.innerText.trim();
-                    if (txt && txt.length > 5 && !txt.includes('Justdial') && !results.some(r => r.name === txt)) {
                         results.push({
-                            name: txt,
-                            category: "Healthcare provider",
-                            address: "Local Locality",
-                            rating: "N/A",
-                            review_count: "N/A",
-                            phone: "N/A",
+                            name,
+                            category,
+                            address,
+                            rating,
+                            review_count: reviewCount,
+                            phone,
                             website_url: "N/A",
-                            verified_badge: "Standard"
+                            verified_badge: verifiedStatus
+                        });
+                    });
+
+                    // General headers fallback if standard selectors are missing
+                    if (results.length === 0) {
+                        const headers = document.querySelectorAll('h2');
+                        headers.forEach(h => {
+                            const txt = h.innerText.trim();
+                            if (txt && txt.length > 5 && !txt.includes('Justdial') && !results.some(r => r.name === txt)) {
+                                results.push({
+                                    name: txt,
+                                    category: "Healthcare provider",
+                                    address: "Local Locality",
+                                    rating: "N/A",
+                                    review_count: "N/A",
+                                    phone: "N/A",
+                                    website_url: "N/A",
+                                    verified_badge: "Standard"
+                                });
+                            }
                         });
                     }
-                });
-            }
 
-            return results.slice(0, 6); // Limit to top 6 entries
-        });
+                    return results.slice(0, 6); // Limit to top 6 entries
+                });
+                break; // Success
+            } catch (evalErr) {
+                retries--;
+                if (retries === 0) throw evalErr;
+                console.log(`[!] Justdial scrape failed: ${evalErr.message}. Retrying in 2s... (${retries} retries left)`);
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
 
         console.log(`[✓] Scraped ${localResults.length} profiles from Justdial India!`);
 
@@ -215,14 +237,14 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
-        await page.close();
-        await browser.disconnect();
+        await page.close().catch(() => {});
+        await browser.disconnect().catch(() => {});
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Justdial: ${err.message}`);
-        if (page) await page.close();
-        await browser.disconnect();
+        if (page) await page.close().catch(() => {});
+        if (browser) await browser.disconnect().catch(() => {});
         process.exit(1);
     }
 }

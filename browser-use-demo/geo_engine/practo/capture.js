@@ -103,9 +103,16 @@ async function run() {
     console.log("Waiting 6s for Practo doctor cards to load...");
     await new Promise(resolve => setTimeout(resolve, 6000));
 
+    // Formulate Search Query/Term
+    let searchTerm = args.query;
+    if (!searchTerm) {
+        searchTerm = args.area ? `${specialty} in ${args.area}, ${city}` : `${specialty} in ${city}`;
+    }
+
     // Initialize raw stream file
     fs.writeFileSync(outputFile, `=== Practo India Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
     fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');
+    fs.appendFileSync(outputFile, `SEARCH_QUERY: ${searchTerm}\n`, 'utf8');
     fs.appendFileSync(outputFile, `EXTRACTED_TARGET: specialty="${specialty}", city="${city}"\n\n`, 'utf8');
 
     try {
@@ -217,14 +224,14 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
-        await page.close();
-        await browser.disconnect();
+        await page.close().catch(() => {});
+        await browser.disconnect().catch(() => {});
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Practo: ${err.message}`);
-        if (page) await page.close();
-        await browser.disconnect();
+        if (page) await page.close().catch(() => {});
+        if (browser) await browser.disconnect().catch(() => {});
         process.exit(1);
     }
 }

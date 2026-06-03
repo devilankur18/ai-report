@@ -6,21 +6,79 @@ import re
 from datetime import datetime
 import geo_config
 
-def run_single_engine(engine, city, specialty, prompt_override=None):
+PROMPT_TEMPLATES = {
+    "cardio": (
+        "My 55-year-old mother is diabetic and experiencing mild chest pain after walking. "
+        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+    ),
+    "dental": (
+        "My 60-year-old father needs dental implants and has sensitive gums. "
+        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+    ),
+    "ortho": (
+        "My 65-year-old mother has severe knee pain and difficulty climbing stairs due to arthritis. "
+        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+    ),
+    "ent": (
+        "My 10-year-old child has recurring ear infections and chronic nasal congestion. "
+        "Who are the most reliable {specialty} in {location} with good reviews, and what should I ask them?"
+    ),
+    "medical": (
+        "I am looking for the most reliable and highly-rated {specialty} in {location}. "
+        "Who would you recommend based on patient reviews and success rates, and what questions should I ask during my first visit?"
+    ),
+    "general": (
+        "I am looking for the most reliable and highly-rated {specialty} in {location}. "
+        "Who would you recommend based on customer reviews and reputation, and what questions should I ask them when getting in touch?"
+    )
+}
+
+def get_prompt_type_from_specialty(specialty):
+    spec = specialty.lower()
+    if any(k in spec for k in ["heart", "cardio", "cardiology"]):
+        return "cardio"
+    if any(k in spec for k in ["dentist", "dental", "dentistry"]):
+        return "dental"
+    if any(k in spec for k in ["ortho", "joint", "bone", "knee"]):
+        return "ortho"
+    if any(k in spec for k in ["ent", "ear", "nose", "throat", "sinus"]):
+        return "ent"
+    
+    # Check for general medical terms
+    medical_keywords = [
+        "doctor", "physician", "surgeon", "clinic", "hospital", "pediatrician", "gynecologist", 
+        "dermatologist", "neurologist", "psychiatrist", "oncologist", "urologist", "therapist", 
+        "physiotherapist", "ophthalmologist", "optometrist", "rheumatologist", "gastroenterologist", 
+        "endocrinologist", "nephrologist", "pulmonologist", "medical", "treatment", "care", "health"
+    ]
+    if any(k in spec for k in medical_keywords):
+        return "medical"
+        
+    return "general"
+
+def run_single_engine(engine, city, specialty, area=None, prompt_override=None, query_override=None, prompt_type=None):
+    # Formulate resolved location
+    location = f"{area}, {city}" if area else city
+    
+    # Formulate central query
+    search_query = query_override if query_override else f"{specialty} in {location}"
+
     # Formulate prompt if not overridden
     if prompt_override:
         prompt = prompt_override
     else:
-        prompt = (
-            f"My 55-year-old mother is diabetic and experiencing mild chest pain after walking. "
-            f"Who are the most reliable {specialty} in {city} with good reviews, and what should I ask them?"
-        )
+        p_type = prompt_type
+        if not p_type:
+            p_type = get_prompt_type_from_specialty(specialty)
+        template = PROMPT_TEMPLATES.get(p_type, PROMPT_TEMPLATES["general"])
+        prompt = template.format(specialty=specialty, location=location)
 
     print("\n" + "="*60)
     print(f" 🧠  GEO PIPELINE - RUNNING ENGINE: {engine.upper()}")
     print("="*60)
-    print(f"Target City:      {city}")
+    print(f"Target Location:  {location}")
     print(f"Target Specialty: {specialty}")
+    print(f"Search Query:     \"{search_query}\"")
     print(f"Generated Prompt: \"{prompt}\"\n")
 
     # Locate child scripts relative to this file's directory
@@ -45,10 +103,13 @@ def run_single_engine(engine, city, specialty, prompt_override=None):
     if prompt_override:
         prompt_slug = slugify(prompt_override)
         dir_name = f"run_{timestamp}_{engine}_{prompt_slug}"
+    elif query_override:
+        query_slug = slugify(query_override)
+        dir_name = f"run_{timestamp}_{engine}_{query_slug}"
     else:
-        city_slug = city.lower().replace(" ", "_") if city else "custom"
-        spec_slug = specialty.lower().replace(" ", "_") if specialty else "custom"
-        dir_name = f"run_{timestamp}_{engine}_{city_slug}_{spec_slug}"
+        loc_slug = slugify(location)
+        spec_slug = slugify(specialty)
+        dir_name = f"run_{timestamp}_{engine}_{loc_slug}_{spec_slug}"
     
     run_dir = os.path.join(geo_config.OUTPUTS_DIR, dir_name)
     os.makedirs(run_dir, exist_ok=True)
@@ -67,11 +128,14 @@ def run_single_engine(engine, city, specialty, prompt_override=None):
         "node",
         capture_script,
         "--prompt", prompt,
+        "--query", search_query,
         "--city", city,
         "--specialty", specialty,
         "--output", raw_stream_file,
         "--screenshot", screenshot_file
     ]
+    if area:
+        capture_cmd.extend(["--area", area])
     
     try:
         # Run node capture script inside the engine directory scope
@@ -116,20 +180,29 @@ def run_single_engine(engine, city, specialty, prompt_override=None):
         "report": analysis_report_md
     }
 
-def run_geo_run(engines_list, city, specialty, prompt_override=None):
+def run_geo_run(engines_list, city, specialty, area=None, prompt_override=None, query_override=None, prompt_type=None):
     results = []
     
     print("\n" + "="*60)
     print(" 🧠  GEO (GENERATIVE ENGINE OPTIMIZATION) MULTI-ENGINE PIPELINE")
     print("="*60)
     print(f"Target Engines:   {', '.join(engines_list)}")
-    print(f"Target City:      {city}")
+    location = f"{area}, {city}" if area else city
+    print(f"Target Location:  {location}")
     print(f"Target Specialty: {specialty}")
     print(f"Prompt Override:  {prompt_override if prompt_override else 'None'}")
+    print(f"Query Override:   {query_override if query_override else 'None'}")
+    print(f"Prompt Type:      {prompt_type if prompt_type else 'None'}")
     print("="*60 + "\n")
 
     for eng in engines_list:
-        res = run_single_engine(eng, city, specialty, prompt_override)
+        res = run_single_engine(
+            eng, city, specialty, 
+            area=area, 
+            prompt_override=prompt_override, 
+            query_override=query_override, 
+            prompt_type=prompt_type
+        )
         if res:
             results.append(res)
             
@@ -155,8 +228,11 @@ def run_geo_run(engines_list, city, specialty, prompt_override=None):
 def main():
     parser = argparse.ArgumentParser(description="Interactive GEO Search Demand Pipeline CLI")
     parser.add_argument("--city", default="Hardoi", help="Target city (default: Hardoi)")
+    parser.add_argument("--area", default=None, help="Target area inside a city (e.g. Naini)")
     parser.add_argument("--specialty", default="heart doctors", help="Medical specialty/practitioner (default: heart doctors)")
     parser.add_argument("--prompt", help="Direct prompt override (ignores city/specialty parameters)")
+    parser.add_argument("--query", help="Direct search query override")
+    parser.add_argument("--prompt-type", choices=["cardio", "dental", "ortho", "ent", "medical", "general"], help="Select default prompt scenario template")
     parser.add_argument("--engine", default="chatgpt,gemini,google,bing,perplexity,google_maps,bing_maps,practo,justdial,seranking", 
                         help="Target generative search engine(s) as comma-separated list (choices: chatgpt, gemini, google, bing, perplexity, google_maps, bing_maps, practo, justdial, seranking; default: all engines)")
 
@@ -178,7 +254,15 @@ def main():
         sys.exit(1)
         
     # Run the dynamic pipeline
-    active_results = run_geo_run(requested_engines, args.city, args.specialty, args.prompt)
+    active_results = run_geo_run(
+        requested_engines, 
+        args.city, 
+        args.specialty, 
+        area=args.area, 
+        prompt_override=args.prompt,
+        query_override=args.query,
+        prompt_type=args.prompt_type
+    )
     
     # Automatically consolidate ONLY the active session runs by default
     if active_results:

@@ -55,7 +55,8 @@ async function run() {
 
     // Initialize raw stream file with header info
     fs.writeFileSync(outputFile, `=== Google Search Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
-    fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n\n`, 'utf8');
+    fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');
+    fs.appendFileSync(outputFile, `SEARCH_QUERY: ${args.query || ''}\n\n`, 'utf8');
 
     console.log("Entering prompt to Google Search...");
 
@@ -300,12 +301,12 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
-        await browser.disconnect();
+        await browser.disconnect().catch(() => {});
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Google page: ${err.message}`);
-        await browser.disconnect();
+        await browser.disconnect().catch(() => {});
         process.exit(1);
     }
 }

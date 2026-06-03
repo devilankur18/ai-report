@@ -54,7 +54,8 @@ async function run() {
 
     // Initialize raw stream file with header info
     fs.writeFileSync(outputFile, `=== Perplexity Capture Log - Started ${new Date().toISOString()} ===\n`, 'utf8');
-    fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n\n`, 'utf8');
+    fs.appendFileSync(outputFile, `PROMPT: ${prompt}\n`, 'utf8');
+    fs.appendFileSync(outputFile, `SEARCH_QUERY: ${args.query || ''}\n\n`, 'utf8');
 
     // --- Dismiss Login Modal if Present ---
     console.log("Checking for Perplexity sign-in modal overlays...");

@@ -31,6 +31,11 @@ def parse_google_logs(input_file, output_json, output_md):
     if prompt_match:
         original_prompt = prompt_match.group(1).strip()
 
+    search_query = None
+    query_match = re.search(r"SEARCH_QUERY:\s*(.+)\n", content)
+    if query_match:
+        search_query = query_match.group(1).strip()
+
     extracted_data = {
         "original_prompt": original_prompt,
         "search_invoked": True,
@@ -42,12 +47,9 @@ def parse_google_logs(input_file, output_json, output_md):
     }
 
     # Extract search query keywords as simulated search queries
-    query = original_prompt.replace("My 55-year-old mother is diabetic and experiencing mild chest pain after walking.", "").strip()
-    query = query.replace("Who are the most reliable ", "").replace("Who is the most reliable ", "")
-    query = query.replace("with good reviews, and what should I ask them?", "").replace("with top ratings?", "").strip()
-    if query:
-        extracted_data["search_queries"].append(query)
-    else:
+    if search_query:
+        extracted_data["search_queries"].append(search_query)
+    elif original_prompt and original_prompt != "Unknown Prompt":
         extracted_data["search_queries"].append(original_prompt[:80] + "...")
 
     # Look for [GOOGLE DOM EXTRACTION RESULTS] in raw stream log

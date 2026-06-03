@@ -22,11 +22,16 @@ def parse_practo_logs(input_file, output_json, output_md):
     if prompt_match:
         original_prompt = prompt_match.group(1).strip()
 
+    search_query = "Unknown Keyword"
+    query_match = re.search(r"SEARCH_QUERY:\s*(.+)\n", content)
+    if query_match:
+        search_query = query_match.group(1).strip()
+
     extracted_data = {
         "original_prompt": original_prompt,
         "search_invoked": True,
         "routed_model": "Practo India Medical Directory",
-        "search_queries": [original_prompt],
+        "search_queries": [search_query],
         "local_entities": [],
         "web_citations": [],
         "utm_sources": []
