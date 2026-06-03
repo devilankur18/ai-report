@@ -24,7 +24,8 @@ CHANNEL_MAP = {
     "google_maps": "Maps Apps",
     "bing_maps": "Maps Apps",
     "practo": "Directories",
-    "justdial": "Directories"
+    "justdial": "Directories",
+    "seranking": "SEO Tools"
 }
 
 CHANNEL_ICONS = {
@@ -36,14 +37,16 @@ CHANNEL_ICONS = {
     "google_maps": "📍",
     "bing_maps": "🗺️",
     "practo": "🩺",
-    "justdial": "JD"
+    "justdial": "JD",
+    "seranking": "📈"
 }
 
 PREFERRED_ENGINE_ORDER = [
     "chatgpt", "gemini", "perplexity",
     "google", "bing",
     "google_maps", "bing_maps",
-    "practo", "justdial"
+    "practo", "justdial",
+    "seranking"
 ]
 
 def sort_engines(engine_list):
@@ -264,13 +267,33 @@ def format_json_to_ui(parsed_json, engine):
     meta_html.append('</div>')
     
     # 2. Extracted Entities List
-    entities = parsed_json.get("local_entities", [])
-    content_html.append('<div class="ui-section">')
-    content_html.append(f'  <h4 class="ui-section-title">📇 Extracted Profiles ({len(entities)})</h4>')
-    if not entities:
-        content_html.append('  <p class="ui-no-profiles">No local business or professional profiles extracted from this stream.</p>')
-    else:
+    if "seo_data" in parsed_json:
+        seo = parsed_json["seo_data"]
+        content_html.append('<div class="ui-section">')
+        content_html.append(f'  <h4 class="ui-section-title">📊 Keyword Market Demand Overview</h4>')
         content_html.append('  <div class="ui-entities-list">')
+        content_html.append('    <div class="ui-entity-mini-card">')
+        content_html.append('      <div class="ui-card-top">')
+        content_html.append(f'        <h5 class="ui-entity-name">🎯 Keyword: {seo.get("target_keyword", "")}</h5>')
+        content_html.append(f'        <span class="ui-rating-tag" style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.2); font-size: 0.8rem; font-weight: 700;">Vol: {seo.get("search_volume", 0):,}</span>')
+        content_html.append('      </div>')
+        content_html.append('      <div class="ui-card-body" style="margin-top: 8px;">')
+        content_html.append(f'        <p><strong>Keyword Difficulty:</strong> {seo.get("difficulty", 0)}/100</p>')
+        content_html.append(f'        <p><strong>CPC:</strong> ${seo.get("cpc", 0.0):.2f}</p>')
+        intents_str = ", ".join(seo.get("intents", [])) if seo.get("intents") else "N/A"
+        content_html.append(f'        <p><strong>Search Intent:</strong> {intents_str}</p>')
+        content_html.append('      </div>')
+        content_html.append('    </div>')
+        content_html.append('  </div>')
+        content_html.append('</div>')
+    else:
+        entities = parsed_json.get("local_entities", [])
+        content_html.append('<div class="ui-section">')
+        content_html.append(f'  <h4 class="ui-section-title">📇 Extracted Profiles ({len(entities)})</h4>')
+        if not entities:
+            content_html.append('  <p class="ui-no-profiles">No local business or professional profiles extracted from this stream.</p>')
+        else:
+            content_html.append('  <div class="ui-entities-list">')
         for ent in entities:
             name = ent.get("name", "Unnamed Provider")
             category = ent.get("category", "Healthcare Specialist")
@@ -579,6 +602,13 @@ class RunConsolidator:
                     }
                     merged_entities.append(merged_rec)
         
+        # Extract seo_data if present in any of the runs
+        seo_data = None
+        for r in runs:
+            if "seo_data" in r:
+                seo_data = r["seo_data"]
+                break
+
         # Render the HTML template
         engines_audited = sort_engines(list(set(engines_audited)))
         html_content = self.render_premium_scroll_html(
@@ -590,7 +620,8 @@ class RunConsolidator:
             maps_entities=maps_entities,
             llm_entities=llm_entities,
             web_citations=web_citations,
-            results_list=results_list
+            results_list=results_list,
+            seo_data=seo_data
         )
         
         report_file = os.path.join(self.consolidated_dir, f"report_{topic_key}.html")
@@ -600,9 +631,15 @@ class RunConsolidator:
         print(f"[✓] Premium Consolidated Report generated successfully: {report_file}")
         return report_file
 
-    def render_premium_scroll_html(self, title, prompt, engines, merged_entities, directory_entities, maps_entities, llm_entities, web_citations, results_list=None):
+    def render_premium_scroll_html(self, title, prompt, engines, merged_entities, directory_entities, maps_entities, llm_entities, web_citations, results_list=None, seo_data=None):
         """Renders the HTML string for the premium long scrollable dashboard."""
         
+        nav_demand_link = ""
+        market_demand_section = ""
+        if seo_data:
+            nav_demand_link = '<a href="#market-demand">📈 Market Demand</a>'
+            market_demand_section = self.render_market_demand_section(seo_data)
+            
         # Format metrics
         total_unique = len(merged_entities)
         overlapping_count = sum(1 for e in merged_entities if len(e["sources"]) > 1)
@@ -1832,6 +1869,231 @@ class RunConsolidator:
                 padding: 24px;
             }}
         }}
+
+        /* SEO / Market Demand Section Styles */
+        .seo-overview-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .seo-metric-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.3s;
+        }}
+        .seo-metric-card:hover {{
+            border-color: rgba(59, 130, 246, 0.4);
+        }}
+        .seo-metric-title {{
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .seo-metric-val {{
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #ffffff;
+        }}
+        .seo-metric-desc {{
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }}
+        
+        /* KD Dial/Badge */
+        .kd-badge-fill {{
+            height: 6px;
+            border-radius: 3px;
+            background: #e2e8f0;
+            margin-top: 8px;
+            overflow: hidden;
+        }}
+        
+        /* Trend Chart Card */
+        .seo-trend-chart-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }}
+        .seo-chart-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }}
+        .seo-chart-title {{
+            font-size: 1rem;
+            font-weight: 700;
+            color: #ffffff;
+        }}
+        
+        .seo-bar-chart {{
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 180px;
+            padding-top: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 8px;
+        }}
+        
+        .seo-bar-col {{
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            height: 100%;
+            justify-content: flex-end;
+        }}
+        
+        .seo-bar {{
+            width: 100%;
+            max-width: 40px;
+            background: linear-gradient(to top, #2563eb, #60a5fa);
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }}
+        .seo-bar:hover {{
+            background: linear-gradient(to top, #3b82f6, #93c5fd);
+            transform: scaleX(1.05);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }}
+        
+        /* Tooltip */
+        .seo-bar-tooltip {{
+            position: absolute;
+            bottom: 100%;
+            background: #0f172a;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            transform: translateY(4px);
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 4px;
+            z-index: 10;
+        }}
+        .seo-bar-col:hover .seo-bar-tooltip {{
+            opacity: 1;
+            transform: translateY(0);
+        }}
+        
+        .seo-bar-label {{
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            text-align: center;
+            white-space: nowrap;
+        }}
+        
+        /* Suggestions Card */
+        .seo-suggestions-card {{
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }}
+        
+        .seo-tabs {{
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding-bottom: 12px;
+        }}
+        
+        .seo-tab-btn {{
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }}
+        .seo-tab-btn:hover {{
+            background: rgba(255,255,255,0.08);
+            color: #ffffff;
+        }}
+        .seo-tab-btn.active {{
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }}
+        
+        .seo-table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.88rem;
+        }}
+        .seo-table th, .seo-table td {{
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }}
+        .seo-table th {{
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        .seo-table tr:hover td {{
+            background: rgba(255,255,255,0.01);
+        }}
+        
+        /* Intent badge */
+        .intent-badge {{
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-right: 4px;
+        }}
+        .intent-badge.L {{
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }}
+        .intent-badge.C {{
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }}
+        .intent-badge.I {{
+            background: rgba(139, 92, 246, 0.15);
+            color: #8b5cf6;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }}
+        .intent-badge.T {{
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }}
     </style>
 </head>
 <body>
@@ -1847,6 +2109,7 @@ class RunConsolidator:
             
             <nav class="nav-links">
                 <a href="#overview" class="active">📊 Unified Overview</a>
+                {nav_demand_link}
                 <a href="#citations">📑 Outbound Citations</a>
                 <a href="#deep-dives">⚙️ Debug Deep Dives</a>
             </nav>
@@ -1923,6 +2186,7 @@ class RunConsolidator:
                 </div>
             </section>
 
+            {market_demand_section}
             
             <!-- SECTION 5: Outbound Citations -->
             <section id="citations" class="scroll-section">
@@ -2150,10 +2414,251 @@ class RunConsolidator:
                 closeScreenshotModal(null);
             }}
         }});
+
+        // SEO Tab switching function
+        function switchSeoTab(btn, targetId) {{
+            const card = btn.closest('.seo-suggestions-card');
+            const tabs = card.querySelectorAll('.seo-tab-btn');
+            const tables = card.querySelectorAll('.seo-table');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            tables.forEach(tbl => tbl.style.display = 'none');
+            
+            btn.classList.add('active');
+            const target = card.querySelector('#' + targetId);
+            if (target) {{
+                target.style.display = 'table';
+            }}
+        }}
     </script>
 </body>
 </html>
 """
+
+    def render_market_demand_section(self, seo_data):
+        if not seo_data:
+            return ""
+
+        target_keyword = seo_data.get("target_keyword", "")
+        search_volume = seo_data.get("search_volume", 0)
+        difficulty = seo_data.get("difficulty", 0)
+        cpc = seo_data.get("cpc", 0.0)
+        competition = seo_data.get("competition", 0.0)
+        intents = seo_data.get("intents", [])
+        serp_features = seo_data.get("serp_features", [])
+        volume_history = seo_data.get("volume_history", {})
+        suggestions = seo_data.get("suggestions", {})
+
+        # Formatted Volume
+        vol_str = f"{search_volume:,}" if search_volume else "0"
+        
+        # Difficulty Badges & description
+        kd_color = self.get_kd_color(difficulty)
+        kd_label = self.get_kd_label(difficulty)
+
+        # Intents badges
+        intent_badges = ""
+        for intent in intents:
+            intent_label = "Local" if intent == "L" else "Commercial" if intent == "C" else "Informational" if intent == "I" else "Transactional" if intent == "T" else intent
+            intent_badges += f'<span class="intent-badge {intent}">{intent_label}</span>'
+        if not intent_badges:
+            intent_badges = '<span style="color: var(--text-muted);">None</span>'
+
+        # SERP features
+        serp_badges = ""
+        for feat in serp_features:
+            serp_badges += f'<span class="ui-utm-item" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2);">{feat.replace("_", " ")}</span> '
+        if not serp_badges:
+            serp_badges = '<span style="color: var(--text-muted); font-size: 0.8rem;">None</span>'
+
+        # Build monthly history columns
+        chart_cols_html = ""
+        if volume_history:
+            sorted_dates = sorted(volume_history.keys())
+            max_val = max(volume_history.values()) if volume_history else 0
+            for date_str in sorted_dates:
+                val = volume_history[date_str]
+                try:
+                    dt = datetime.strptime(date_str, "%Y-%m-%d")
+                    label = dt.strftime("%b %y")
+                except Exception:
+                    label = date_str
+                
+                pct = int((val / max_val) * 85) + 5 if max_val > 0 and val > 0 else 0
+                val_display = f"{val:,}"
+                
+                chart_cols_html += f"""
+                <div class="seo-bar-col">
+                    <div class="seo-bar-tooltip">{val_display} searches</div>
+                    <div class="seo-bar" style="height: {pct}%;"></div>
+                    <div class="seo-bar-label">{label}</div>
+                </div>
+                """
+        else:
+            chart_cols_html = '<div style="width:100%; text-align:center; padding: 40px; color: var(--text-muted); font-style:italic;">No historical search volume data available.</div>'
+
+        # Render Suggestions Tables
+        similar_table = self.render_suggestions_table(suggestions.get("similar", []), "similar-table", "table")
+        related_table = self.render_suggestions_table(suggestions.get("related", []), "related-table", "none")
+        questions_table = self.render_suggestions_table(suggestions.get("questions", []), "questions-table", "none")
+
+        return f"""
+            <section id="market-demand" class="scroll-section">
+                <div class="section-header">
+                    <h2>📈 Search Query Market Demand (SEO Insights)</h2>
+                    <span class="badge pill-ai" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">SEO Insights</span>
+                </div>
+                
+                <!-- SEO Metric Overview Cards -->
+                <div class="seo-overview-grid">
+                    <div class="seo-metric-card">
+                        <span class="seo-metric-title">Target Keyword</span>
+                        <div class="seo-metric-val" style="font-size: 1.15rem; word-break: break-all; margin-top: 4px; color: var(--neon-blue);">{target_keyword}</div>
+                        <span class="seo-metric-desc">Formulated query being analyzed</span>
+                    </div>
+                    
+                    <div class="seo-metric-card">
+                        <span class="seo-metric-title">Search Volume</span>
+                        <div class="seo-metric-val">{vol_str}</div>
+                        <span class="seo-metric-desc">Average searches per month</span>
+                    </div>
+                    
+                    <div class="seo-metric-card">
+                        <span class="seo-metric-title">Keyword Difficulty</span>
+                        <div class="seo-metric-val" style="color: {kd_color};">{difficulty}</div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: {kd_color};">{kd_label}</div>
+                        <div class="kd-badge-fill"><div style="background: {kd_color}; height: 100%; width: {difficulty}%;"></div></div>
+                    </div>
+                    
+                    <div class="seo-metric-card">
+                        <span class="seo-metric-title">Intents & CPC</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 6px 0;">{intent_badges}</div>
+                        <span class="seo-metric-desc">Avg CPC: <strong>${cpc:.2f}</strong></span>
+                    </div>
+                </div>
+
+                <div class="seo-overview-grid" style="grid-template-columns: 1fr; margin-bottom: 30px;">
+                    <div class="seo-metric-card" style="padding: 16px 20px;">
+                        <span class="seo-metric-title" style="margin-bottom: 6px; display: block;">SERP Features Triggered</span>
+                        <div style="display: flex; flex-wrap: wrap; gap: 6px;">{serp_badges}</div>
+                    </div>
+                </div>
+
+                <!-- 12-Month Search Volume Trend Chart -->
+                <div class="seo-trend-chart-card">
+                    <div class="seo-chart-header">
+                        <span class="seo-chart-title">📊 12-Month Search Volume Trend (Searches / Month)</span>
+                        <span class="badge pill-ai" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-violet); border: none;">M-o-M Search Volume</span>
+                    </div>
+                    <div class="seo-bar-chart">
+                        {chart_cols_html}
+                    </div>
+                </div>
+
+                <!-- Suggestions Card -->
+                <div class="seo-suggestions-card">
+                    <div class="seo-chart-header" style="margin-bottom: 15px;">
+                        <span class="seo-chart-title">💡 Search Query Suggestions & Keyword Ideas</span>
+                    </div>
+                    
+                    <div class="seo-tabs">
+                        <button class="seo-tab-btn active" onclick="switchSeoTab(this, 'similar-table')">Similar Keywords</button>
+                        <button class="seo-tab-btn" onclick="switchSeoTab(this, 'related-table')">Related Keywords</button>
+                        <button class="seo-tab-btn" onclick="switchSeoTab(this, 'questions-table')">Questions</button>
+                    </div>
+                    
+                    <div class="seo-tables-wrapper" style="overflow-x: auto;">
+                        {similar_table}
+                        {related_table}
+                        {questions_table}
+                    </div>
+                </div>
+            </section>
+        """
+
+    def get_kd_color(self, kd):
+        if kd < 30:
+            return "#10b981"  # green
+        elif kd < 50:
+            return "#84cc16"  # lime
+        elif kd < 70:
+            return "#f59e0b"  # orange
+        else:
+            return "#ef4444"  # red
+
+    def get_kd_label(self, kd):
+        if kd < 30:
+            return "Easy to rank"
+        elif kd < 50:
+            return "Moderate competition"
+        elif kd < 70:
+            return "Difficult (High competition)"
+        else:
+            return "Very Hard (Extremely competitive)"
+
+    def render_suggestions_table(self, sugg_list, table_id, display_style):
+        if not sugg_list:
+            return f'<table id="{table_id}" class="seo-table" style="display: {display_style}; border: none;"><tr><td style="color: var(--text-muted); font-style: italic; padding: 20px; text-align: center;">No suggestions found for this category</td></tr></table>'
+            
+        rows_html = ""
+        for item in sugg_list:
+            kw = item.get("keyword", "")
+            vol = item.get("volume", 0)
+            vol_str = f"{vol:,}" if vol else "0"
+            kd = item.get("difficulty", 0)
+            kd_c = self.get_kd_color(kd)
+            cpc = item.get("cpc", 0.0)
+            cpc_str = f"${cpc:.2f}" if cpc else "$0.00"
+            
+            # Intents pills
+            intents = item.get("intents", [])
+            intent_pills = ""
+            for intent in intents:
+                intent_label = "Local" if intent == "L" else "Commercial" if intent == "C" else "Informational" if intent == "I" else "Transactional" if intent == "T" else intent
+                intent_pills += f'<span class="intent-badge {intent}">{intent_label}</span>'
+            if not intent_pills:
+                intent_pills = '<span style="color: var(--text-muted); font-size: 0.85rem;">N/A</span>'
+                
+            # Sparkline SVG
+            spark_svg = item.get("volume_history_svg", "")
+            if spark_svg:
+                # Polish up styling of inline SVG
+                spark_svg = spark_svg.replace('stroke="#1976D2"', 'stroke="var(--neon-blue)"').replace('fill="#1976D2"', 'fill="var(--neon-blue)"')
+                spark_svg = spark_svg.replace('width="120px"', 'width="100px"').replace('height="40px"', 'height="24px"')
+            else:
+                spark_svg = '<span style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">No trend data</span>'
+                
+            rows_html += f"""
+                <tr>
+                    <td style="font-weight: 700; color: #ffffff;">{kw}</td>
+                    <td>{vol_str}</td>
+                    <td>
+                        <span class="badge" style="background: {kd_c}; color: #ffffff; border: none; font-weight: 700; font-size: 0.75rem; padding: 3px 6px;">{kd}</span>
+                    </td>
+                    <td>{cpc_str}</td>
+                    <td>{intent_pills}</td>
+                    <td style="padding: 4px 16px;">{spark_svg}</td>
+                </tr>
+            """
+            
+        return f"""
+        <table id="{table_id}" class="seo-table" style="display: {display_style};">
+            <thead>
+                <tr>
+                    <th>Keyword Idea</th>
+                    <th>Avg Volume</th>
+                    <th>KD (Difficulty)</th>
+                    <th>CPC (USD)</th>
+                    <th>Search Intent</th>
+                    <th>12Mo Trend</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+        """
+
 
 def run_consolidation_for_active_session(results_list):
     """Utility called directly in geo_cli.py by default to consolidate ONLY active session runs."""
