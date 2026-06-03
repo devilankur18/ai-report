@@ -125,8 +125,19 @@ def deduce_category(name, text_context):
 def parse_ws_entities(content):
     all_jsons = []
     
+    # 1. Parse block-based decoded payloads
+    blocks = re.findall(r'--- Decoded Payload Start ---\r?\n(.*?)\r?\n--- Decoded Payload End ---', content, re.DOTALL)
+    for block in blocks:
+        all_jsons.extend(extract_jsons(block))
+        
+    # 2. Parse line-based payloads (for backward compatibility or single-line variants)
     for line in content.split('\n'):
         payload = None
+        if 'DecodedPayload:' in line:
+            text_repr = line.split('DecodedPayload:', 1)[1].strip()
+            all_jsons.extend(extract_jsons(text_repr))
+            continue
+            
         if 'Base64Payload:' in line:
             payload = line.split('Base64Payload:')[1].strip().split('...')[0].strip()
         elif 'Payload:' in line and 'WS_FRAME' in line:

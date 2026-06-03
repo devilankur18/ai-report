@@ -16,6 +16,17 @@ function getArgs() {
     return args;
 }
 
+function decodePayload(payloadData) {
+    try {
+        const buf = Buffer.from(payloadData, 'base64');
+        const decoded = buf.toString('utf8');
+        // Strip non-printable control characters except tab, newline, carriage return
+        return decoded.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
+    } catch (e) {
+        return `[Decoding failed: ${e.message}]`;
+    }
+}
+
 async function run() {
     const args = getArgs();
     const prompt = args.prompt || "My 55-year-old mother is diabetic and experiencing mild chest pain after walking. Who are the most reliable heart doctors in UP/Hardoi with good reviews, and what should I ask them?";
@@ -91,12 +102,14 @@ async function run() {
         
         cdpClient.on('Network.webSocketFrameReceived', ({requestId, timestamp, response}) => {
             const {opcode, payloadData} = response;
-            fs.appendFileSync(outputFile, `[WS_FRAME_RECEIVED] Opcode: ${opcode} Payload: ${payloadData}\n`, 'utf8');
+            const decoded = decodePayload(payloadData);
+            fs.appendFileSync(outputFile, `[WS_FRAME_RECEIVED] Opcode: ${opcode}\n--- Decoded Payload Start ---\n${decoded}\n--- Decoded Payload End ---\n\n`, 'utf8');
         });
 
         cdpClient.on('Network.webSocketFrameSent', ({requestId, timestamp, response}) => {
             const {opcode, payloadData} = response;
-            fs.appendFileSync(outputFile, `[WS_FRAME_SENT] Opcode: ${opcode} Payload: ${payloadData}\n`, 'utf8');
+            const decoded = decodePayload(payloadData);
+            fs.appendFileSync(outputFile, `[WS_FRAME_SENT] Opcode: ${opcode}\n--- Decoded Payload Start ---\n${decoded}\n--- Decoded Payload End ---\n\n`, 'utf8');
         });
         console.log("[✓] CDPSession connected and sniffing WebSockets.");
     } catch (e) {
