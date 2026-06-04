@@ -1,0 +1,38 @@
+{
+  "audioUrl": "audio/question-1.mp3",
+  "transcript": "If you work a 9-5 job, getting to the dentist can feel impossible, but you have options. Many dental offices now offer early morning appointments starting at 7am, or late evening hours up to 7pm some practices are also open on Saturdays. When you call, ask if they offer block scheduling, so you can get multiple treatments done in one visit. Minimizing your time off, another tip is to look for a dentist located close to your office rather than your home, making it easy to slip out during lunch or for a quick morning appointment.",
+  "expertName": "Dr. Priya Sharma",
+  "expertSpecialty": "Dentist",
+  "domain": "Dentistry",
+  "hookText": "Can't fit dental visits into your 9-5 schedule?",
+  "scenes": [
+    {
+      "startSec": 0,
+      "endSec": 12.345,
+      "label": "Morning/Evening Options",
+      "keyQuote": "Many dental offices now offer early morning appointments starting at 7am, or late evening hours up to 7pm"
+    },
+    {
+      "startSec": 12.345,
+      "endSec": 20.69,
+      "label": "Scheduling Tips",
+      "keyQuote": "When you call, ask if they offer block scheduling, so you can get multiple treatments done in one visit."
+    },
+    {
+      "startSec": 20.69,
+      "endSec": 35.8028125,
+      "label": "Location Strategy",
+      "keyQuote": "look for a dentist located close to your office rather than your home, making it easy to slip out during lunch or for a quick morning appointment."
+    }
+  ],
+  "ctaText": "Save this reel before your next dental checkup!",
+  "hashtags": [
+    "#DentistryTips",
+    "#9to5Life",
+    "#OralHealth",
+    "#WorkLifeBalance"
+  ],
+  "title": "How to Get Dental Care When You Work a 9-5 Job | Dr. Priya Sharma",
+  "durationInFrames": 1165,
+  "fps": 30
+}

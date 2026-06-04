@@ -1,0 +1,162 @@
+[
+  {
+    "question": "How can I get a dental appointment with my 9-to-5 work schedule?",
+    "search_intent": "Finding convenient appointment times"
+  },
+  {
+    "question": "What should I expect at my first dental visit?",
+    "search_intent": "Preparing for dentistry experience"
+  },
+  {
+    "question": "How much does dental care cost without insurance?",
+    "search_intent": "Understanding out-of-pocket expenses"
+  },
+  {
+    "question": "Can a dentist prescribe antibiotics?",
+    "search_intent": "Understanding dentist prescribing authority"
+  },
+  {
+    "question": "Why is my dental front desk staff so grouchy?",
+    "search_intent": "Understanding office dynamics"
+  },
+  {
+    "question": "How do I find a dentist near me that accepts my insurance?",
+    "search_intent": "Locating accessible dental care"
+  },
+  {
+    "question": "What's the difference between a dentist and a dental surgeon?",
+    "search_intent": "Understanding dental specialties"
+  },
+  {
+    "question": "How often should I visit the dentist?",
+    "search_intent": "Dental care frequency recommendations"
+  },
+  {
+    "question": "Can I get emergency dental care without an appointment?",
+    "search_intent": "Urgent dental needs"
+  },
+  {
+    "question": "What dental procedures require a specialist?",
+    "search_intent": "Understanding when to see specialists"
+  },
+  {
+    "question": "How do I prepare for a dental appointment after being away for years?",
+    "search_intent": "Overcoming dental anxiety and gaps"
+  },
+  {
+    "question": "Why do dentists charge so much for certain procedures?",
+    "search_intent": "Understanding dental costs"
+  },
+  {
+    "question": "Can a dentist treat gum disease?",
+    "search_intent": "Specific treatment capabilities"
+  },
+  {
+    "question": "What should I ask during my first dental consultation?",
+    "search_intent": "Preparing important questions"
+  },
+  {
+    "question": "How long does a typical dental appointment take?",
+    "search_intent": "Planning schedule around appointments"
+  },
+  {
+    "question": "Can a dentist diagnose oral cancer?",
+    "search_intent": "Understanding diagnostic capabilities"
+  },
+  {
+    "question": "What's the difference between general dentistry and cosmetic dentistry?",
+    "search_intent": "Understanding service types"
+  },
+  {
+    "question": "How do I find a dentist I can actually trust?",
+    "search_intent": "Building confidence in provider selection"
+  },
+  {
+    "question": "What happens if I don't have dental insurance?",
+    "search_intent": "Alternatives and payment options"
+  },
+  {
+    "question": "Can a dentist refer me to other specialists?",
+    "search_intent": "Understanding referral process"
+  },
+  {
+    "question": "How much do common dental procedures actually cost?",
+    "search_intent": "Pricing transparency"
+  },
+  {
+    "question": "Why does my dentist recommend so many treatments?",
+    "search_intent": "Evaluating recommendations"
+  },
+  {
+    "question": "Can I negotiate dental procedure prices?",
+    "search_intent": "Cost management strategies"
+  },
+  {
+    "question": "What should I do about dental anxiety before my appointment?",
+    "search_intent": "Managing fear and stress"
+  },
+  {
+    "question": "How do I know if I need a root canal?",
+    "search_intent": "Understanding when specific treatments are needed"
+  },
+  {
+    "question": "Can a dentist treat sleep apnea?",
+    "search_intent": "Understanding treatment scope"
+  },
+  {
+    "question": "What payment plans does my dentist office offer?",
+    "search_intent": "Financing dental care"
+  },
+  {
+    "question": "How do I find a dentist who specializes in implants?",
+    "search_intent": "Finding specialists for specific needs"
+  },
+  {
+    "question": "Can a dentist help with teeth grinding?",
+    "search_intent": "Treatment for specific issues"
+  },
+  {
+    "question": "What's involved in a routine dental cleaning?",
+    "search_intent": "Understanding common procedures"
+  },
+  {
+    "question": "How do I choose between a dental clinic and private practice?",
+    "search_intent": "Evaluating practice types"
+  },
+  {
+    "question": "Can I get same-day dental appointments?",
+    "search_intent": "Finding urgent/convenient care"
+  },
+  {
+    "question": "What should I expect during a dental X-ray?",
+    "search_intent": "Understanding diagnostic procedures"
+  },
+  {
+    "question": "How do I find an affordable dentist in my area?",
+    "search_intent": "Cost-conscious provider selection"
+  },
+  {
+    "question": "Can a dentist treat bad breath issues?",
+    "search_intent": "Understanding treatment options"
+  },
+  {
+    "question": "What dental procedures are typically covered by insurance?",
+    "search_intent": "Insurance coverage information"
+  },
+  {
+    "question": "How do I know if I need braces or Invisalign?",
+    "search_intent": "Understanding orthodontic options"
+  },
+  {
+    "question": "Can a dentist help with jaw pain or TMJ?",
+    "search_intent": "Treatment for specific conditions"
+  },
+  {
+    "question": "What's the best way to find a dentist recommendation?",
+    "search_intent": "Provider selection resources"
+  },
+  {
+    "question": "How much should I budget for annual dental care?",
+    "search_intent": "Financial planning for oral health"
+  }
+]

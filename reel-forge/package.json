@@ -1,0 +1,27 @@
+{
+  "name": "reel-forge",
+  "version": "1.0.0",
+  "description": "ReelForge CLI MVP Video Generator",
+  "main": "cli/render.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "render": "npx tsx cli/render.ts",
+    "preview": "npx remotion preview src/Root.tsx"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.170",
+    "@remotion/google-fonts": "^4.0.170",
+    "@remotion/media-utils": "^4.0.170",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.170",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}
