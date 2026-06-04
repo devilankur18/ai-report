@@ -1,0 +1,12 @@
+{
+  "name": "Dr. Priya Sharma",
+  "specialty": "Dermatologist",
+  "domain": "Skincare",
+  "avatar": "avatar.png",
+  "logo": "logo.png",
+  "images": [
+    "avatar.png",
+    "clinic-outside.png",
+    "clinic-inside.png"
+  ]
+}

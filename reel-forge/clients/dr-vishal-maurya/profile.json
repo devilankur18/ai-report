@@ -1,0 +1,13 @@
+{
+  "name": "Dr. Vishal Maurya",
+  "specialty": "Cardiologist",
+  "domain": "Heart Health",
+  "avatar": "avatar.png",
+  "logo": "logo.png",
+  "images": [
+    "avatar.png",
+    "clinic-outside.png",
+    "clinic-inside.png",
+    "doctor-patient.png"
+  ]
+}

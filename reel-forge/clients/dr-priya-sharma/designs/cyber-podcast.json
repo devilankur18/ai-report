@@ -1,0 +1,12 @@
+{
+  "template": "minimal-podcast",
+  "defaultLanguage": "en",
+  "ctaText": "Listen to full skincare podcast episodes!",
+  "bgVideoUrl": "",
+  "theme": {
+    "accentColor": "#00F5D4",
+    "textColor": "#FFFFFF",
+    "textSecondaryColor": "#8E9AAF",
+    "bgType": "image"
+  }
+}

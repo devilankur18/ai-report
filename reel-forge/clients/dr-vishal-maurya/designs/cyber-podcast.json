@@ -1,0 +1,12 @@
+{
+  "template": "minimal-podcast",
+  "defaultLanguage": "en",
+  "ctaText": "Listen to the Heart Health podcast!",
+  "bgVideoUrl": "",
+  "theme": {
+    "accentColor": "#00F5D4",
+    "textColor": "#FFFFFF",
+    "textSecondaryColor": "#8E9AAF",
+    "bgType": "image"
+  }
+}

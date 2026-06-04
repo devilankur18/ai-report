@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { resolveClientConfig } from '../src/lib/config-resolver';
 
 // Parse arguments manually to avoid extra dependencies
 function parseArgs() {
@@ -29,33 +30,75 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
+// Helper to create a URL/filename safe slug from text (falls back to audio filename if non-ASCII or empty)
+function getSlug(text: string, fallbackAudioPath: string): string {
+  const clean = text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+
+  if (clean.length > 2) {
+    return clean.slice(0, 30); // limit slug length
+  }
+  
+  // Fallback to audio filename base
+  const audioBase = path.basename(fallbackAudioPath, path.extname(fallbackAudioPath));
+  return audioBase
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
+    .slice(0, 30);
+}
+
+function getFormattedTimestamp(): string {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+}
+
 function main() {
   const args = parseArgs();
 
   // Show help if requested or missing required arguments
   if (args.help || (!args.audio && !args.props)) {
     console.log(`
-ReelForge CLI Video Render Orchestrator
----------------------------------------
+ReelForge Scalable Video Render Orchestrator
+-------------------------------------------
 Usage:
   npx tsx cli/render.ts \\
     --audio ./samples/expert-advice.mp3 \\
-    --expert "Dr. Priya Sharma" \\
-    --specialty "Dermatologist" \\
-    --domain "Skincare" \\
-    --template hook-quote \\
-    --out ./out/video.mp4
+    --client dr-priya-sharma \\
+    --design classic-reels
 
 Options:
-  --audio <path>          Path to the local expert audio file
+  --client <id>           Directory name of the client under clients/
+  --design <id>           Name of the design profile JSON (default: classic-reels)
+  --audio <path>          Path to the local expert audio file (.mp3 / .wav)
+  
+Alternative Manual overrides (skips client profile):
   --expert <name>         Name of the expert
   --specialty <title>     Title/specialty of the expert
-  --domain <name>         Domain/niche (e.g. Skincare, Finance)
+  --domain <name>         Domain/niche (e.g. Skincare)
   --template <name>       Template: "hook-quote" or "minimal-podcast" (default: hook-quote)
-  --out <path>            Output path for the rendered MP4 (default: ./out/video.mp4)
+  --theme <theme-id>      Branding theme ID
+
+Rendering Options:
+  --out <path>            Override output path for the rendered MP4
+  --lang <lang-code>      Override presentation language (e.g. en, hi)
+  --asr-lang <lang-code>  Force ASR transcription language (default: auto-detect)
+  --bg-video <path>       Custom background loop video file relative to public/
   --model <model>         Ollama model (default: gemma4:e4b)
   --whisper-model <size>  Whisper model size (default: small)
-  --accent-color <hex>    Accent color code override (e.g. #FF6B35)
+  --accent-color <hex>    Accent color override (e.g. #FF6B35)
   --skip-ai               Skip transcription/LLM (uses existing tmp/props.json)
   --props <path>          Path to a pre-generated props.json (skips AI entirely)
   --preview               Open Remotion Studio instead of rendering
@@ -63,8 +106,62 @@ Options:
     process.exit(0);
   }
 
-  const template = (args.template as string) || 'hook-quote';
-  const outPath = (args.out as string) || './out/video.mp4';
+  const audio = args.audio as string;
+  if (audio && !fs.existsSync(audio)) {
+    console.error(`[render] Error: Audio file not found at ${audio}`);
+    process.exit(1);
+  }
+
+  // 1. Resolve Profile and Design Config
+  let clientNameId = args.client as string;
+  let designId = (args.design as string) || 'classic-reels';
+
+  let expert = args.expert as string;
+  let specialty = args.specialty as string;
+  let domain = args.domain as string;
+  let template = (args.template as string) || 'hook-quote';
+  let targetLang = (args.lang as string) || 'en';
+  let accentColor = args['accent-color'] as string;
+  let bgVideo = (args['bg-video'] as string) || '';
+  
+  // Custom theme variables (used for manual overrides)
+  let themeId = args.theme as string;
+
+  let expertAvatar: string | undefined = undefined;
+  let expertLogo: string | undefined = undefined;
+
+  let clientProps: any = {};
+
+  if (clientNameId) {
+    console.log(`[render] Loading client profile for: ${clientNameId} (Design: ${designId})`);
+    try {
+      clientProps = resolveClientConfig(projectRoot, clientNameId, designId);
+      
+      // Map configuration variables
+      expert = clientProps.expertName;
+      specialty = clientProps.expertSpecialty;
+      domain = clientProps.domain;
+      template = clientProps.template;
+      targetLang = args.lang as string || clientProps.language; // CLI override takes priority
+      accentColor = args['accent-color'] as string || clientProps.accentColor;
+      bgVideo = args['bg-video'] as string || clientProps.bgVideoUrl || '';
+      expertAvatar = clientProps.expertAvatar;
+      expertLogo = clientProps.expertLogo;
+      themeId = clientProps.themeId; // Resolved from design config
+    } catch (err: any) {
+      console.error(`[render] Error: Failed to resolve client config.`, err.message);
+      process.exit(1);
+    }
+  } else {
+    // Manual fallback mode (must have expert, specialty, domain)
+    if (!args.props && !args['skip-ai']) {
+      if (!audio || !expert || !specialty || !domain) {
+        console.error('[render] Error: --client OR manual overrides (--expert, --specialty, --domain) are required.');
+        process.exit(1);
+      }
+    }
+  }
+
   const model = (args.model as string) || 'gemma4:e4b';
   const whisperModel = (args.whisper_model as string) || 'small';
   const preview = !!args.preview;
@@ -73,24 +170,9 @@ Options:
 
   // Step 1: Run AI pipeline if not using custom props
   if (!args.props && !args['skip-ai']) {
-    const audio = args.audio as string;
-    const expert = args.expert as string;
-    const specialty = args.specialty as string;
-    const domain = args.domain as string;
-
-    if (!audio || !expert || !specialty || !domain) {
-      console.error('[render] Error: --audio, --expert, --specialty, and --domain are required unless --props is specified.');
-      process.exit(1);
-    }
-
-    if (!fs.existsSync(audio)) {
-      console.error(`[render] Error: Audio file not found at ${audio}`);
-      process.exit(1);
-    }
-
     console.log('[render] Running AI pipeline (Transcription + Metadata)...');
     
-    const pipelineCmd = `uv run --with faster-whisper --with requests python3 "${path.join(projectRoot, 'cli', 'pipeline.py')}" \
+    let pipelineCmd = `uv run --with faster-whisper --with requests python3 "${path.join(projectRoot, 'cli', 'pipeline.py')}" \
       --audio "${audio}" \
       --expert "${expert}" \
       --specialty "${specialty}" \
@@ -98,7 +180,13 @@ Options:
       --template "${template}" \
       --model "${model}" \
       --whisper-model "${whisperModel}" \
-      --output "${propsPath}"`;
+      --language "${targetLang}"`;
+
+    if (args['asr-lang']) {
+      pipelineCmd += ` --asr-language "${args['asr-lang']}"`;
+    }
+
+    pipelineCmd += ` --output "${propsPath}"`;
 
     try {
       execSync(pipelineCmd, { stdio: 'inherit', cwd: projectRoot });
@@ -118,8 +206,8 @@ Options:
 
   // Step 3: Copy audio file to public/audio/ and rewrite props audioUrl
   let audioSrcFile = props.audioUrl;
-  if (args.audio) {
-    audioSrcFile = args.audio as string;
+  if (audio) {
+    audioSrcFile = audio;
   }
 
   if (audioSrcFile && fs.existsSync(audioSrcFile)) {
@@ -134,13 +222,24 @@ Options:
     console.log(`[render] Copying audio asset to public: ${audioDestPath}`);
     fs.copyFileSync(audioSrcFile, audioDestPath);
     
-    // Set relative path for Remotion staticFile resolver
     props.audioUrl = `audio/${audioDestFilename}`;
   } else {
     console.warn(`[render] Warning: Audio file source '${audioSrcFile}' was not found or is empty.`);
   }
 
-  // Handle color override if provided
+  // Apply resolved config properties / manual overrides
+  if (clientNameId) {
+    // Merge all client resolved properties (theme text colors, backgrounds, etc)
+    Object.assign(props, clientProps);
+  } else {
+    // Manual overrides
+    props.language = targetLang;
+    if (themeId) props.themeId = themeId;
+    if (bgVideo) props.bgVideoUrl = bgVideo;
+    if (accentColor) props.accentColor = accentColor;
+  }
+
+  // CLI Accent Color Override (highest priority)
   if (args['accent-color']) {
     props.accentColor = args['accent-color'] as string;
   }
@@ -150,7 +249,22 @@ Options:
   fs.mkdirSync(path.dirname(updatedPropsPath), { recursive: true });
   fs.writeFileSync(updatedPropsPath, JSON.stringify(props, null, 2));
 
-  // Step 4: Render or Preview via Remotion CLI
+  // Step 4: Determine client-aware Output Path
+  let finalOutPath = args.out as string;
+  
+  if (!finalOutPath) {
+    const safeClientId = clientNameId || 'manual';
+    const timestamp = getFormattedTimestamp();
+    const cleanDesignId = clientNameId ? designId : (themeId || 'default');
+    const slugSource = props.title || props.domain || 'video';
+    const topicSlug = getSlug(slugSource, audioSrcFile || 'video.mp3');
+    
+    finalOutPath = path.join(projectRoot, 'out', safeClientId, `${timestamp}-${template}-${cleanDesignId}-${topicSlug}.mp4`);
+  } else {
+    finalOutPath = path.resolve(projectRoot, finalOutPath);
+  }
+
+  // Step 5: Render or Preview via Remotion CLI
   const rootPath = path.join(projectRoot, 'src', 'index.tsx');
   
   if (preview) {
@@ -163,15 +277,14 @@ Options:
     }
   } else {
     // Ensure output directory exists
-    const absOutPath = path.resolve(projectRoot, outPath);
-    fs.mkdirSync(path.dirname(absOutPath), { recursive: true });
+    fs.mkdirSync(path.dirname(finalOutPath), { recursive: true });
     
-    console.log(`[render] Rendering video composition '${template}' to: ${absOutPath}...`);
-    const renderCmd = `npx remotion render "${rootPath}" "${template}" "${absOutPath}" --props="${updatedPropsPath}" --codec=h264`;
+    console.log(`[render] Rendering video composition '${template}' to: ${finalOutPath}...`);
+    const renderCmd = `npx remotion render "${rootPath}" "${template}" "${finalOutPath}" --props="${updatedPropsPath}" --codec=h264`;
     
     try {
       execSync(renderCmd, { stdio: 'inherit', cwd: projectRoot });
-      console.log(`\n[render] ✅ Render successful! Output file: ${absOutPath}`);
+      console.log(`\n[render] ✅ Render successful! Output file: ${finalOutPath}`);
     } catch (err) {
       console.error('[render] Error: Remotion render failed.', err);
       process.exit(1);

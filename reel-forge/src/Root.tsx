@@ -36,7 +36,11 @@ export const Root: React.FC = () => {
       <Composition
         id="hook-quote"
         component={HookQuoteTemplate}
-        durationInFrames={600}
+        calculateMetadata={({ props }) => {
+          return {
+            durationInFrames: props.durationInFrames || 600,
+          };
+        }}
         fps={30}
         width={1080}
         height={1920}
@@ -46,7 +50,11 @@ export const Root: React.FC = () => {
       <Composition
         id="minimal-podcast"
         component={MinimalPodcastTemplate}
-        durationInFrames={600}
+        calculateMetadata={({ props }) => {
+          return {
+            durationInFrames: props.durationInFrames || 600,
+          };
+        }}
         fps={30}
         width={1080}
         height={1920}

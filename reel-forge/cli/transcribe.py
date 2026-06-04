@@ -17,7 +17,7 @@ from pathlib import Path
 # Whisper model size — "small" balances speed vs English accuracy well.
 WHISPER_MODEL_SIZE = "small"
 
-def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL_SIZE) -> dict:
+def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL_SIZE, language: str = None) -> dict:
     """
     Transcribe audio using faster-whisper.
     Falls back to openai-whisper if faster-whisper is not installed.
@@ -55,12 +55,16 @@ def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL_SIZE) -> d
 
             print(f"[whisper] Loading faster-whisper '{model_size}' model…")
             wmodel = WhisperModel(model_size, device="auto", compute_type="auto")
-            segments, info = wmodel.transcribe(
-                resampled_path,
-                beam_size=5,
-                word_timestamps=True,
-                condition_on_previous_text=False,
-            )
+            
+            transcribe_kwargs = {
+                "beam_size": 5,
+                "word_timestamps": True,
+                "condition_on_previous_text": False,
+            }
+            if language:
+                transcribe_kwargs["language"] = language
+
+            segments, info = wmodel.transcribe(resampled_path, **transcribe_kwargs)
             detected_lang = info.language
             duration = info.duration
 
@@ -93,11 +97,15 @@ def transcribe_audio(audio_path: str, model_size: str = WHISPER_MODEL_SIZE) -> d
 
             print(f"[whisper] Loading openai-whisper '{model_size}' model…")
             wmodel = whisper.load_model(model_size)
-            result = wmodel.transcribe(
-                resampled_path,
-                fp16=False,
-                condition_on_previous_text=False,
-            )
+            
+            transcribe_kwargs = {
+                "fp16": False,
+                "condition_on_previous_text": False,
+            }
+            if language:
+                transcribe_kwargs["language"] = language
+
+            result = wmodel.transcribe(resampled_path, **transcribe_kwargs)
             detected_lang = result.get("language", "en")
             text = result["text"].strip()
             duration = result.get("duration", 0.0)
@@ -140,6 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Transcribe audio file via Whisper.")
     parser.add_argument("audio", help="Path to audio file")
     parser.add_argument("--model", default=WHISPER_MODEL_SIZE, help="Whisper model size")
+    parser.add_argument("--language", default=None, help="Force language (e.g., en, hi)")
     parser.add_argument("--output", default=None, help="Save JSON output to path")
     args = parser.parse_args()
 
@@ -147,7 +156,7 @@ if __name__ == "__main__":
         print(f"Error: audio file not found: {args.audio}")
         sys.exit(1)
 
-    result = transcribe_audio(args.audio, model_size=args.model)
+    result = transcribe_audio(args.audio, model_size=args.model, language=args.language)
     if args.output:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)

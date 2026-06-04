@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--template", default="hook-quote", help="Target Remotion template")
     parser.add_argument("--model", default="gemma4:e4b", help="Ollama LLM model to use")
     parser.add_argument("--whisper-model", default="small", help="Whisper model size")
+    parser.add_argument("--language", default="en", help="Target video presentation language (e.g. en, hi, hinglish)")
+    parser.add_argument("--asr-language", default=None, help="Force ASR transcription language (e.g. en, hi). Default: auto-detect")
     parser.add_argument("--output", default="tmp/props.json", help="Path to write Remotion props JSON")
     args = parser.parse_args()
 
@@ -45,8 +47,8 @@ def main():
     
     # ── Step 1: Transcription ───────────────────────────────────────────
     print("\n═══ Step 1/2 — Transcription (Whisper ASR) ═══")
-    transcript = transcribe_audio(str(audio_path), model_size=args.whisper_model)
-    print(f"[pipeline] Transcription complete. Duration: {transcript['duration']:.2f}s")
+    transcript = transcribe_audio(str(audio_path), model_size=args.whisper_model, language=args.asr_language)
+    print(f"[pipeline] Transcription complete. Duration: {transcript['duration']:.2f}s, Detected Language: {transcript.get('language', 'unknown')}")
 
     # ── Step 2: Metadata Generation ──────────────────────────────────────
     print("\n═══ Step 2/2 — Metadata Generation (Ollama LLM) ═══")
@@ -57,6 +59,7 @@ def main():
         domain=args.domain,
         duration_sec=transcript["duration"],
         model=args.model,
+        language=args.language,
     )
     print("[pipeline] Metadata generation complete.")
 
@@ -81,6 +84,7 @@ def main():
       "title": meta.get("title", ""),
       "durationInFrames": total_duration_frames,
       "fps": 30,
+      "language": args.language,
     }
 
     # Verify scene bounds and adjust if necessary

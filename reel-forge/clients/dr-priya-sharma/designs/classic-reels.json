@@ -1,0 +1,15 @@
+{
+  "template": "hook-quote",
+  "defaultLanguage": "en",
+  "ctaText": "Get glowing, healthy skin with personalized treatment plans.",
+  "ctaType": "appointment",
+  "ctaTitle": "Book Skincare Appointment",
+  "ctaLink": "drpriyasharma.com/book",
+  "bgVideoUrl": "",
+  "theme": {
+    "accentColor": "#C86E4B",
+    "textColor": "#2D221C",
+    "textSecondaryColor": "#6B5A53",
+    "bgType": "image"
+  }
+}

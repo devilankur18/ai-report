@@ -10,10 +10,13 @@ import {
   staticFile,
 } from 'remotion';
 import { GlobalProps } from '../../global-schema';
-import { fontFamilies } from '../_shared/fonts';
+import { getFontFamilies } from '../_shared/fonts';
+import { getThemeById } from '../_shared/themes';
+import { AnimatedBackground } from '../_shared/AnimatedBackground';
 import { SafeZone } from '../_shared/SafeZone';
 import { ProgressBar } from '../_shared/ProgressBar';
 import { AudioWaveform } from '../_shared/AudioWaveform';
+import { EndingBlock } from '../_shared/EndingBlock';
 
 export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   audioUrl,
@@ -22,12 +25,40 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   domain,
   scenes,
   ctaText,
-  accentColor = '#00F5D4', // Neon teal
-  bgSolid = '#0A0A0A',
+  ctaType,
+  ctaTitle,
+  ctaSubtitle,
+  ctaLink,
+  ctaHandle,
+  accentColor: customAccent,
+  bgGradientStart: customStart,
+  bgGradientEnd: customEnd,
+  bgSolid: customSolid,
+  themeId = 'neon-tech',
+  bgVideoUrl: customBgVideo,
+  language = 'en',
+  expertAvatar,
+  expertLogo,
+  expertImages,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
+  // 1. Resolve theme configuration
+  const theme = getThemeById(themeId);
+  const resolvedAccent = customAccent || theme.accentColor;
+  const resolvedTextColor = theme.textColor;
+  const resolvedTextSecondary = theme.textSecondaryColor;
+  const resolvedBgStart = customStart || theme.bgGradientStart;
+  const resolvedBgEnd = customEnd || theme.bgGradientEnd;
+  const resolvedBgSolid = customSolid || theme.bgSolid;
+  const resolvedBgVideo = customBgVideo || theme.bgVideoUrl;
+  const resolvedBgType = theme.bgType;
+
+  // 2. Resolve fonts based on language
+  const fonts = getFontFamilies(language);
+
+  // 3. Resolve audio path
   const resolvedAudioUrl = React.useMemo(() => {
     if (!audioUrl) return '';
     if (audioUrl.startsWith('http') || audioUrl.startsWith('data:') || audioUrl.startsWith('/') || audioUrl.startsWith('file:')) {
@@ -36,9 +67,51 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
     return staticFile(audioUrl);
   }, [audioUrl]);
 
+  // Timing constants
   const INTRO_DURATION = 60; // 2 seconds
   const OUTRO_DURATION = 120; // 4 seconds
   const AUDIO_START_FRAME = INTRO_DURATION;
+
+  // 4. Resolve Background Image Cycling
+  const audioCurrentSec = Math.max(0, (frame - AUDIO_START_FRAME) / fps);
+  const activeSceneIndex = (scenes || []).findIndex(
+    (s) => audioCurrentSec >= s.startSec && audioCurrentSec < s.endSec
+  );
+  const activeScene = activeSceneIndex >= 0 ? scenes[activeSceneIndex] : null;
+
+  const ctaStartFrame = durationInFrames - OUTRO_DURATION;
+  const isCtaActive = frame >= ctaStartFrame;
+
+  const resolvedBgImageUrl = React.useMemo(() => {
+    if (!expertImages || expertImages.length === 0) return undefined;
+    
+    // Cycle backgrounds in sync with the scene shifts
+    if (isCtaActive) {
+      return expertImages[2] || expertImages[0];
+    }
+    if (frame < AUDIO_START_FRAME) {
+      return expertImages[1] || expertImages[0];
+    }
+    
+    const idx = (activeSceneIndex + 3) % expertImages.length;
+    return expertImages[idx];
+  }, [expertImages, frame, activeSceneIndex, isCtaActive]);
+
+  // Glassmorphic properties based on light vs dark theme
+  const isLightTheme = resolvedTextColor === '#2D221C';
+  const isImageBg = resolvedBgType === 'image';
+  const displayTextColor = isImageBg ? '#FFFFFF' : resolvedTextColor;
+  const displayTextSecondary = isImageBg ? '#CBD5E1' : resolvedTextSecondary;
+  
+  const cardBg = isImageBg 
+    ? 'rgba(0, 0, 0, 0.45)' 
+    : (isLightTheme ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.25)');
+  const cardBorder = isImageBg 
+    ? 'rgba(255, 255, 255, 0.08)' 
+    : (isLightTheme ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)');
+  const textShadowValue = isImageBg 
+    ? '0 4px 20px rgba(0, 0, 0, 0.6)' 
+    : (isLightTheme ? '0 2px 10px rgba(0, 0, 0, 0.05)' : '0 4px 20px rgba(0, 0, 0, 0.4)');
 
   // 1. Typewriter Intro Scene (0s to 2s)
   const introText = `${expertName.toUpperCase()}  |  ${expertSpecialty.toUpperCase()}`;
@@ -50,16 +123,7 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   );
   const typedText = introText.substring(0, visibleCharsCount);
 
-  // 2. Active Scene & Quotes Timing (from 2s onwards)
-  const audioCurrentSec = Math.max(0, (frame - AUDIO_START_FRAME) / fps);
-  const activeScene = scenes.find(
-    (s) => audioCurrentSec >= s.startSec && audioCurrentSec < s.endSec
-  );
-
-  const ctaStartFrame = durationInFrames - OUTRO_DURATION;
-  const isCtaActive = frame >= ctaStartFrame;
-
-  // Interpolate opacity to fade out the waveform and quotes during CTA
+  // Fade out main content during CTA
   const mainContentOpacity = interpolate(
     frame,
     [ctaStartFrame, ctaStartFrame + 15],
@@ -75,15 +139,59 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
 
+  // Active avatar image inside the circular waveform visualizer
+  const activeAvatar = React.useMemo(() => {
+    if (!expertImages || expertImages.length === 0) return expertAvatar;
+    const idx = Math.max(0, activeSceneIndex) % expertImages.length;
+    return expertImages[idx];
+  }, [expertImages, expertAvatar, activeSceneIndex]);
+
+  const resolvedAvatarUrl = activeAvatar
+    ? (activeAvatar.startsWith('http') || activeAvatar.startsWith('/') || activeAvatar.startsWith('data:') ? activeAvatar : staticFile(activeAvatar))
+    : null;
+
   return (
-    <AbsoluteFill style={{ backgroundColor: bgSolid }}>
+    <AbsoluteFill>
+      <AnimatedBackground
+        bgType={resolvedBgType}
+        bgGradientStart={resolvedBgStart}
+        bgGradientEnd={resolvedBgEnd}
+        bgSolid={resolvedBgSolid}
+        bgVideoUrl={resolvedBgVideo}
+        bgImageUrl={resolvedBgImageUrl}
+      />
+      
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.97); }
           to { opacity: 1; transform: scale(1); }
         }
       `}</style>
+      
       <SafeZone show={false} />
+
+      {/* Brand logo watermark (top right) */}
+      {expertLogo && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100px',
+            right: '90px',
+            opacity: 0.65,
+            zIndex: 10,
+          }}
+        >
+          <img
+            src={expertLogo.startsWith('http') || expertLogo.startsWith('/') || expertLogo.startsWith('data:') ? expertLogo : staticFile(expertLogo)}
+            alt="Brand Logo"
+            style={{
+              maxHeight: '50px',
+              maxWidth: '160px',
+              objectFit: 'contain',
+            }}
+          />
+        </div>
+      )}
 
       {/* Intro Typewriter Scene (0s to 2s) */}
       {frame < INTRO_DURATION && (
@@ -93,19 +201,21 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
             justifyContent: 'center',
             alignItems: 'center',
             padding: '0 60px',
+            zIndex: 10,
           }}
         >
           <div
             style={{
-              fontFamily: fontFamilies.sans,
-              fontSize: '32px',
+              fontFamily: fonts.sans,
+              fontSize: '38px', // enlarged (was 32px)
               fontWeight: 500,
-              color: '#FFFFFF',
+              color: displayTextColor,
               letterSpacing: '3px',
-              borderRight: frame % 15 < 8 ? '3px solid #FFFFFF' : '3px solid transparent',
+              borderRight: frame % 15 < 8 ? `3px solid ${displayTextColor}` : '3px solid transparent',
               paddingRight: '8px',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
+              textShadow: textShadowValue,
             }}
           >
             {typedText}
@@ -115,22 +225,44 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
 
       {/* Main Podcast Player UI (from 2s onwards) */}
       {frame >= AUDIO_START_FRAME && (
-        <AbsoluteFill style={{ opacity: mainContentOpacity }}>
-          {/* Centered Radial Waveform */}
+        <AbsoluteFill style={{ opacity: mainContentOpacity, zIndex: 5 }}>
+          
+          {/* Centered Radial Waveform with Avatar inside */}
           <div
             style={{
               position: 'absolute',
               top: '42%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
+              width: '400px',
+              height: '400px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
             }}
           >
             <AudioWaveform
               audioUrl={resolvedAudioUrl}
-              accentColor={accentColor}
+              accentColor={resolvedAccent}
               mode="radial"
               numberOfBars={64}
             />
+            
+            {resolvedAvatarUrl && (
+              <img
+                src={resolvedAvatarUrl}
+                alt={expertName}
+                style={{
+                  position: 'absolute',
+                  width: '315px',
+                  height: '315px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  zIndex: 2,
+                  border: `3px solid ${resolvedAccent}30`,
+                }}
+              />
+            )}
           </div>
 
           {/* Rotating Quote Overlay */}
@@ -149,15 +281,22 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
           >
             {activeScene?.keyQuote && (
               <div
-                key={activeScene.label} // Re-renders component triggers animation reset
+                key={activeSceneIndex} // Re-render triggers animation reset
                 style={{
-                  fontFamily: fontFamilies.sans,
-                  fontSize: '38px',
+                  fontFamily: fonts.sans,
+                  fontSize: '44px', // enlarged (was 38px)
                   fontWeight: 400,
-                  color: '#E0E0E0',
+                  color: displayTextColor,
                   lineHeight: 1.5,
                   letterSpacing: '0.5px',
                   animation: 'fadeIn 0.6s ease-out',
+                  textShadow: textShadowValue,
+                  padding: '24px 36px',
+                  borderRadius: '20px',
+                  backgroundColor: cardBg,
+                  border: `1px solid ${cardBorder}`,
+                  backdropFilter: 'blur(20px)',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
                 }}
               >
                 "{activeScene.keyQuote}"
@@ -179,22 +318,23 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
           >
             <div
               style={{
-                fontFamily: fontFamilies.sans,
-                fontSize: '28px',
+                fontFamily: fonts.sans,
+                fontSize: '38px', // enlarged (was 28px)
                 fontWeight: 700,
-                color: '#FFFFFF',
+                color: displayTextColor,
                 textTransform: 'uppercase',
                 letterSpacing: '4px',
+                textShadow: textShadowValue,
               }}
             >
               {expertName}
             </div>
             <div
               style={{
-                fontFamily: fontFamilies.sans,
-                fontSize: '18px',
+                fontFamily: fonts.sans,
+                fontSize: '24px', // enlarged (was 18px)
                 fontWeight: 500,
-                color: '#888888',
+                color: displayTextSecondary,
                 textTransform: 'uppercase',
                 letterSpacing: '3px',
               }}
@@ -208,103 +348,46 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
       {/* Outro CTA Overlay */}
       {isCtaActive && (
         <Sequence from={ctaStartFrame}>
-          {(() => {
-            const ctaFrame = frame - ctaStartFrame;
-            const spr = spring({
-              frame: ctaFrame,
-              fps,
-              config: { damping: 15 },
-            });
-            const ctaOpacity = interpolate(spr, [0, 1], [0, 1]);
-            const ctaScale = interpolate(spr, [0, 1], [0.9, 1]);
-
-            return (
-              <AbsoluteFill
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  padding: '0 80px',
-                  textAlign: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    opacity: ctaOpacity,
-                    transform: `scale(${ctaScale})`,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                  }}
-                >
-                  {/* Glowing neon headphones icon */}
-                  <div
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: '50%',
-                      border: `3px solid ${accentColor}`,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginBottom: '40px',
-                      boxShadow: `0 0 20px ${accentColor}`,
-                    }}
-                  >
-                    <span style={{ fontSize: '48px' }}>🎧</span>
-                  </div>
-                  
-                  <h3
-                    style={{
-                      fontFamily: fontFamilies.sans,
-                      fontSize: '52px',
-                      fontWeight: 700,
-                      color: '#FFFFFF',
-                      letterSpacing: '2px',
-                      marginBottom: '20px',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    Listen to Full Clip
-                  </h3>
-                  <p
-                    style={{
-                      fontFamily: fontFamilies.sans,
-                      fontSize: '32px',
-                      color: '#AAAAAA',
-                      lineHeight: 1.4,
-                      maxWidth: '600px',
-                      marginBottom: '50px',
-                    }}
-                  >
-                    {ctaText}
-                  </p>
-                  
-                  <div
-                    style={{
-                      fontFamily: fontFamilies.sans,
-                      fontSize: '22px',
-                      color: accentColor,
-                      letterSpacing: '5px',
-                      textTransform: 'uppercase',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {domain}
-                  </div>
-                </div>
-              </AbsoluteFill>
-            );
-          })()}
+          <AbsoluteFill
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '0 80px',
+              textAlign: 'center',
+              zIndex: 10,
+            }}
+          >
+            <EndingBlock
+              ctaType={ctaType}
+              ctaText={ctaText}
+              ctaTitle={ctaTitle}
+              ctaSubtitle={ctaSubtitle}
+              ctaLink={ctaLink}
+              ctaHandle={ctaHandle}
+              expertName={expertName}
+              expertSpecialty={expertSpecialty}
+              domain={domain}
+              accentColor={resolvedAccent}
+              textColor={displayTextColor}
+              textSecondaryColor={displayTextSecondary}
+              cardBg={cardBg}
+              cardBorder={cardBorder}
+              textShadow={textShadowValue}
+              fonts={fonts}
+              expertAvatar={expertAvatar}
+              isLightTheme={isLightTheme}
+            />
+          </AbsoluteFill>
         </Sequence>
       )}
 
       {/* Thin minimalist progress bar */}
-      <ProgressBar accentColor={accentColor} />
+      <ProgressBar accentColor={resolvedAccent} />
 
       {/* Audio Playback starting at frame 60 */}
-      {frame >= AUDIO_START_FRAME && (
+      {frame >= AUDIO_START_FRAME && resolvedAudioUrl && (
         <Audio src={resolvedAudioUrl} volume={audioVolume} />
       )}
     </AbsoluteFill>

@@ -1,0 +1,14 @@
+{
+  "template": "hook-quote",
+  "defaultLanguage": "en",
+  "ctaText": "Get weekly evidence-based cardiology advice direct to your feed.",
+  "ctaType": "subscribe",
+  "ctaTitle": "Subscribe for Heart Tips",
+  "bgVideoUrl": "",
+  "theme": {
+    "accentColor": "#E2B13C",
+    "textColor": "#FFFFFF",
+    "textSecondaryColor": "#B0BAC5",
+    "bgType": "image"
+  }
+}

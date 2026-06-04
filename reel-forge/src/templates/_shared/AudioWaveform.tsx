@@ -9,22 +9,14 @@ interface AudioWaveformProps {
   numberOfBars?: number;
 }
 
-export const AudioWaveform: React.FC<AudioWaveformProps> = ({
-  audioUrl,
+const AudioWaveformInner: React.FC<AudioWaveformProps & { resolvedAudioUrl: string }> = ({
+  resolvedAudioUrl,
   accentColor,
   mode,
   numberOfBars = 32,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  
-  const resolvedAudioUrl = React.useMemo(() => {
-    if (!audioUrl) return '';
-    if (audioUrl.startsWith('http') || audioUrl.startsWith('data:') || audioUrl.startsWith('/') || audioUrl.startsWith('file:')) {
-      return audioUrl;
-    }
-    return staticFile(audioUrl);
-  }, [audioUrl]);
 
   // Load and decode the audio data
   const audioData = useAudioData(resolvedAudioUrl);
@@ -48,13 +40,36 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
     );
   }
 
-  // Get frequency/amplitude values for the current frame
-  const visualization = visualizeAudio({
-    audioData,
-    frame,
-    fps,
-    numberOfSamples: numberOfBars,
-  });
+  // Multi-frame moving average smoothing to make the waveform feel "liquid" and fluid
+  const getSmoothedVisualization = (currentFrame: number) => {
+    const windowSize = 3; // Number of frames to average (past, current, future)
+    const samples: number[][] = [];
+    
+    // Collect frequency visualisations for frames in the window
+    for (let offset = -1; offset <= 1; offset++) {
+      const targetFrame = Math.max(0, currentFrame + offset);
+      const viz = visualizeAudio({
+        audioData,
+        frame: targetFrame,
+        fps,
+        numberOfSamples: numberOfBars,
+      });
+      samples.push(viz);
+    }
+    
+    // Average the frequencies across the window size
+    const averaged = new Array(numberOfBars).fill(0);
+    for (let sampleIdx = 0; sampleIdx < numberOfBars; sampleIdx++) {
+      let sum = 0;
+      for (let windowIdx = 0; windowIdx < samples.length; windowIdx++) {
+        sum += samples[windowIdx][sampleIdx];
+      }
+      averaged[sampleIdx] = sum / samples.length;
+    }
+    return averaged;
+  };
+
+  const visualization = getSmoothedVisualization(frame);
 
   if (mode === 'radial') {
     // Radial circular waveform layout
@@ -78,20 +93,24 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
             width: radius * 2 - 20,
             height: radius * 2 - 20,
             borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.03)',
-            border: '2px solid rgba(255, 255, 255, 0.1)',
-            boxShadow: `0 0 40px rgba(255, 255, 255, 0.02)`,
+            backgroundColor: 'rgba(0, 0, 0, 0.2)',
+            border: '2px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3)`,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
+            backdropFilter: 'blur(10px)',
           }}
         />
         
         {/* Radial bars radiating outwards */}
         {visualization.map((val, i) => {
           const angle = (i / numberOfBars) * 2 * Math.PI;
-          const barHeight = Math.max(8, val * 120); // Scale multiplier
+          const barHeight = Math.max(8, val * 130); // Scale multiplier
           const rotateDeg = (angle * 180) / Math.PI;
+          
+          // Glow intensity scales with volume amplitude
+          const glowIntensity = Math.min(20, val * 25);
           
           return (
             <div
@@ -106,8 +125,8 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
                 borderRadius: 4,
                 transformOrigin: `4px ${radius + barHeight}px`,
                 transform: `rotate(${rotateDeg}deg)`,
-                boxShadow: `0 0 12px ${accentColor}`,
-                opacity: 0.85 + val * 0.15,
+                boxShadow: glowIntensity > 2 ? `0 0 ${glowIntensity}px ${accentColor}` : 'none',
+                opacity: 0.8 + val * 0.2,
               }}
             />
           );
@@ -130,7 +149,11 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
     >
       {visualization.map((val, i) => {
         // Height between 10px and 140px based on volume amplitude
-        const barHeight = Math.max(10, val * 140);
+        const barHeight = Math.max(10, val * 150);
+        
+        // Glow intensity scales with volume amplitude
+        const glowIntensity = Math.min(16, val * 20);
+
         return (
           <div
             key={i}
@@ -139,13 +162,45 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
               height: `${barHeight}px`,
               backgroundColor: accentColor,
               borderRadius: '5px',
-              boxShadow: `0 0 8px ${accentColor}80`,
-              opacity: 0.7 + val * 0.3,
-              transition: 'height 0.05s ease-out',
+              boxShadow: glowIntensity > 2 ? `0 0 ${glowIntensity}px ${accentColor}cc` : 'none',
+              opacity: 0.75 + val * 0.25,
             }}
           />
         );
       })}
     </div>
   );
+};
+
+export const AudioWaveform: React.FC<AudioWaveformProps> = ({
+  audioUrl,
+  ...props
+}) => {
+  const resolvedAudioUrl = React.useMemo(() => {
+    if (!audioUrl) return '';
+    if (audioUrl.startsWith('http') || audioUrl.startsWith('data:') || audioUrl.startsWith('/') || audioUrl.startsWith('file:')) {
+      return audioUrl;
+    }
+    return staticFile(audioUrl);
+  }, [audioUrl]);
+
+  if (!resolvedAudioUrl) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: 100,
+          color: 'rgba(255, 255, 255, 0.3)',
+          fontFamily: 'sans-serif',
+          fontSize: 16,
+        }}
+      >
+        No audio file provided
+      </div>
+    );
+  }
+
+  return <AudioWaveformInner resolvedAudioUrl={resolvedAudioUrl} {...props} />;
 };

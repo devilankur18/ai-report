@@ -59,6 +59,7 @@ def generate_video_meta(
     domain: str,
     duration_sec: float,
     model: str = DEFAULT_MODEL,
+    language: str = "en",
 ) -> dict:
     """
     Call local Ollama to generate video metadata from the transcript.
@@ -66,25 +67,40 @@ def generate_video_meta(
     """
     selected_model = select_best_model(model)
     
+    lang_instruction = ""
+    clean_lang = language.lower().strip()
+    if clean_lang in ["hi", "hindi"]:
+        lang_instruction = "IMPORTANT: Generate all visual texts (hookText, ctaText, and keyQuotes) in Hindi using Devanagari script. Translate from the transcript if it is in English/another language."
+    elif clean_lang == "hinglish":
+        lang_instruction = "IMPORTANT: Generate all visual texts (hookText, ctaText, and keyQuotes) in Hinglish (Hindi written using the Roman/Latin alphabet). Translate from the transcript if it is in English/another language."
+    elif clean_lang in ["en", "english"]:
+        lang_instruction = "IMPORTANT: Generate all visual texts (hookText, ctaText, and keyQuotes) in English. Translate from the transcript if it is in Hindi/another language."
+    else:
+        lang_instruction = f"IMPORTANT: Generate all visual texts (hookText, ctaText, and keyQuotes) in {language}. Translate from the transcript if it is in another language."
+
     prompt = f"""You are a viral social media content strategist.
-
+ 
 Given an expert's audio transcript, generate metadata for a 9:16 vertical reel.
-
+ 
 RULES:
 - hookText: Must be 5-10 words. Pattern: question, surprising stat, or bold claim.
   The hook should NOT be a summary — it should make someone STOP scrolling.
 - scenes: Divide the audio into 3-5 logical segments. Each scene gets a label
-  and a keyQuote. The keyQuote MUST be a direct, verbatim quote of exact words from the transcript, max 15 words, that is high-impact.
+  and a keyQuote. 
+  * If the target language matches the transcript language, the keyQuote MUST be a direct, verbatim quote of exact words from the transcript (max 15 words).
+  * If the target language is different, translate a high-impact sentence from that segment of the transcript.
 - ctaText: Short, domain-relevant call-to-action.
 - The first scene must start at 0s. Scenes must be contiguous (no gaps, the next startSec must equal the previous endSec).
   The last scene must end at {duration_sec}s.
-
+ 
+{lang_instruction}
+ 
 INPUT:
 - Transcript: {transcript}
 - Expert: {expert_name} ({specialty})
 - Domain: {domain}
 - Audio duration: {duration_sec}s
-
+ 
 Return ONLY valid JSON — no markdown, no explanation:
 {{
   "hookText": "5-10 word attention-grabbing hook",
@@ -148,6 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("--domain", required=True, help="Video domain/topic")
     parser.add_argument("--duration", required=True, type=float, help="Audio duration in seconds")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model name")
+    parser.add_argument("--language", default="en", help="Target output language (e.g. en, hi, hinglish)")
     args = parser.parse_args()
 
     try:
@@ -157,7 +174,8 @@ if __name__ == "__main__":
             specialty=args.specialty,
             domain=args.domain,
             duration_sec=args.duration,
-            model=args.model
+            model=args.model,
+            language=args.language
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
     except Exception as e:

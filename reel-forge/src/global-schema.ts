@@ -16,6 +16,11 @@ export const GlobalPropsSchema = z.object({
   hookText: z.string(),
   scenes: z.array(SceneSchema),
   ctaText: z.string(),
+  ctaType: z.enum(['follow', 'subscribe', 'appointment', 'listen']).default('follow'),
+  ctaTitle: z.string().optional(),
+  ctaSubtitle: z.string().optional(),
+  ctaLink: z.string().optional(),
+  ctaHandle: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
   title: z.string().optional(),
   durationInFrames: z.number(),
@@ -27,6 +32,12 @@ export const GlobalPropsSchema = z.object({
   bgGradientEnd: z.string().optional(),
   bgSolid: z.string().optional(),
   textColor: z.string().optional(),
+  themeId: z.string().optional(),
+  bgVideoUrl: z.string().optional(),
+  language: z.string().optional(),
+  expertAvatar: z.string().optional(),
+  expertLogo: z.string().optional(),
+  expertImages: z.array(z.string()).optional(),
 });
 
 export type Scene = z.infer<typeof SceneSchema>;
