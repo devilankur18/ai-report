@@ -1,0 +1,32 @@
+[
+  {
+    "tagName": "DIV",
+    "text": "Pin\nRename\nDelete",
+    "class": "",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "DIV",
+    "text": "Pin\nRename\nDelete",
+    "class": "bg-fill-blur-thick backdrop-blur-elevation-03 text-text-primary data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-(--radix-dropdown-menu-content-transform-origin) shadow-blur-elevation-03 z-50 min-w-56 rounded-16 p-1.5 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] max-h-(--radix-dropdown-menu-content-available-height) overflow-x-hidden overflow-y-auto",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "DIV",
+    "text": "Delete",
+    "class": "focus-visible:outline-none data-highlighted:bg-fill-secondary-elevated relative flex cursor-pointer select-none items-center gap-0.5 rounded-12 px-2 py-1.5 data-disabled:cursor-not-allowed data-disabled:opacity-50 text-text-destructive",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "DIV",
+    "text": "Delete",
+    "class": "flex flex-1 flex-col gap-0 px-1 py-0.5",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "DIV",
+    "text": "Delete",
+    "class": "text-subheadline",
+    "ariaLabel": ""
+  }
+]

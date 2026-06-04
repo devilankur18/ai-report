@@ -27,6 +27,109 @@ function decodePayload(payloadData) {
     }
 }
 
+function writeCapturedFrames(outputFile, capturedFrames) {
+    if (capturedFrames.length === 0) return;
+    
+    const processedFrames = [];
+    // Maps a bucket key -> { frame, decoded, seq }
+    const seqFramesByResponseId = {};
+    
+    for (const item of capturedFrames) {
+        const decoded = decodePayload(item.payloadData);
+        let isPatchFrame = false;
+        let seq = -1;
+        
+        try {
+            // The seq JSON {"seq": N, "type": "patch", "operations": [...]} always appears
+            // at the VERY END of each frame (last ~300 chars), after a large search-result blob.
+            // Scanning from the start is too slow / skips it. Instead: find "\"seq\":" string
+            // by searching backwards from the end, then extract the enclosing JSON object.
+            const seqMarker = '"seq":';
+            let searchPos = decoded.lastIndexOf(seqMarker);
+            
+            while (searchPos !== -1) {
+                // Walk backwards from seqMarker to find the opening '{' of its object
+                let objStart = -1;
+                for (let i = searchPos - 1; i >= 0; i--) {
+                    if (decoded[i] === '{') { objStart = i; break; }
+                    // If we hit a newline or non-JSON char before finding '{', stop
+                    if (decoded[i] === '\n' || decoded[i] === '\r') break;
+                }
+                if (objStart === -1) {
+                    searchPos = decoded.lastIndexOf(seqMarker, searchPos - 1);
+                    continue;
+                }
+                
+                // Find matching closing brace
+                let depth = 0, objEnd = -1;
+                for (let i = objStart; i < decoded.length; i++) {
+                    if (decoded[i] === '{') depth++;
+                    else if (decoded[i] === '}') {
+                        depth--;
+                        if (depth === 0) { objEnd = i; break; }
+                    }
+                }
+                if (objEnd === -1) {
+                    searchPos = decoded.lastIndexOf(seqMarker, searchPos - 1);
+                    continue;
+                }
+                
+                const jsonPart = decoded.substring(objStart, objEnd + 1);
+                try {
+                    const obj = JSON.parse(jsonPart);
+                    if (obj && typeof obj.seq === 'number') {
+                        isPatchFrame = true;
+                        seq = obj.seq;
+                        break;
+                    }
+                } catch (e) { }
+                
+                // Try an earlier occurrence of "seq":
+                searchPos = decoded.lastIndexOf(seqMarker, searchPos - 1);
+            }
+        } catch (e) {
+            // ignore any outer errors
+        }
+        
+        if (isPatchFrame) {
+            // All patch frames in one run belong to the same conversation stream.
+            // Use a single global bucket — keep only the highest-seq (most complete) frame.
+            const bucketKey = 'main_response';
+            
+            const existing = seqFramesByResponseId[bucketKey];
+            if (!existing || seq > existing.seq) {
+                seqFramesByResponseId[bucketKey] = {
+                    frame: item,
+                    decoded,
+                    seq
+                };
+            }
+        } else {
+            // Non-patch frames (sent frames, metadata frames) go in as-is
+            processedFrames.push({
+                frame: item,
+                decoded
+            });
+        }
+    }
+    
+    // Add only the single highest-seq frame per response UUID
+    for (const responseId in seqFramesByResponseId) {
+        processedFrames.push(seqFramesByResponseId[responseId]);
+    }
+    
+    // Sort processedFrames chronologically by timestamp
+    processedFrames.sort((a, b) => a.frame.timestamp - b.frame.timestamp);
+    
+    console.log(`[✓] writeCapturedFrames: ${capturedFrames.length} raw frames -> ${processedFrames.length} deduplicated frames written.`);
+    
+    // Write to file
+    for (const item of processedFrames) {
+        const label = `[WS_FRAME_${item.frame.type}] Opcode: ${item.frame.opcode}`;
+        fs.appendFileSync(outputFile, `${label}\n--- Decoded Payload Start ---\n${item.decoded}\n--- Decoded Payload End ---\n\n`, 'utf8');
+    }
+}
+
 async function run() {
     const args = getArgs();
     const prompt = args.prompt || "My 55-year-old mother is diabetic and experiencing mild chest pain after walking. Who are the most reliable heart doctors in UP/Hardoi with good reviews, and what should I ask them?";
@@ -94,6 +197,8 @@ async function run() {
         await new Promise(resolve => setTimeout(resolve, 3000));
     }
 
+    const capturedFrames = [];
+
     console.log("Connecting CDPSession to sniff WebSocket wire streams...");
     let cdpClient;
     try {
@@ -102,19 +207,28 @@ async function run() {
         
         cdpClient.on('Network.webSocketFrameReceived', ({requestId, timestamp, response}) => {
             const {opcode, payloadData} = response;
-            const decoded = decodePayload(payloadData);
-            fs.appendFileSync(outputFile, `[WS_FRAME_RECEIVED] Opcode: ${opcode}\n--- Decoded Payload Start ---\n${decoded}\n--- Decoded Payload End ---\n\n`, 'utf8');
+            capturedFrames.push({
+                type: 'RECEIVED',
+                opcode,
+                payloadData,
+                timestamp
+            });
         });
 
         cdpClient.on('Network.webSocketFrameSent', ({requestId, timestamp, response}) => {
             const {opcode, payloadData} = response;
-            const decoded = decodePayload(payloadData);
-            fs.appendFileSync(outputFile, `[WS_FRAME_SENT] Opcode: ${opcode}\n--- Decoded Payload Start ---\n${decoded}\n--- Decoded Payload End ---\n\n`, 'utf8');
+            capturedFrames.push({
+                type: 'SENT',
+                opcode,
+                payloadData,
+                timestamp
+            });
         });
         console.log("[✓] CDPSession connected and sniffing WebSockets.");
     } catch (e) {
         console.error(`[!] Failed to connect CDPSession: ${e.message}`);
     }
+
 
     console.log("Submitting prompt to Meta AI...");
 
@@ -240,9 +354,15 @@ async function run() {
             };
 
             // 1. Extract Latest Assistant Response
+            // Meta AI renders one DOM element per streaming chunk — take only the longest
+            // (most complete) to avoid joining 30+ incremental copies of the same text.
             const messages = document.querySelectorAll('.ur-markdown, .prose, .citation-aware');
             if (messages.length > 0) {
-                data.ai_answer = messages[messages.length - 1].innerText || messages[messages.length - 1].textContent;
+                const texts = Array.from(messages)
+                    .map(el => (el.innerText || '').trim())
+                    .filter(txt => txt.length > 0);
+                // Pick the single longest text — that's the fully-streamed final answer
+                data.ai_answer = texts.reduce((longest, txt) => txt.length > longest.length ? txt : longest, '');
             } else {
                 data.ai_answer = document.body.innerText;
             }
@@ -329,12 +449,18 @@ async function run() {
             return data;
         });
 
-        // Write beautiful serialized text to raw_stream.txt
+        // Write structured metadata to raw_stream.txt (citations + search_queries only)
+        // NOTE: ai_answer is intentionally excluded — the WS patch frame already contains
+        // the full response text, and including it here would create a duplicate copy.
+        const metadataOnly = {
+            citations: pageData.citations,
+            search_queries: pageData.search_queries
+        };
         const logContent = `\n============================================================\n` +
                            `[META AI DOM EXTRACTION RESULTS]\n` +
                            `Timestamp: ${new Date().toISOString()}\n` +
                            `============================================================\n` +
-                           JSON.stringify(pageData, null, 4) + "\n";
+                           JSON.stringify(metadataOnly, null, 4) + "\n";
         
         fs.appendFileSync(outputFile, logContent, 'utf8');
         console.log(`[✓] Appended extracted DOM metadata to: ${path.basename(outputFile)}`);
@@ -360,11 +486,77 @@ async function run() {
             console.error(`[!] Screenshot capture failed: ${screenshotError.message}`);
         }
 
+        // --- Delete Chat Room in the UI ---
+        console.log("Deleting chat room in Meta AI UI...");
+        try {
+            const menuBtnSelector = 'button[aria-label="Menu"]';
+            await page.waitForSelector(menuBtnSelector, { visible: true, timeout: 5000 });
+            
+            console.log("Clicking header 'Menu' button...");
+            await page.click(menuBtnSelector);
+            
+            console.log("Clicking 'Delete' option in dropdown menu (polling up to 3s)...");
+            let deleteOptionClicked = false;
+            for (let i = 0; i < 10; i++) {
+                deleteOptionClicked = await page.evaluate(() => {
+                    const items = Array.from(document.querySelectorAll('div, button, [role="menuitem"]'));
+                    const deleteItem = items.find(el => {
+                        const text = (el.innerText || '').trim().toLowerCase();
+                        const className = el.getAttribute('class') || '';
+                        return (text === 'delete' || text === 'delete chat') && className.includes('text-text-destructive');
+                    });
+                    if (deleteItem) {
+                        deleteItem.click();
+                        return true;
+                    }
+                    return false;
+                });
+                if (deleteOptionClicked) break;
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            if (!deleteOptionClicked) {
+                throw new Error("Could not find 'Delete' option in the Menu dropdown after polling.");
+            }
+            
+            console.log("Clicking 'Delete' confirmation button in modal (polling up to 3s)...");
+            let confirmClicked = false;
+            for (let i = 0; i < 10; i++) {
+                confirmClicked = await page.evaluate(() => {
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    const confirmBtn = buttons.find(el => {
+                        const text = (el.innerText || '').trim().toLowerCase();
+                        const className = el.getAttribute('class') || '';
+                        return text === 'delete' && className.includes('bg-linear-to-r');
+                    });
+                    if (confirmBtn) {
+                        confirmBtn.click();
+                        return true;
+                    }
+                    return false;
+                });
+                if (confirmClicked) break;
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            if (confirmClicked) {
+                console.log("[✓] Chat room successfully deleted via UI.");
+                // Wait briefly for deletion animation/API to complete
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            } else {
+                console.warn("[!] Could not find 'Delete' confirmation button in modal after polling.");
+            }
+        } catch (deleteError) {
+            console.error(`[!] Chat deletion via UI failed: ${deleteError.message}`);
+        }
+
+        writeCapturedFrames(outputFile, capturedFrames);
         await browser.disconnect();
         process.exit(0);
 
     } catch (err) {
         console.error(`Error interacting with Meta AI page: ${err.message}`);
+        writeCapturedFrames(outputFile, capturedFrames);
         await browser.disconnect();
         process.exit(1);
     }

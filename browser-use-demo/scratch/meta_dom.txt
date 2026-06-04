@@ -1,0 +1,130 @@
+Total button/a elements found: 81
+Button 0: label="Home", title="", text="", isEllipsis=false
+Button 1: label="Toggle sidebar", title="", text="", isEllipsis=false
+Button 2: label="", title="", text="New chat
+⇧⌘O", isEllipsis=false
+Button 3: label="", title="", text="Search
+⌘K", isEllipsis=false
+Button 4: label="", title="", text="Vibes", isEllipsis=false
+Button 5: label="", title="", text="Create", isEllipsis=false
+Button 6: label="", title="", text="Dentist search for father", isEllipsis=false
+Button 7: label="More options", title="", text="", isEllipsis=true
+Button 8: label="", title="", text="Self-hosted Reel pipeline tool", isEllipsis=false
+Button 9: label="More options", title="", text="", isEllipsis=true
+Button 10: label="", title="", text="Meta STT models released", isEllipsis=false
+Button 11: label="More options", title="", text="", isEllipsis=true
+Button 12: label="", title="", text="Debugging my code", isEllipsis=false
+Button 13: label="More options", title="", text="", isEllipsis=true
+Button 14: label="", title="", text="UNSLAVE Logo", isEllipsis=false
+Button 15: label="More options", title="", text="", isEllipsis=true
+Button 16: label="", title="", text="Mock interview", isEllipsis=false
+Button 17: label="More options", title="", text="", isEllipsis=true
+Button 18: label="", title="", text="Taj Proposal", isEllipsis=false
+Button 19: label="More options", title="", text="", isEllipsis=true
+Button 20: label="", title="", text="NYC watercolor", isEllipsis=false
+Button 21: label="More options", title="", text="", isEllipsis=true
+Button 22: label="", title="", text="Shopkeeper animated", isEllipsis=false
+Button 23: label="More options", title="", text="", isEllipsis=true
+Button 24: label="", title="", text="SugarAI Landing Page", isEllipsis=false
+Button 25: label="More options", title="", text="", isEllipsis=true
+Button 26: label="", title="", text="Cake Book Logo", isEllipsis=false
+Button 27: label="More options", title="", text="", isEllipsis=true
+Button 28: label="", title="", text="Shiva's Glow", isEllipsis=false
+Button 29: label="More options", title="", text="", isEllipsis=true
+Button 30: label="", title="", text="Beachside Glamour", isEllipsis=false
+Button 31: label="More options", title="", text="", isEllipsis=true
+Button 32: label="", title="", text="Todo app", isEllipsis=false
+Button 33: label="More options", title="", text="", isEllipsis=true
+Button 34: label="", title="", text="IIM Bhramasmi Logo", isEllipsis=false
+Button 35: label="More options", title="", text="", isEllipsis=true
+Button 36: label="", title="", text="IIM Bhramasmi Logo", isEllipsis=false
+Button 37: label="More options", title="", text="", isEllipsis=true
+Button 38: label="", title="", text="Postgres Scaling", isEllipsis=false
+Button 39: label="More options", title="", text="", isEllipsis=true
+Button 40: label="", title="", text="Cake Book Logo", isEllipsis=false
+Button 41: label="More options", title="", text="", isEllipsis=true
+Button 42: label="Notifications", title="", text="", isEllipsis=false
+Button 43: label="Cancel", title="", text="", isEllipsis=false
+Button 44: label="Rename", title="", text="", isEllipsis=false
+Button 45: label="", title="", text="Dentist search for father", isEllipsis=false
+Button 46: label="Share", title="", text="", isEllipsis=false
+Button 47: label="Menu", title="", text="", isEllipsis=true
+Button 48: label="Edit Message", title="", text="", isEllipsis=false
+Button 49: label="Copy response", title="", text="", isEllipsis=false
+Button 50: label="", title="", text="Show thinking", isEllipsis=false
+Button 51: label="justdial.com", title="", text="", isEllipsis=false
+Button 52: label="justdial.com", title="", text="", isEllipsis=false
+Button 53: label="bajajfinservhealth.in", title="", text="", isEllipsis=false
+Button 54: label="bajajfinservhealth.in", title="", text="", isEllipsis=false
+Button 55: label="vinod_mishra_prayagraj", title="", text="", isEllipsis=false
+Button 56: label="justdial.com", title="", text="", isEllipsis=false
+Button 57: label="justdial.com", title="", text="", isEllipsis=false
+Button 58: label="justdial.com", title="", text="", isEllipsis=false
+Button 59: label="justdial.com", title="", text="", isEllipsis=false
+Button 60: label="justdial.com", title="", text="", isEllipsis=false
+Button 61: label="smritidental_777", title="", text="", isEllipsis=false
+Button 62: label="dentist.stree", title="", text="", isEllipsis=false
+Button 63: label="Regenerate response", title="", text="", isEllipsis=false
+Button 64: label="Like this response", title="", text="", isEllipsis=false
+Button 65: label="Dislike this response", title="", text="", isEllipsis=false
+Button 66: label="Copy response", title="", text="", isEllipsis=false
+Button 67: label="", title="", text="Sources", isEllipsis=false
+Button 68: label="Scroll to bottom", title="", text="", isEllipsis=false
+Button 69: label="Add attachment", title="", text="", isEllipsis=false
+Button 70: label="", title="", text="Thinking", isEllipsis=false
+Button 71: label="Send", title="", text="", isEllipsis=false
+Button 72: label="Close thinking panel", title="", text="", isEllipsis=false
+Button 73: label="", title="", text="Steps", isEllipsis=false
+Button 74: label="", title="", text="Sources", isEllipsis=false
+Button 75: label="", title="", text="justdial.com
+[7331481423438184", isEllipsis=false
+Button 76: label="", title="", text="justdial.com
+[4304165128776748", isEllipsis=false
+Button 77: label="", title="", text="bajajfinservhealth.in
+[1704714", isEllipsis=false
+Button 78: label="", title="", text="smritidental_777
+#Viral #denta", isEllipsis=true
+Button 79: label="", title="", text="dentist.stree
+From 🙁 to 😁 @c", isEllipsis=true
+Button 80: label="", title="", text="vinod_mishra_prayagraj
+नैनी मे", isEllipsis=true
+
+Total list items: 38
+ListItem 0: text="New chat | ⇧⌘O"
+ListItem 1: text="Search | ⌘K"
+ListItem 2: text="Vibes"
+ListItem 3: text="Create"
+ListItem 4: text="Dentist search for father"
+ListItem 5: text="Self-hosted Reel pipeline tools"
+ListItem 6: text="Meta STT models released"
+ListItem 7: text="Debugging my code"
+ListItem 8: text="UNSLAVE Logo"
+ListItem 9: text="Mock interview"
+ListItem 10: text="Taj Proposal"
+ListItem 11: text="NYC watercolor"
+ListItem 12: text="Shopkeeper animated"
+ListItem 13: text="SugarAI Landing Page"
+ListItem 14: text="Cake Book Logo"
+ListItem 15: text="Shiva's Glow"
+ListItem 16: text="Beachside Glamour"
+ListItem 17: text="Todo app"
+ListItem 18: text="IIM Bhramasmi Logo"
+ListItem 19: text="IIM Bhramasmi Logo"
+ListItem 20: text="Postgres Scaling"
+ListItem 21: text="Cake Book Logo"
+ListItem 22: text="Rating: 4.9/5 from 269 ratings"
+ListItem 23: text="Address: Plot 50/1, Near Durga Pooja (Mukta Vihar) Park, Near Ganga Sweet House, Triveni Nagar, A D A Road, Naini-211008"
+ListItem 24: text="Experience: 13 years, BDS, practices at Prayag Dental Clinic in Triveni Nagar"
+ListItem 25: text="Consultation: starts at ₹200"
+ListItem 26: text="Useful for sensitive gums: the clinic lists maxillofacial prosthetics, ceramic crowns and bridges, and "state-of-the-art technology for accurate diagnosis" — that usually means digital X-rays and guided planning, which reduces gum trauma."
+ListItem 27: text="Rating: 4.8/5 from 15 ratings"
+ListItem 28: text="Address: 669/2, Hanuman Nagar Station Road, Stamp Wali Gali, Near Mewa Lal Bagiya, Naini-211008"
+ListItem 29: text="Experience: 8 years in healthcare, consultation ₹250"
+ListItem 30: text="Services highlighted: Wisdom tooth extraction, RCT, sedation dentistry, laser dentistry, ceramic crowns and bridges"
+ListItem 31: text="Gum health first — active gingivitis or periodontitis has to be settled. Both Prayag and Arush list scaling, laser therapy and RCT, which suggests they treat gum disease in-house rather than referring out."
+ListItem 32: text="Bone and medical history — 60+ often means checking for diabetes, blood thinners, or bone loss. Dr. Pandey's 13-year implant focus and the clinic's mention of digital X-rays means they can do a CBCT-guided plan, which limits flap size."
+ListItem 33: text="Comfort options — Arush advertises sedation dentistry and laser dentistry; Prayag emphasizes "patient comfort" in its description. Ask specifically about flapless or minimally invasive techniques."
+ListItem 34: text=""Can you do a periodontal charting and show me gum pocket depths before planning the implant?""
+ListItem 35: text=""Do you offer guided surgery or laser-assisted gum contouring for sensitive tissue?""
+ListItem 36: text=""What healing time do you expect given his age and gum condition, and what maintenance will he need?""
+ListItem 37: text="Ask to see before-after cases of patients 55+ — Citycare Dental in Prayagraj posts these publicly, and good Naini clinics will have their own photos too."

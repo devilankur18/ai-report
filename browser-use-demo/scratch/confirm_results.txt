@@ -1,0 +1,38 @@
+[
+  {
+    "tagName": "DIV",
+    "text": "Cancel",
+    "class": "contents",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "BUTTON",
+    "text": "Cancel",
+    "class": "enabled:active:scale-98 inline-flex cursor-pointer select-none items-center justify-center gap-0.5 focus:not-focus-visible:outline-none transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 rounded-round text-subheadline-medium h-9 px-3.5 bg-fill-secondary-elevated enabled:hover:filter-[brightness(0.975)] enabled:active:filter-[brightness(0.965)] dark:enabled:hover:filter-[brightness(1.15)] dark:enabled:active:filter-[brightness(0.9)] flex-1",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "SPAN",
+    "text": "Cancel",
+    "class": "truncate",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "DIV",
+    "text": "Delete",
+    "class": "contents",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "BUTTON",
+    "text": "Delete",
+    "class": "enabled:active:scale-98 inline-flex cursor-pointer select-none items-center justify-center gap-0.5 focus:not-focus-visible:outline-none transition-transform duration-150 ease-in-out disabled:pointer-events-none disabled:opacity-50 rounded-round text-subheadline-medium h-9 px-3.5 text-text-on-accent enabled:hover:filter-[brightness(0.95)] enabled:active:filter-[brightness(0.9)] dark:enabled:hover:filter-[brightness(1.025)] dark:enabled:active:filter-[brightness(0.95)] bg-linear-to-r from-gradient-red-rose-650-stop1 to-gradient-red-rose-650-stop2 flex-1",
+    "ariaLabel": ""
+  },
+  {
+    "tagName": "SPAN",
+    "text": "Delete",
+    "class": "truncate",
+    "ariaLabel": ""
+  }
+]

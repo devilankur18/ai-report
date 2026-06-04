@@ -1,0 +1,13 @@
+=== STEP 1: Scan before any click ===
+Delete matches: []
+Delete Chat matches: []
+
+=== STEP 2: Clicking the first 'More options' button ===
+Clicked 'More options' button.
+Delete matches after click: []
+Delete Chat matches after click: []
+
+=== STEP 3: Clicking the 'Menu' button in header ===
+Clicked 'Menu' button.
+Delete matches after click: []
+Delete Chat matches after click: []

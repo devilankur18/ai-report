@@ -68,6 +68,9 @@ def clean_name(name):
     for suf in suffixes:
         name_stripped = re.sub(suf, '', name_stripped, flags=re.IGNORECASE)
         
+    # Strip trailing address components starting with comma
+    name_stripped = re.sub(r',\s*(?:station|road|colony|nagar|mandi|near|park|sweet|triveni|ada|naini|prayagraj|allahabad).*', '', name_stripped, flags=re.IGNORECASE)
+        
     name_stripped = re.sub(r'\s+', ' ', name_stripped).strip()
     
     if has_dr:
@@ -91,6 +94,57 @@ def is_valid_entity(name):
         if word in name_lower:
             return False
     return True
+
+def find_mention_index(name, text):
+    if not text or not name:
+        return -1
+    name_lower = name.lower()
+    text_lower = text.lower()
+    
+    # 1. Direct substring match of full name
+    pos = text_lower.find(name_lower)
+    if pos != -1:
+        return pos
+        
+    # 2. Cleaned name match (without Dr. prefix)
+    clean = name_lower.replace("dr. ", "").replace("dr ", "").replace("doctor ", "").strip()
+    if len(clean) >= 4:
+        pos = text_lower.find(clean)
+        if pos != -1:
+            return pos
+            
+    # 3. For name with "&" or "and", check parts
+    if " & " in clean or " and " in clean:
+        parts = re.split(r'\s+(?:&|and)\s+', clean)
+        for part in parts:
+            part = part.strip()
+            if len(part) >= 4:
+                pos = text_lower.find(part)
+                if pos != -1:
+                    return pos
+                    
+    # 4. Try matching first two words of the name if name is long
+    words = clean.split()
+    if len(words) >= 2:
+        two_words = " ".join(words[:2])
+        if len(two_words) >= 5:
+            pos = text_lower.find(two_words)
+            if pos != -1:
+                return pos
+                
+    # 5. Check individual distinctive doctor name parts
+    if name_lower.startswith("dr.") or name_lower.startswith("dr "):
+        doc_name = name_lower.replace("dr.", "").replace("dr", "").strip()
+        parts = doc_name.split()
+        for p in parts:
+            if len(p) >= 4 and p not in ["kumar", "singh", "sharma", "clinic", "hospital", "dental"]:
+                for prefix in ["dr. ", "dr "]:
+                    pos = text_lower.find(prefix + p)
+                    if pos != -1:
+                        return pos
+                        
+    return -1
+
 
 def extract_jsons(text_repr):
     decoder = json.JSONDecoder()
@@ -177,19 +231,19 @@ def parse_ws_entities(content):
                 locations_text = locations_match.group(1).strip() if locations_match else ""
                 summary_text = summary_match.group(1).strip() if summary_match else ""
                 
+                people_text_clean = people_text.replace('&amp;', '&')
                 names = []
-                for p in re.split(r',|;', people_text):
+                for p in re.split(r',|;', people_text_clean):
                     p_clean = re.sub(r'\(.*?\)', '', p).strip()
-                    p_clean = p_clean.replace('&amp;', '&')
                     if p_clean and any(w in p_clean.lower() for w in ["dr.", "dr ", "doctor"]):
                         if not p_clean.lower().startswith("dr"):
                             p_clean = "Dr. " + p_clean
                         names.append(p_clean)
                 
+                locations_text_clean = locations_text.replace('&amp;', '&')
                 clinic_name = "N/A"
-                for loc in re.split(r',|;', locations_text):
+                for loc in re.split(r',|;', locations_text_clean):
                     loc_clean = loc.strip()
-                    loc_clean = loc_clean.replace('&amp;', '&')
                     if loc_clean and any(w in loc_clean.lower() for w in ["clinic", "hospital", "centre", "center", "studio", "care"]):
                         clinic_name = loc_clean
                         break
@@ -200,10 +254,10 @@ def parse_ws_entities(content):
                     phone = phone_match.group(0).strip()
                 
                 address = "N/A"
-                for part in re.split(r',|;', locations_text):
+                for part in re.split(r',|;', locations_text_clean):
                     part_clean = part.strip()
                     if any(w in part_clean.lower() for w in ["naini", "prayagraj", "allahabad"]):
-                        address = locations_text.replace('&amp;', '&').strip()
+                        address = locations_text_clean.strip()
                         break
                 
                 for name in names:
@@ -387,6 +441,91 @@ def parse_ws_entities(content):
                         
     return extracted_entities
 
+def extract_ai_answer_from_ws(content):
+    # Find all decoded payloads
+    blocks = re.findall(r'--- Decoded Payload Start ---\r?\n(.*?)\r?\n--- Decoded Payload End ---', content, re.DOTALL)
+    
+    meta_responses = []
+    for block in blocks:
+        # Extract JSONs
+        decoder = json.JSONDecoder()
+        pos = 0
+        while True:
+            pos = block.find('{', pos)
+            if pos == -1:
+                break
+            try:
+                obj, end_idx = decoder.raw_decode(block[pos:])
+                if isinstance(obj, dict) and 'response' in obj and 'type' in obj:
+                    meta_responses.append(obj)
+                pos += end_idx
+            except Exception:
+                pos += 1
+                
+    # Sort by seq
+    meta_responses.sort(key=lambda x: x.get("seq", 0))
+    
+    # Find the one with highest seq that has sections
+    highest_seq_obj = None
+    for obj in reversed(meta_responses):
+        resp = obj.get("response", {})
+        if "sections" in resp:
+            highest_seq_obj = obj
+            break
+            
+    if highest_seq_obj:
+        resp = highest_seq_obj.get("response", {})
+        sections = resp.get("sections", [])
+        
+        texts = []
+        for sec in sections:
+            vm = sec.get("view_model", {})
+            primitive = vm.get("primitive", {})
+            typename = primitive.get("__typename")
+            if typename == "GenAIMarkdownTextUXPrimitive":
+                t = primitive.get("text", "")
+                if t:
+                    texts.append(t)
+            elif typename == "GenATableUXPrimitive":
+                # Convert table to markdown
+                rows_md = []
+                for row in primitive.get("rows", []):
+                    cells = [cell.get("text", "") for cell in row.get("markdown_cells", [])]
+                    if not cells:
+                        cells = row.get("cells", [])
+                    if row.get("is_header"):
+                        rows_md.append("| " + " | ".join(cells) + " |")
+                        rows_md.append("| " + " | ".join([":---"] * len(cells)) + " |")
+                    else:
+                        rows_md.append("| " + " | ".join(cells) + " |")
+                if rows_md:
+                    texts.append("\n".join(rows_md))
+        
+        full_text = "\n\n".join(texts)
+        # Clean inline entity markers like {{IE_0}}5758689546352144013{{/IE_0}}
+        full_text_clean = re.sub(r'\{\{IE_\d+\}\}.*?\{\{/IE_\d+\}\}', '', full_text)
+        return full_text_clean
+    return None
+
+SENTENCE_INDICATORS = ["if", "are", "you", "they", "our", "their", "should", "would", "will", "these", "useful", "advises", "always", "after", "before", "when", "why", "who", "where", "how", "what", "more", "has", "have", "had", "was", "were", "been", "is", "a", "an", "the"]
+
+def looks_like_provider(name):
+    name_clean = name.strip()
+    words = name_clean.split()
+    if len(words) < 1 or len(words) > 5:
+        return False
+        
+    name_lower = name_clean.lower()
+    for word in SENTENCE_INDICATORS:
+        if re.search(r'\b' + re.escape(word) + r'\b', name_lower):
+            return False
+            
+    provider_words = ["dr.", "dr ", "doctor", "hospital", "clinic", "care", "center", "centre", "dental", "dentist", "ortho", "cardio", "specialist", "studio", "medical", "health", "aesthetic", "skin", "lifeplus", "medanta", "regency"]
+    if not any(re.search(r'\b' + re.escape(pw) + r'\b', name_lower) or name_lower.startswith("dr") for pw in provider_words):
+        return False
+        
+    return True
+
 def parse_meta_ai_logs(input_file, output_json, output_md):
     if not os.path.exists(input_file):
         print(f"Error: Log file not found at {input_file}")
@@ -434,7 +573,12 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
         except Exception as e:
             print(f"[!] Error parsing JSON DOM extraction portion: {e}")
 
-    ai_answer_text = dom_data.get("ai_answer", "")
+    # Try WebSocket reconstruction first, fall back to DOM
+    ai_answer_text = extract_ai_answer_from_ws(content)
+    if not ai_answer_text:
+        print("[!] WebSocket reconstruction did not yield an answer text. Falling back to DOM extraction.")
+        ai_answer_text = dom_data.get("ai_answer", "")
+        
     citations = dom_data.get("citations", [])
     search_queries = dom_data.get("search_queries", [])
 
@@ -493,59 +637,72 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
                 all_urls.add(cleaned)
 
     # Walk local entities from text content
-    # We can handle both bullet points and flat text format
+    # We can handle numbered lists, bullet points, and flat text format
     lines = [l.strip() for l in ai_answer_text.split('\n') if l.strip()]
     has_bullets = any(re.match(r'^\s*[-*•]\s+', l) for l in ai_answer_text.split('\n'))
+    has_md_numbers = any(re.match(r'^\s*#+\s*\d+[\.\)]', l) for l in ai_answer_text.split('\n'))
+    has_std_numbers = any(re.match(r'^\s*(?:\*\*|)\d+[\.\)]', l) for l in ai_answer_text.split('\n'))
     
     candidate_blocks = []
-    if has_bullets:
+    if has_md_numbers:
+        # Split by markdown header numbered list items (e.g. ## 1., ### 1.)
+        items = re.split(r'\n\s*#+\s*\d+[\.\)]\s*(?:\*\*|)?', '\n' + ai_answer_text)
+        for item in items[1:]:
+            candidate_blocks.append(item)
+    elif has_std_numbers:
+        # Split by standard numbered list items
+        items = re.split(r'\n\s*(?:\*\*|)\d+[\.\)]\s*(?:\*\*|)?', '\n' + ai_answer_text)
+        for item in items[1:]:
+            candidate_blocks.append(item)
+    elif has_bullets:
         items = re.split(r'\n\s*[-*•]\s+', ai_answer_text)
         for item in items[1:]:
             candidate_blocks.append(item)
+
     else:
         # Flat text format. Let's group name lines with their subsequent descriptive lines!
         i = 0
         while i < len(lines):
             line = lines[i]
-            # Check if this line looks like a provider title line
-            is_name_line = False
-            sep = None
-            if "—" in line:
-                sep = "—"
-            elif " - " in line:
-                sep = " - "
-                
-            if sep:
-                parts = line.split(sep, 1)
-                left = parts[0].strip().lower()
-                # Must start with Dr or contain indicators
-                if any(w in left for w in ["dr.", "dr ", "doctor", "hospital", "clinic", "care", "lifeplus", "center", "centre", "medanta", "regency"]):
-                    is_name_line = True
             
+            # Find the best split point for a provider name
+            is_name_line = False
+            provider_name = ""
+            details = ""
+            
+            # Try different separators
+            for sep in ["—", "–", " - ", ":", ","]:
+                if sep in line:
+                    parts = line.split(sep, 1)
+                    left = parts[0].strip()
+                    if looks_like_provider(left):
+                        is_name_line = True
+                        provider_name = left
+                        details = parts[1].strip()
+                        break
+                        
             if is_name_line:
-                # Group this line and any subsequent lines until the next name line
-                block_lines = [line]
+                # Group this line and any subsequent lines until the next provider name line
+                block_lines = [provider_name + " — " + details]
                 i += 1
                 while i < len(lines):
                     next_line = lines[i]
-                    next_is_name = False
-                    next_sep = None
-                    if "—" in next_line:
-                        next_sep = "—"
-                    elif " - " in next_line:
-                        next_sep = " - "
-                    if next_sep:
-                        next_parts = next_line.split(next_sep, 1)
-                        next_left = next_parts[0].strip().lower()
-                        if any(w in next_left for w in ["dr.", "dr ", "doctor", "hospital", "clinic", "care", "lifeplus", "center", "centre", "medanta", "regency"]):
-                            next_is_name = True
                     
+                    next_is_name = False
+                    for sep in ["—", "–", " - ", ":", ","]:
+                        if sep in next_line:
+                            next_parts = next_line.split(sep, 1)
+                            next_left = next_parts[0].strip()
+                            if looks_like_provider(next_left):
+                                next_is_name = True
+                                break
+                                
                     if next_is_name:
                         break
                     else:
                         block_lines.append(next_line)
                         i += 1
-                
+                        
                 candidate_blocks.append("\n".join(block_lines))
             else:
                 i += 1
@@ -573,10 +730,34 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
         # Ignore if name is too short or too long or not related
         if len(name) < 3 or len(name) > 100:
             continue
-        if any(w in name.lower() for w in ["what locals", "usually do", "how to choose", "next steps", "kanpur", "lucknow"]):
+        if any(w in name.lower() for w in ["what locals", "usually do", "how to choose", "next steps"]):
             continue
 
-        name_clean = name.replace("Dr.", "").replace("**", "").replace("*", "").strip()
+        name_clean = clean_name(name)
+        if name_clean.lower().startswith("dr."):
+            name_clean_no_dr = name_clean[3:].strip()
+        else:
+            name_clean_no_dr = name_clean
+            
+        # Filter details keys and garbage blocks
+        name_lower = name_clean.lower().strip()
+        garbage_keywords = [
+            "location", "reviews", "why it fits", "specialty", "phone", "address", 
+            "rating", "experience", "hours", "website", "why it fits for sensitive gums",
+            "implant focus", "sensitive gum edge", "area", "rating / reviews",
+            "gum health first", "laser assisted surgery", "sedation or shorter appointments",
+            "prosthetic options", "practical next step", "carry his medical history", "ask specifically"
+        ]
+        if name_lower in garbage_keywords or any(name_lower.startswith(gk) for gk in garbage_keywords) or len(name_clean_no_dr) < 3:
+            continue
+
+        # Check if the name looks like a provider entity
+        name_lower_clean = name_clean.lower()
+        provider_words = ["dr.", "dr ", "doctor", "hospital", "clinic", "care", "center", "centre", "dental", "dentist", "ortho", "cardio", "specialist", "studio", "medical", "health", "aesthetic", "skin", "lifeplus", "medanta", "regency"]
+        if not any(pw in name_lower_clean for pw in provider_words):
+            continue
+
+
         
         # Extract ratings, reviews, phone, and address from the first 3 lines of the block to prevent matching trailing paragraphs
         search_area = "\n".join(item.split('\n')[:3])
@@ -647,10 +828,40 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
                 if raw_link_match:
                     website_url = clean_url(raw_link_match.group(0))
 
-        if name_clean and not any(e["name"] == name_clean or e["name"] == f"Dr. {name_clean}" for e in extracted_data["local_entities"]):
-            is_doc = any(w in category.lower() for w in ["cardiologist", "dentist", "orthopedician", "physician", "doctor"])
-            has_dr_prefix = "dr." in name.lower()
-            formatted_name = f"Dr. {name_clean}" if (is_doc and not has_dr_prefix) else name_clean
+        # Extracted candidates from the block header
+        name_clean = clean_name(name)
+        details_clean = clean_name(details) if details else ""
+        
+        if details_clean:
+            details_lower = details_clean.lower()
+            if any(w in details_lower for w in ["why it fits", "location", "rating", "review", "experience", "fees", "consultation"]):
+                details_clean = ""
+            elif len(details_clean) < 3:
+                details_clean = ""
+                
+        candidates = [name_clean]
+        if details_clean and is_valid_entity(details_clean):
+            if looks_like_provider(details_clean) or any(w in details_clean.lower() for w in ["dr.", "dr ", "doctor"]):
+                candidates.append(details_clean)
+            
+        for cand in candidates:
+            if not cand or not is_valid_entity(cand):
+                continue
+                
+            # Check if this candidate or f"Dr. {cand}" is already in local_entities
+            exists = False
+            for e in extracted_data["local_entities"]:
+                if name_key(e["name"]) == name_key(cand):
+                    exists = True
+                    break
+            if exists:
+                continue
+                
+            is_clinic = any(w in cand.lower() for w in ["clinic", "hospital", "center", "centre", "care", "lab", "studio", "art", "dental group"])
+            is_doc = any(w in category.lower() for w in ["cardiologist", "dentist", "orthopedician", "physician", "doctor"]) and not is_clinic
+            has_dr_prefix = "dr." in cand.lower()
+            formatted_name = f"Dr. {cand}" if (is_doc and not has_dr_prefix) else cand
+            
             entity_dict = {
                 "name": formatted_name,
                 "category": category,
@@ -668,7 +879,7 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
     ws_entities = parse_ws_entities(content)
     combined_entities = []
     
-    # Add DOM entities first
+    # Add DOM entities first (which are the text-extracted ones!)
     for ent in extracted_data["local_entities"]:
         combined_entities.append(ent)
         
@@ -677,10 +888,19 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
         ent["category"] = deduce_category(ent["name"], ent.get("address", "") + " " + ent.get("experience", ""))
         combined_entities.append(ent)
         
+    # Keep track of keys extracted from the AI answer text to filter and order
+    text_name_keys = set()
+    ordered_keys = []
+    for ent in extracted_data["local_entities"]:
+        k = name_key(ent["name"])
+        if k and k not in text_name_keys:
+            text_name_keys.add(k)
+            ordered_keys.append(k)
+            
     merged_entities = {}
     for ent in combined_entities:
         k = name_key(ent["name"])
-        if not k:
+        if not k or k not in text_name_keys:
             continue
             
         if k not in merged_entities:
@@ -711,15 +931,14 @@ def parse_meta_ai_logs(input_file, output_json, output_md):
                 ent["phone"] = ent["phone"].replace(" ", "").strip()
             final_entities.append(ent)
             
-    # Sort by rating (descending, N/A last)
-    def get_rating_sort_key(ent):
-        r = ent.get("rating", "N/A")
-        try:
-            return float(r)
-        except ValueError:
-            return 0.0
-            
-    final_entities.sort(key=get_rating_sort_key, reverse=True)
+    # Sort strictly by the order of extraction from the AI answer text
+    def get_strict_sort_key(ent):
+        k = name_key(ent["name"])
+        if k in ordered_keys:
+            return ordered_keys.index(k)
+        return 999999
+        
+    final_entities.sort(key=get_strict_sort_key)
     extracted_data["local_entities"] = final_entities
 
     # Sort and classify outbound URLs
