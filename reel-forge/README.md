@@ -9,6 +9,7 @@ The core philosophy is **operational simplicity** and **predictable rendering pa
 ## Documentation Index
 
 For detailed guides and reference specifications, see:
+*   [Developer & Architecture Guide](file:///Users/ankur/dev/docx/ppt/reel-forge/DEVELOPER_GUIDE.md) — Single-file master reference for architecture, client profiles, personalization engine, templates, and CLI parameters.
 *   [Architectural Specification](file:///Users/ankur/dev/docx/ppt/reel-forge/docs/arch.md) — Detailed code structure, decoupled config resolver, and video render pipeline.
 *   [Template Design Guidelines](file:///Users/ankur/dev/docx/ppt/reel-forge/docs/template-guidelines.md) — Grid/safe zones, typography scale, motion design, and audio visualizer rules.
 *   [High-Level Design (HLD)](file:///Users/ankur/dev/docx/ppt/reel-forge/docs/hld.md) — Original system requirement analysis and architecture decisions.

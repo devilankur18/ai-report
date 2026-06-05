@@ -22,6 +22,24 @@ import {
 } from 'remotion';
 import { GlobalProps, WordTimestamp, Scene } from '../../global-schema.js';
 import { getFontFamilies } from '../_shared/fonts.js';
+import {
+  EHRFileHook,
+  ParallaxHook,
+  RedactedHook,
+  TypewriterTerminalHook,
+  TypewriterWordPopHook,
+  TypewriterStaggeredSlideHook,
+  CardStackFractureHook,
+  BlurInDiagnosticHook,
+  ParallaxWaveformHook,
+  GlitchCycleAlertHook,
+  MosaicReframeHook,
+  EhrVariableTypewriterHook,
+  DiagnosticCarousel3DHook,
+  SymptomMatrixFlybyHook,
+  ListRevealCountdownHook,
+  Transform3DShowcaseHook,
+} from './HookGallery.js';
 import { getThemeById } from '../_shared/themes.js';
 import { AnimatedBackground } from '../_shared/AnimatedBackground.js';
 import { SafeZone } from '../_shared/SafeZone.js';
@@ -210,6 +228,45 @@ const isEmphasisWord = (word: string): boolean => {
   return buzzwords.has(cleanWord);
 };
 
+const renderHookAnimation = (style: string, props: any) => {
+  switch (style) {
+    case 'ehr-file':
+      return <EHRFileHook {...props} />;
+    case 'parallax-data':
+      return <ParallaxHook {...props} />;
+    case 'redacted':
+      return <RedactedHook {...props} />;
+    case 'typewriter-terminal':
+      return <TypewriterTerminalHook {...props} />;
+    case 'typewriter-pop':
+      return <TypewriterWordPopHook {...props} />;
+    case 'typewriter-slide':
+      return <TypewriterStaggeredSlideHook {...props} />;
+    case '3d-stack':
+      return <CardStackFractureHook {...props} />;
+    case 'blur-in':
+      return <BlurInDiagnosticHook {...props} />;
+    case 'parallax-waveform':
+      return <ParallaxWaveformHook {...props} />;
+    case 'glitch-cycle':
+      return <GlitchCycleAlertHook {...props} />;
+    case 'mosaic-reframe':
+      return <MosaicReframeHook {...props} />;
+    case 'variable-typewriter':
+      return <EhrVariableTypewriterHook {...props} />;
+    case '3d-carousel':
+      return <DiagnosticCarousel3DHook {...props} />;
+    case 'matrix-flyby':
+      return <SymptomMatrixFlybyHook {...props} />;
+    case 'list-countdown':
+      return <ListRevealCountdownHook {...props} />;
+    case '3d-showcase':
+      return <Transform3DShowcaseHook {...props} />;
+    default:
+      return null;
+  }
+};
+
 export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
   audioHasQuestion?: boolean;
   patientQuestionAudioUrl?: string;
@@ -220,6 +277,7 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
   expertSpecialty,
   domain,
   hookText,
+  hookStyle = 'zoom-face',
   scenes,
   ctaText,
   ctaType,
@@ -621,134 +679,156 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
       {!isCtaActive && (
         <AbsoluteFill style={{ zIndex: 20, opacity: mainContentOpacity }}>
           {/* ── Interactive Glassmorphic Q&A Card (PIP Transition) ──────── */}
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: '920px',
-            transform: `translate(-50%, -50%) translate(${stickerX}px, ${stickerY}px) scale(${stickerScale})`,
-            transformOrigin: 'center center',
-            opacity: stickerOpacity,
-            zIndex: 40,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            padding: '36px 44px',
-            backgroundColor: cardBg,
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            borderRadius: '32px',
-            border: `1.5px solid ${cardBorder}`,
-            boxShadow: '0 30px 65px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
-          }}>
-            {/* Header Badge */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                backgroundColor: `${resolvedAccent}22`,
-                padding: '10px 18px',
-                borderRadius: '16px',
-                border: `1px solid ${resolvedAccent}40`,
-              }}>
-                <span style={{ fontSize: '26px' }}>{isQuestionInAudio ? '❓' : '💡'}</span>
-                <span style={{
-                  fontFamily: fonts.sans,
-                  fontSize: '22px',
-                  fontWeight: 900,
-                  color: resolvedAccent,
-                  textTransform: 'uppercase',
-                  letterSpacing: '1.5px',
-                  textShadow: `0 0 10px ${resolvedAccent}30`,
-                }}>
-                  {isQuestionInAudio ? 'PATIENT QUESTION' : 'ASK AN EXPERT'}
-                </span>
-              </div>
-              
-              {/* Countdown Progress Circle */}
-              {frame < ANSWER_START_FRAME && (
+          {hookStyle === 'zoom-face' && (
+            <div style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '920px',
+              transform: `translate(-50%, -50%) translate(${stickerX}px, ${stickerY}px) scale(${stickerScale})`,
+              transformOrigin: 'center center',
+              opacity: stickerOpacity,
+              zIndex: 40,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              padding: '36px 44px',
+              backgroundColor: cardBg,
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              borderRadius: '32px',
+              border: `1.5px solid ${cardBorder}`,
+              boxShadow: '0 30px 65px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}>
+              {/* Header Badge */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  fontSize: '22px',
-                  fontWeight: 800,
-                  color: resolvedAccent,
+                  gap: '12px',
+                  backgroundColor: `${resolvedAccent}22`,
+                  padding: '10px 18px',
+                  borderRadius: '16px',
+                  border: `1px solid ${resolvedAccent}40`,
                 }}>
-                  <span>ANSWER IN {Math.ceil((ANSWER_START_FRAME - frame) / fps)}s</span>
+                  <span style={{ fontSize: '26px' }}>{isQuestionInAudio ? '❓' : '💡'}</span>
+                  <span style={{
+                    fontFamily: fonts.sans,
+                    fontSize: '22px',
+                    fontWeight: 900,
+                    color: resolvedAccent,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1.5px',
+                    textShadow: `0 0 10px ${resolvedAccent}30`,
+                  }}>
+                    {isQuestionInAudio ? 'PATIENT QUESTION' : 'ASK AN EXPERT'}
+                  </span>
+                </div>
+                
+                {/* Countdown Progress Circle */}
+                {frame < ANSWER_START_FRAME && (
                   <div style={{
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    border: `3px solid ${resolvedAccent}20`,
-                    borderTop: `3px solid ${resolvedAccent}`,
-                    transform: `rotate(${frame * 8}deg)`,
-                  }} />
-                </div>
-              )}
-            </div>
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '22px',
+                    fontWeight: 800,
+                    color: resolvedAccent,
+                  }}>
+                    <span>ANSWER IN {Math.ceil((ANSWER_START_FRAME - frame) / fps)}s</span>
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      border: `3px solid ${resolvedAccent}20`,
+                      borderTop: `3px solid ${resolvedAccent}`,
+                      transform: `rotate(${frame * 8}deg)`,
+                    }} />
+                  </div>
+                )}
+              </div>
 
-            {/* Question Text with NAS-style Typewriter / Karaoke Reveal */}
-            <div style={{
-              fontFamily: fonts.serif,
-              fontSize: '56px',  // Mobile optimized large text
-              fontWeight: 800,
-              color: '#FFFFFF',
-              lineHeight: 1.25,
-              textShadow: '0 4px 15px rgba(0,0,0,0.6)',
-              margin: '12px 0 6px 0',
-            }}>
-              {isQuestionInAudio ? (
-                // Mode A: Spoken question (Highlight active words)
-                <div>
-                  {wordTimestamps
-                    ?.filter((w: WordTimestamp) => w.start < questionEndSec)
-                    .map((w: WordTimestamp, idx: number) => {
-                      const isActive = audioCurrentSec >= w.start && audioCurrentSec <= w.end;
-                      return (
-                        <span
-                          key={idx}
-                          style={{
-                            color: isActive ? resolvedAccent : '#FFFFFF',
-                            textShadow: isActive ? `0 0 15px ${resolvedAccent}80` : 'none',
-                            fontWeight: isActive ? 900 : 800,
-                            marginRight: '10px',
-                            display: 'inline-block',
-                            transition: 'color 0.1s ease',
-                          }}
-                        >
-                          {w.word}
-                        </span>
-                      );
-                    })}
-                </div>
-              ) : (
-                // Mode B: Typewriter typing animation
-                <div>
-                  {hookText.substring(0, typedCharCount)}
-                  {frame >= typingStartFrame && frame < typingEndFrame && (
-                    <span style={{ color: resolvedAccent, fontWeight: 300, marginLeft: '2px' }}>|</span>
-                  )}
-                </div>
-              )}
-            </div>
+              {/* Question Text with NAS-style Typewriter / Karaoke Reveal */}
+              <div style={{
+                fontFamily: fonts.serif,
+                fontSize: '56px',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                lineHeight: 1.25,
+                textShadow: '0 4px 15px rgba(0,0,0,0.6)',
+                margin: '12px 0 6px 0',
+              }}>
+                {isQuestionInAudio ? (
+                  // Mode A: Spoken question (Highlight active words)
+                  <div>
+                    {wordTimestamps
+                      ?.filter((w: WordTimestamp) => w.start < questionEndSec)
+                      .map((w: WordTimestamp, idx: number) => {
+                        const isActive = audioCurrentSec >= w.start && audioCurrentSec <= w.end;
+                        return (
+                          <span
+                            key={idx}
+                            style={{
+                              color: isActive ? resolvedAccent : '#FFFFFF',
+                              textShadow: isActive ? `0 0 15px ${resolvedAccent}80` : 'none',
+                              fontWeight: isActive ? 900 : 800,
+                              marginRight: '10px',
+                              display: 'inline-block',
+                              transition: 'color 0.1s ease',
+                            }}
+                          >
+                            {w.word}
+                          </span>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  // Mode B: Typewriter typing animation
+                  <div>
+                    {hookText.substring(0, typedCharCount)}
+                    {frame >= typingStartFrame && frame < typingEndFrame && (
+                      <span style={{ color: resolvedAccent, fontWeight: 300, marginLeft: '2px' }}>|</span>
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* Asked By Footer */}
-            <div style={{
-              fontFamily: fonts.sans,
-              fontSize: '20px',
-              fontWeight: 600,
-              color: displayTextSecondary,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '4px',
-            }}>
-              <span style={{ opacity: 0.6 }}>Asked by</span>
-              <span style={{ color: resolvedAccent, fontWeight: 700 }}>@healthy_living</span>
+              {/* Asked By Footer */}
+              <div style={{
+                fontFamily: fonts.sans,
+                fontSize: '20px',
+                fontWeight: 600,
+                color: displayTextSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginTop: '4px',
+              }}>
+                <span style={{ opacity: 0.6 }}>Asked by</span>
+                <span style={{ color: resolvedAccent, fontWeight: 700 }}>@healthy_living</span>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── Custom Animated Hooks ─────────────────────────────────────────── */}
+          {hookStyle !== 'zoom-face' && frame < ANSWER_START_FRAME && (
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 50,
+              opacity: interpolate(frame, [ANSWER_START_FRAME - 8, ANSWER_START_FRAME], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+            }}>
+              {renderHookAnimation(hookStyle, {
+                doctorPhoto: hookImage,
+                doctorAvatar: expertAvatar,
+                doctorName: expertName,
+                doctorTitle: expertSpecialty,
+                hookText,
+                accentColor: resolvedAccent,
+                fonts,
+              })}
+            </div>
+          )}
 
           {/* ── Subtitles & Takeaways (Answer Phase) ────────────────────── */}
           {frame >= ANSWER_START_FRAME && (

@@ -11,6 +11,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React from 'react';
 import { AbsoluteFill, Sequence, Audio, spring, interpolate, useCurrentFrame, useVideoConfig, staticFile, Img, } from 'remotion';
 import { getFontFamilies } from '../_shared/fonts.js';
+import { EHRFileHook, ParallaxHook, RedactedHook, TypewriterTerminalHook, TypewriterWordPopHook, TypewriterStaggeredSlideHook, CardStackFractureHook, BlurInDiagnosticHook, ParallaxWaveformHook, GlitchCycleAlertHook, MosaicReframeHook, EhrVariableTypewriterHook, DiagnosticCarousel3DHook, SymptomMatrixFlybyHook, ListRevealCountdownHook, Transform3DShowcaseHook, } from './HookGallery.js';
 import { getThemeById } from '../_shared/themes.js';
 import { AnimatedBackground } from '../_shared/AnimatedBackground.js';
 import { SafeZone } from '../_shared/SafeZone.js';
@@ -133,7 +134,45 @@ const isEmphasisWord = (word) => {
     ]);
     return buzzwords.has(cleanWord);
 };
-export const TalkingHeadQnaTemplate = ({ audioUrl, expertName, expertSpecialty, domain, hookText, scenes, ctaText, ctaType, ctaTitle, ctaSubtitle, ctaLink, ctaHandle, accentColor: customAccent, bgGradientStart: customStart, bgGradientEnd: customEnd, bgSolid: customSolid, themeId = 'hero-gold', bgVideoUrl: customBgVideo, language = 'en', expertAvatar, expertLogo, expertImages, expertImageSet, overlayStyle: customOverlayStyle, wordTimestamps, clientId, designId, fontPairingIndex: customFontPairingIndex, layoutVariant: customLayoutVariant, decorationStyle: customDecorationStyle, imageTreatment: customImageTreatment, audioHasQuestion, patientQuestionAudioUrl = 'audio/question-1.mp3', // Loud default patient voice
+const renderHookAnimation = (style, props) => {
+    switch (style) {
+        case 'ehr-file':
+            return _jsx(EHRFileHook, { ...props });
+        case 'parallax-data':
+            return _jsx(ParallaxHook, { ...props });
+        case 'redacted':
+            return _jsx(RedactedHook, { ...props });
+        case 'typewriter-terminal':
+            return _jsx(TypewriterTerminalHook, { ...props });
+        case 'typewriter-pop':
+            return _jsx(TypewriterWordPopHook, { ...props });
+        case 'typewriter-slide':
+            return _jsx(TypewriterStaggeredSlideHook, { ...props });
+        case '3d-stack':
+            return _jsx(CardStackFractureHook, { ...props });
+        case 'blur-in':
+            return _jsx(BlurInDiagnosticHook, { ...props });
+        case 'parallax-waveform':
+            return _jsx(ParallaxWaveformHook, { ...props });
+        case 'glitch-cycle':
+            return _jsx(GlitchCycleAlertHook, { ...props });
+        case 'mosaic-reframe':
+            return _jsx(MosaicReframeHook, { ...props });
+        case 'variable-typewriter':
+            return _jsx(EhrVariableTypewriterHook, { ...props });
+        case '3d-carousel':
+            return _jsx(DiagnosticCarousel3DHook, { ...props });
+        case 'matrix-flyby':
+            return _jsx(SymptomMatrixFlybyHook, { ...props });
+        case 'list-countdown':
+            return _jsx(ListRevealCountdownHook, { ...props });
+        case '3d-showcase':
+            return _jsx(Transform3DShowcaseHook, { ...props });
+        default:
+            return null;
+    }
+};
+export const TalkingHeadQnaTemplate = ({ audioUrl, expertName, expertSpecialty, domain, hookText, hookStyle = 'zoom-face', scenes, ctaText, ctaType, ctaTitle, ctaSubtitle, ctaLink, ctaHandle, accentColor: customAccent, bgGradientStart: customStart, bgGradientEnd: customEnd, bgSolid: customSolid, themeId = 'hero-gold', bgVideoUrl: customBgVideo, language = 'en', expertAvatar, expertLogo, expertImages, expertImageSet, overlayStyle: customOverlayStyle, wordTimestamps, clientId, designId, fontPairingIndex: customFontPairingIndex, layoutVariant: customLayoutVariant, decorationStyle: customDecorationStyle, imageTreatment: customImageTreatment, audioHasQuestion, patientQuestionAudioUrl = 'audio/question-1.mp3', // Loud default patient voice
 bgMusicUrl, }) => {
     const frame = useCurrentFrame();
     const { fps, durationInFrames } = useVideoConfig();
@@ -412,7 +451,7 @@ bgMusicUrl, }) => {
                     zIndex: 15,
                     transform: 'scale(0.9)',
                     transformOrigin: 'right top'
-                }, children: _jsx("img", { src: resolvedLogoUrl, alt: "Brand Logo", style: { maxHeight: '52px', maxWidth: '170px', objectFit: 'contain' } }) })), !isCtaActive && (_jsxs(AbsoluteFill, { style: { zIndex: 20, opacity: mainContentOpacity }, children: [_jsxs("div", { style: {
+                }, children: _jsx("img", { src: resolvedLogoUrl, alt: "Brand Logo", style: { maxHeight: '52px', maxWidth: '170px', objectFit: 'contain' } }) })), !isCtaActive && (_jsxs(AbsoluteFill, { style: { zIndex: 20, opacity: mainContentOpacity }, children: [hookStyle === 'zoom-face' && (_jsxs("div", { style: {
                             position: 'absolute',
                             left: '50%',
                             top: '50%',
@@ -463,7 +502,7 @@ bgMusicUrl, }) => {
                                                     transform: `rotate(${frame * 8}deg)`,
                                                 } })] }))] }), _jsx("div", { style: {
                                     fontFamily: fonts.serif,
-                                    fontSize: '56px', // Mobile optimized large text
+                                    fontSize: '56px',
                                     fontWeight: 800,
                                     color: '#FFFFFF',
                                     lineHeight: 1.25,
@@ -494,7 +533,20 @@ bgMusicUrl, }) => {
                                     alignItems: 'center',
                                     gap: '8px',
                                     marginTop: '4px',
-                                }, children: [_jsx("span", { style: { opacity: 0.6 }, children: "Asked by" }), _jsx("span", { style: { color: resolvedAccent, fontWeight: 700 }, children: "@healthy_living" })] })] }), frame >= ANSWER_START_FRAME && (_jsxs(AbsoluteFill, { style: { zIndex: 10 }, children: [activeLine && (_jsx("div", { style: {
+                                }, children: [_jsx("span", { style: { opacity: 0.6 }, children: "Asked by" }), _jsx("span", { style: { color: resolvedAccent, fontWeight: 700 }, children: "@healthy_living" })] })] })), hookStyle !== 'zoom-face' && frame < ANSWER_START_FRAME && (_jsx("div", { style: {
+                            position: 'absolute',
+                            inset: 0,
+                            zIndex: 50,
+                            opacity: interpolate(frame, [ANSWER_START_FRAME - 8, ANSWER_START_FRAME], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }),
+                        }, children: renderHookAnimation(hookStyle, {
+                            doctorPhoto: hookImage,
+                            doctorAvatar: expertAvatar,
+                            doctorName: expertName,
+                            doctorTitle: expertSpecialty,
+                            hookText,
+                            accentColor: resolvedAccent,
+                            fonts,
+                        }) })), frame >= ANSWER_START_FRAME && (_jsxs(AbsoluteFill, { style: { zIndex: 10 }, children: [activeLine && (_jsx("div", { style: {
                                     position: 'absolute',
                                     left: '60px',
                                     right: '60px',

@@ -14,6 +14,7 @@ Phase 6 upgrades:
 """
 
 import sys
+import os
 import argparse
 import json
 import time
@@ -62,6 +63,31 @@ def select_best_model(requested_model: str) -> str:
     print(f"[ollama] Fallback: using first available model '{models[0]}'")
     return models[0]
 
+def load_hooks_metadata() -> dict:
+    """Load the hook styles catalog from src/templates/_shared/hooks-metadata.json."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    paths = [
+        os.path.join(script_dir, "..", "src", "templates", "_shared", "hooks-metadata.json"),
+        os.path.join(script_dir, "src", "templates", "_shared", "hooks-metadata.json"),
+        "src/templates/_shared/hooks-metadata.json"
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"[meta] Error reading hook metadata: {e}")
+    
+    # Minimal fallback catalog if file not found
+    return {
+        "zoom-face": {
+            "name": "Classic Q&A PIP Card",
+            "psychology": "Direct, conversational Q&A. Doctor fills screen.",
+            "visual": "Glassmorphic question card in center that zooms to corner."
+        }
+    }
+
 def generate_video_meta(
     transcript: str,
     expert_name: str,
@@ -78,6 +104,16 @@ def generate_video_meta(
     Returns: { hookText, hookStyle, hookStat, hookEmoji, toneTag, scenes[], ctaText, hashtags[], title }
     """
     selected_model = select_best_model(model)
+    hooks_catalog = load_hooks_metadata()
+
+    # Build prompt instructions dynamically
+    hook_styles_instructions = ""
+    for style_id, info in hooks_catalog.items():
+        hook_styles_instructions += f"- \"{style_id}\" ({info['name']}):\n"
+        hook_styles_instructions += f"  Psychology: {info['psychology']}\n"
+        hook_styles_instructions += f"  Visual Style: {info['visual']}\n\n"
+
+    valid_hook_styles_str = "|".join(hooks_catalog.keys())
 
     lang_instruction = ""
     clean_lang = language.lower().strip()
@@ -119,14 +155,7 @@ HOOK TEXT RULES (hookText field):
 HOOK STYLE (hookStyle field):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Choose the best animation style for this content:
-- "zoom-face": Use when tone is authoritative/confident. Doctor fills screen.
-- "stat-counter": Use ONLY when hookText contains a specific statistic or number.
-  If chosen, also output hookStat field (e.g. "90%", "1 in 4").
-- "text-slam": Use for urgent/warning/myth-bust tone. High energy.
-- "typewriter-bold": Use for educational/storytelling tone. Calm, professional.
-- "split-reveal": Use for dramatic revelations. Before/after style content.
-- "word-cascade": Fallback only if none of the above fit.
-
+{hook_styles_instructions}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TONE TAG (toneTag field):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -167,7 +196,7 @@ INPUT:
 Return ONLY valid JSON — no markdown, no explanation:
 {{
   "hookText": "5-10 word pattern-interrupt hook",
-  "hookStyle": "zoom-face|stat-counter|text-slam|typewriter-bold|split-reveal|word-cascade",
+  "hookStyle": "One of: {valid_hook_styles_str}",
   "hookStat": "e.g. 90% (only if hookStyle is stat-counter, else null)",
   "hookEmoji": "single relevant emoji like 🔥 ⚠️ 💡 🤔 ❤️ 🧪",
   "toneTag": "educational|motivational|warning|myth-bust|storytelling",
@@ -191,7 +220,7 @@ Return ONLY valid JSON — no markdown, no explanation:
                 "stream": False,
                 "format": "json",
                 "options": {
-                    "temperature": 0.4,  # Slightly higher for more creative hooks
+                    "temperature": 0.4,
                     "num_predict": 2048,
                 },
             },
@@ -228,7 +257,7 @@ Return ONLY valid JSON — no markdown, no explanation:
         result["hookStat"] = None
 
     # Ensure hookStyle is a valid value
-    valid_hook_styles = {"zoom-face", "stat-counter", "text-slam", "typewriter-bold", "split-reveal", "word-cascade"}
+    valid_hook_styles = set(hooks_catalog.keys())
     if result.get("hookStyle") not in valid_hook_styles:
         result["hookStyle"] = "zoom-face"
 

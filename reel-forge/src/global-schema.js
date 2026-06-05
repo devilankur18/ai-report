@@ -65,6 +65,22 @@ export const GlobalPropsSchema = z.object({
         'typewriter-bold', // Large typewriter effect (bold/authoritative)
         'split-reveal', // Screen splits, doctor slides up from bottom
         'word-cascade', // Original word-by-word spring (legacy fallback)
+        'ehr-file',
+        'parallax-data',
+        'redacted',
+        'typewriter-terminal',
+        'typewriter-pop',
+        'typewriter-slide',
+        '3d-stack',
+        'blur-in',
+        'parallax-waveform',
+        'glitch-cycle',
+        'mosaic-reframe',
+        'variable-typewriter',
+        '3d-carousel',
+        'matrix-flyby',
+        'list-countdown',
+        '3d-showcase',
     ]).optional().default('zoom-face'),
     /** The key statistic for stat-counter hook style (e.g. "90%", "1 in 4") */
     hookStat: z.string().optional(),

@@ -10,6 +10,19 @@ import {
   EhrFileHookPreview,
   ParallaxHookPreview,
   RedactedHookPreview,
+  TypewriterTerminalHookPreview,
+  TypewriterWordPopHookPreview,
+  TypewriterStaggeredSlideHookPreview,
+  CardStackFractureHookPreview,
+  BlurInDiagnosticHookPreview,
+  ParallaxWaveformHookPreview,
+  GlitchCycleAlertHookPreview,
+  MosaicReframeHookPreview,
+  EhrVariableTypewriterHookPreview,
+  DiagnosticCarousel3DHookPreview,
+  SymptomMatrixFlybyHookPreview,
+  ListRevealCountdownHookPreview,
+  Transform3DShowcaseHookPreview,
 } from './templates/talking-head-qna/HookGallery.js';
 
 export const Root: React.FC = () => {
@@ -164,6 +177,110 @@ export const Root: React.FC = () => {
       <Composition
         id="hook-redacted"
         component={RedactedHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-typewriter-terminal"
+        component={TypewriterTerminalHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-typewriter-pop"
+        component={TypewriterWordPopHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-typewriter-slide"
+        component={TypewriterStaggeredSlideHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-3d-stack"
+        component={CardStackFractureHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-blur-in"
+        component={BlurInDiagnosticHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-parallax-waveform"
+        component={ParallaxWaveformHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-glitch-cycle"
+        component={GlitchCycleAlertHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-mosaic-reframe"
+        component={MosaicReframeHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-variable-typewriter"
+        component={EhrVariableTypewriterHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-3d-carousel"
+        component={DiagnosticCarousel3DHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-matrix-flyby"
+        component={SymptomMatrixFlybyHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-list-countdown"
+        component={ListRevealCountdownHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-3d-showcase"
+        component={Transform3DShowcaseHookPreview}
         fps={30}
         width={1080}
         height={1920}

@@ -17,7 +17,6 @@ import {
   useVideoConfig,
   staticFile,
   Img,
-  interpolateColor,
 } from 'remotion';
 import { GlobalProps, WordTimestamp } from '../../global-schema';
 import { getFontFamilies } from '../_shared/fonts';
