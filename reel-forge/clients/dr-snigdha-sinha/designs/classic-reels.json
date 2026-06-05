@@ -1,0 +1,19 @@
+{
+  "template": "hook-quote",
+  "defaultLanguage": "en",
+  "ctaText": "Share your lab reports for expert pathology guidance and referrals.",
+  "ctaType": "appointment",
+  "ctaTitle": "Get Pathology Guidance",
+  "ctaLink": "drsnigdhasinha.com",
+  "ctaHandle": "@drsnigdhasinha",
+  "bgVideoUrl": "",
+  "hookStyle": "zoom-face",
+  "theme": {
+    "accentColor": "#0D9488",
+    "textColor": "#FFFFFF",
+    "textSecondaryColor": "#CCFBF1",
+    "bgType": "hero-portrait",
+    "bgSolid": "#042F2E",
+    "overlayStyle": "scrim-bottom"
+  }
+}

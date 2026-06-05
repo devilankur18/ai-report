@@ -18,6 +18,42 @@ Then open the dev server and edit `slides/getting-started/index.tsx`, or create 
 | `pnpm dev` | Start the dev server with hot reload. |
 | `pnpm build` | Build a static bundle you can deploy. |
 | `pnpm preview` | Preview the built bundle locally. |
+## Running GEO Engines
+
+The repository includes a GEO multi‑engine pipeline for searching doctor listings across various platforms. Each engine resides under `browser-use-demo/geo_engine/<engine>/` and provides a `capture.js` script and a `parser.py` for post‑processing.
+
+To run a specific engine, use the provided CLI `geo_cli.py`:
+
+```bash
+python3 geo_cli.py --engine <engine> --city "<city>" --specialty "<specialty>"
+```
+
+Replace `<engine>` with one of:
+- `google_maps`
+- `bing_maps`
+- `practo`
+- `justdial`
+- `google_business_profile` (new)
+- `ms_business_profile` (new)
+- `chatgpt`
+- `gemini`
+- `google`
+- `bing`
+- `perplexity`
+
+You can also specify multiple engines as a comma‑separated list:
+
+```bash
+python3 geo_cli.py --engine google_maps,bing_maps --city "Lucknow" --specialty "orthopedicians"
+```
+
+### Region‑aware ordering (India)
+
+Use the `--region india` flag to prioritize India‑specific directories (Practo → Justdial) before falling back to the global business profile engines:
+
+```bash
+python3 geo_cli.py --region india --city "Lucknow" --specialty "orthopedicians"
+```
 
 ## Authoring a slide
 

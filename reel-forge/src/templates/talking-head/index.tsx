@@ -543,7 +543,9 @@ export const TalkingHeadTemplate: React.FC<GlobalProps> = ({
 
       {/* Audio Playback */}
       {frame >= AUDIO_START_FRAME && resolvedAudioUrl && (
-        <Audio src={resolvedAudioUrl} volume={audioVolume} startFrom={0} />
+        <Sequence from={AUDIO_START_FRAME}>
+          <Audio src={resolvedAudioUrl} volume={audioVolume} />
+        </Sequence>
       )}
     </AbsoluteFill>
   );

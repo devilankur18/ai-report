@@ -1,0 +1,23 @@
+{
+  "name": "Dr. Snigdha Sinha",
+  "specialty": "Pathologist",
+  "domain": "Pathology & Lab Reports",
+  "avatar": "avatar.png",
+  "logo": "logo.png",
+  "images": [
+    "avatar.png",
+    "clinic-outside.png",
+    "clinic-inside.png"
+  ],
+  "imageSet": [
+    { "file": "avatar.png",          "role": "hook",     "alt": "Dr. Snigdha Sinha portrait" },
+    { "file": "clinic-outside.png",  "role": "scene",    "alt": "Pathology Lab exterior" },
+    { "file": "clinic-inside.png",   "role": "scene",    "alt": "Pathology Lab interior" },
+    { "file": "avatar.png",          "role": "cta",      "alt": "Dr. Snigdha Sinha" }
+  ],
+  "minPhotoRequirements": {
+    "portrait": 1,
+    "clinic": 1,
+    "consultation": 1
+  }
+}

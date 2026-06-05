@@ -20,6 +20,7 @@ import time
 import requests
 
 OLLAMA_BASE_URL = "http://localhost:11434"
+# DEFAULT_MODEL = "gemma4:e4b"
 DEFAULT_MODEL = "gemma4:e4b"
 
 def get_available_models() -> list:
@@ -38,6 +39,8 @@ def select_best_model(requested_model: str) -> str:
     if not models:
         print("[ollama] Warning: Could not reach Ollama or no models are installed locally.")
         return requested_model
+
+    print(requested_model, models)
 
     # Direct match check
     if requested_model in models:

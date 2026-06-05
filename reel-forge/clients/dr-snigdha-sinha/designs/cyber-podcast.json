@@ -1,0 +1,16 @@
+{
+  "template": "minimal-podcast",
+  "defaultLanguage": "en",
+  "ctaText": "Listen to full lab report analysis podcasts!",
+  "ctaHandle": "@drsnigdhasinha",
+  "bgVideoUrl": "",
+  "hookStyle": "typewriter-bold",
+  "theme": {
+    "accentColor": "#00F5D4",
+    "textColor": "#FFFFFF",
+    "textSecondaryColor": "#8E9AAF",
+    "bgType": "hero-portrait",
+    "bgSolid": "#050D12",
+    "overlayStyle": "scrim-full"
+  }
+}

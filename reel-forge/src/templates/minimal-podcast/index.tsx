@@ -275,12 +275,14 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
             alignItems: 'center',
           }}>
             {/* Waveform rings behind avatar */}
-            <AudioWaveform
-              audioUrl={resolvedAudioUrl}
-              accentColor={resolvedAccent}
-              mode="radial"
-              numberOfBars={64}
-            />
+            <Sequence from={AUDIO_START_FRAME}>
+              <AudioWaveform
+                audioUrl={resolvedAudioUrl}
+                accentColor={resolvedAccent}
+                mode="radial"
+                numberOfBars={64}
+              />
+            </Sequence>
 
             {/* Doctor avatar inside waveform ring */}
             {resolvedAvatarUrl && (
@@ -378,7 +380,9 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
 
       {/* ── Audio ─────────────────────────────────────────────────────────── */}
       {frame >= AUDIO_START_FRAME && resolvedAudioUrl && (
-        <Audio src={resolvedAudioUrl} volume={audioVolume} startFrom={0} />
+        <Sequence from={AUDIO_START_FRAME}>
+          <Audio src={resolvedAudioUrl} volume={audioVolume} />
+        </Sequence>
       )}
     </AbsoluteFill>
   );
