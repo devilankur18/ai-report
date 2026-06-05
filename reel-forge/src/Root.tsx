@@ -3,7 +3,14 @@ import { Composition } from 'remotion';
 import { HookQuoteTemplate } from './templates/hook-quote';
 import { MinimalPodcastTemplate } from './templates/minimal-podcast';
 import { TalkingHeadTemplate } from './templates/talking-head';
+import { TalkingHeadV2Template } from './templates/talking-head-v2';
+import { TalkingHeadQnaTemplate } from './templates/talking-head-qna';
 import { GlobalPropsSchema } from './global-schema';
+import {
+  EhrFileHookPreview,
+  ParallaxHookPreview,
+  RedactedHookPreview,
+} from './templates/talking-head-qna/HookGallery.js';
 
 export const Root: React.FC = () => {
   const defaultSampleProps = {
@@ -104,6 +111,65 @@ export const Root: React.FC = () => {
           ctaText: 'Follow for more skincare tips!',
         }}
       />
+      <Composition
+        id="talking-head-v2"
+        component={TalkingHeadV2Template}
+        calculateMetadata={({ props }: { props: { durationInFrames?: number } }) => {
+          return {
+            durationInFrames: props.durationInFrames || 600,
+          };
+        }}
+        fps={30}
+        width={1080}
+        height={1920}
+        schema={GlobalPropsSchema}
+        defaultProps={{
+          ...defaultSampleProps,
+          ctaText: 'Follow for more skincare tips!',
+        }}
+      />
+      <Composition
+        id="talking-head-qna"
+        component={TalkingHeadQnaTemplate}
+        calculateMetadata={({ props }: { props: { durationInFrames?: number } }) => {
+          return {
+            durationInFrames: props.durationInFrames || 600,
+          };
+        }}
+        fps={30}
+        width={1080}
+        height={1920}
+        schema={GlobalPropsSchema}
+        defaultProps={{
+          ...defaultSampleProps,
+          ctaText: 'Follow for more skincare tips!',
+        }}
+      />
+      <Composition
+        id="hook-ehr-file"
+        component={EhrFileHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-parallax-data"
+        component={ParallaxHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
+      <Composition
+        id="hook-redacted"
+        component={RedactedHookPreview}
+        fps={30}
+        width={1080}
+        height={1920}
+        durationInFrames={150}
+      />
     </>
   );
 };
+

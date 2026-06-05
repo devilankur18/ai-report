@@ -166,10 +166,41 @@ Rendering Options:
   const whisperModel = (args.whisper_model as string) || 'small';
   const preview = !!args.preview;
   
-  let propsPath = (args.props as string) || path.join(projectRoot, 'tmp', 'props.json');
+  // Resolve Cache Directory and File Path structured under <client-id>/<run-info>
+  const safeClientId = clientNameId || 'manual';
+  const audioName = audio ? path.basename(audio, path.extname(audio)) : 'no-audio';
+  const cacheDir = path.join(projectRoot, 'tmp', 'cache', safeClientId);
+  const cacheFilePath = path.join(cacheDir, `${audioName}-${designId}.json`);
 
-  // Step 1: Run AI pipeline if not using custom props
+  let propsPath = (args.props as string) || cacheFilePath;
+  let skipAiPipeline = !!args['skip-ai'];
+
   if (!args.props && !args['skip-ai']) {
+    if (args.force) {
+      console.log(`[render] [force] Bypassing cache, forcing fresh transcription & metadata generation.`);
+      fs.mkdirSync(cacheDir, { recursive: true });
+    } else if (args.quick) {
+      if (fs.existsSync(cacheFilePath)) {
+        console.log(`[render] [quick] Found cached run data at ${cacheFilePath}. Reusing transcription and metadata.`);
+        skipAiPipeline = true;
+      } else {
+        console.log(`[render] [quick] No cache found at ${cacheFilePath}. Generating new metadata and caching it.`);
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+    } else {
+      // Smart default: If cache exists, reuse it. Otherwise, generate and cache.
+      if (fs.existsSync(cacheFilePath)) {
+        console.log(`[render] Found cached run data at ${cacheFilePath}. Reusing transcription & metadata. (Pass --force to run from scratch)`);
+        skipAiPipeline = true;
+      } else {
+        console.log(`[render] No cache found. Running AI pipeline and caching output at ${cacheFilePath}...`);
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+    }
+  }
+
+  // Step 1: Run AI pipeline if not skipping
+  if (!args.props && !skipAiPipeline) {
     console.log('[render] Running AI pipeline (Transcription + Metadata)...');
     
     // Pass CTA personalization context from design config
@@ -213,6 +244,19 @@ Rendering Options:
   }
 
   const props = JSON.parse(fs.readFileSync(propsPath, 'utf8'));
+
+  // Step 2b: Ensure programmatic sound effects are generated
+  const sfxDir = path.join(projectRoot, 'public', 'audio', 'sfx');
+  const requiredSfx = ['boom.wav', 'whoosh.wav', 'pop.wav', 'ding.wav', 'click.wav'];
+  const missingSfx = requiredSfx.some(file => !fs.existsSync(path.join(sfxDir, file)));
+  if (missingSfx) {
+    console.log('[render] Missing sound effects detected. Generating them now...');
+    try {
+      execSync(`python3 "${path.join(projectRoot, 'cli', 'generate_sfx.py')}"`, { stdio: 'inherit', cwd: projectRoot });
+    } catch (err) {
+      console.warn('[render] Warning: Failed to generate sound effects.', err);
+    }
+  }
 
   // Step 3: Copy audio file to public/audio/ and rewrite props audioUrl
   let audioSrcFile = props.audioUrl;
