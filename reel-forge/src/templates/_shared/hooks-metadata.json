@@ -1,0 +1,112 @@
+{
+  "zoom-face": {
+    "name": "Classic Q&A PIP Card",
+    "psychology": "Direct, conversational Q&A. Use when the tone is authoritative/confident and direct. Doctor fills the screen before the card zooms to the corner.",
+    "visual": "A glassmorphic question card in the center with a countdown progress circle, which zooms down to the top-left corner at the answer frame."
+  },
+  "stat-counter": {
+    "name": "Large Statistic Counter",
+    "psychology": "Use ONLY when the hookText contains a specific statistic, percentage, or ratio (e.g., '90%', '1 in 4'). Must include 'hookStat' field.",
+    "visual": "A massive number counts up rapidly on the screen, accompanied by an explanatory sub-tagline."
+  },
+  "text-slam": {
+    "name": "Bold Text Slam",
+    "psychology": "Use for urgent, warning, or myth-busting tones. High kinetic energy, forces quick attention to the core statement.",
+    "visual": "Words slam onto the screen sequentially with high speed and large typography."
+  },
+  "typewriter-bold": {
+    "name": "Bold Classic Typewriter",
+    "psychology": "Use for educational or storytelling tone. Calm, professional, and structured cadence.",
+    "visual": "Large, bold text typed out line-by-line with a blinking vertical cursor."
+  },
+  "split-reveal": {
+    "name": "Split Screen Reveal",
+    "psychology": "Use for dramatic revelations or before/after content. Creates visual contrast.",
+    "visual": "The screen splits horizontally/vertically, and the doctor's portrait slides up as the text reveals."
+  },
+  "word-cascade": {
+    "name": "Word Cascade Fallback",
+    "psychology": "Use as a general fallback if no other specialized tone fits.",
+    "visual": "Words cascade down the screen sequentially with elastic spring bounces."
+  },
+  "ehr-file": {
+    "name": "Clinical Analytics Telemetry",
+    "psychology": "Use for high-stakes diagnostic or warning content. Simulates a clinical telemetry brief.",
+    "visual": "A dark dashboard with patient ID scrambling telemetry, a status critical warning flasher, and a large bottom text slam."
+  },
+  "parallax-data": {
+    "name": "Cinematic Parallax Data",
+    "psychology": "Use to highlight guidlines or system friction in private practices. Creates high-end clinical documentary feel.",
+    "visual": "Slow panning, desaturated background doctor portrait with an active clinical line wave vector at the bottom."
+  },
+  "redacted": {
+    "name": "Confidential Redacted Document",
+    "psychology": "Use for conspiracy, corporate/insurance secrets, or controversial data. Spikes immediate curiosity.",
+    "visual": "A cream paper document overlaying a desaturated doctor photo. Black block boxes cover key words and shake the screen when unmasked."
+  },
+  "typewriter-terminal": {
+    "name": "Terminal Monospace Typewriter",
+    "psychology": "Use for retro-technical, hacking, or clinical-log style warnings.",
+    "visual": "Green monospace characters typing out with a blinking neon block cursor, scan lines, and grid overlay."
+  },
+  "typewriter-pop": {
+    "name": "Kinetic Word Pop",
+    "psychology": "Use to emphasize each word in a bold statement. Highly engaging and rhythmic.",
+    "visual": "Words spring-scale up one by one. The active word glows in the accent color before settling into white."
+  },
+  "typewriter-slide": {
+    "name": "Staggered Mask Slide",
+    "psychology": "Use for sleek, high-end Apple-style product or concept introductions.",
+    "visual": "Words slide up from a clipped baseline mask and fade in with a glowing accent color on the final words."
+  },
+  "3d-stack": {
+    "name": "3D Card Stack Fracture",
+    "psychology": "Use when debunking a standard belief or industry consensus. ('They told you X, but it's a lie.')",
+    "visual": "An official card stack fractures along 3D axes and slides away to reveal the doctor's portrait and hook text."
+  },
+  "blur-in": {
+    "name": "Kinetic Blur Reveal",
+    "psychology": "Use to build anticipation. Restricts visual information initially, forcing focus on words as they resolve.",
+    "visual": "Text starts highly blurred, dropping into sharp focus line-by-line while the doctor photo unblurs."
+  },
+  "parallax-waveform": {
+    "name": "Parallax Voice Waveform",
+    "psychology": "Use when highlighting a voice-centric hook. Immediate proof of voice track activity.",
+    "visual": "Ken Burns zoom on desaturated doctor photo, with an SVG active audio waveform at the footer simulating voice waves."
+  },
+  "glitch-cycle": {
+    "name": "Glitch Cycle Alert",
+    "psychology": "Use for systemic errors or alarming contradictions. Simulates technical malfunction.",
+    "visual": "Metric text strobes and glitches rapidly between medical terms before locking on a bold red emergency warning."
+  },
+  "mosaic-reframe": {
+    "name": "Mosaic Image Reframe",
+    "psychology": "Use to represent aggregating multiple clues or research into a single expert conclusion.",
+    "visual": "Six grid fragments of the doctor's photo slide from off-screen and converge to form the unified photo."
+  },
+  "variable-typewriter": {
+    "name": "EHR Variable Typewriter",
+    "psychology": "Use to simulate internal health record entries. Feels like a live clinical diary typing.",
+    "visual": "Text types inside a dark terminal card at human-like variable speeds (pauses on spaces/punctuation), with a circular doctor badge."
+  },
+  "3d-carousel": {
+    "name": "3D Card Carousel Swipe",
+    "psychology": "Use when comparing option A, B, and a secret option C. Highlights decision making.",
+    "visual": "Three cards rotate in a vertical 3D perspective drum, decelerating and locking onto the target hook card."
+  },
+  "matrix-flyby": {
+    "name": "Symptom Matrix Fly-through",
+    "psychology": "Use for complex topics with too much data. Simulates cutting through jargon to find the core answer.",
+    "visual": "Acronyms fly past the camera in 3D space, resolving on a clean presentation of the doctor and hook."
+  },
+  "list-countdown": {
+    "name": "Countdown List Knockout",
+    "psychology": "Use for high density listicles (e.g., '3 main errors'). Extremely organized and structured.",
+    "visual": "Numbers '01', '02', '03' flash progressively in neon boxes to unmask key bullet points sequentially."
+  },
+  "3d-showcase": {
+    "name": "Transform 3D Showcase Switch",
+    "psychology": "Use to flip a regulatory or administrative issue into a real-life solution.",
+    "visual": "A skewed 3D document flips 180 degrees along the Y-axis to reveal the doctor's photo and answer on the back."
+  }
+}
