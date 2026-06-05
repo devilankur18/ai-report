@@ -4,6 +4,13 @@ generate_meta.py
 ----------------
 Calls local Ollama to parse an audio transcript and generate structural metadata
 for the video, including hook text, scene segments, key quotes, and call-to-action.
+
+Phase 6 upgrades:
+- Stronger hook patterns using proven viral formulas
+- hookStyle recommendation based on transcript tone
+- hookEmoji + toneTag output for template personalization
+- Better key quote selection criteria (emotionally charged, surprising, actionable)
+- Personalized CTA referencing doctor's specialty and content
 """
 
 import sys
@@ -60,13 +67,15 @@ def generate_video_meta(
     duration_sec: float,
     model: str = DEFAULT_MODEL,
     language: str = "en",
+    cta_handle: str = "",
+    cta_link: str = "",
 ) -> dict:
     """
     Call local Ollama to generate video metadata from the transcript.
-    Returns: { hookText, scenes[], ctaText, hashtags[], title }
+    Returns: { hookText, hookStyle, hookStat, hookEmoji, toneTag, scenes[], ctaText, hashtags[], title }
     """
     selected_model = select_best_model(model)
-    
+
     lang_instruction = ""
     clean_lang = language.lower().strip()
     if clean_lang in ["hi", "hindi"]:
@@ -78,38 +87,93 @@ def generate_video_meta(
     else:
         lang_instruction = f"IMPORTANT: Generate all visual texts (hookText, ctaText, and keyQuotes) in {language}. Translate from the transcript if it is in another language."
 
-    prompt = f"""You are a viral social media content strategist.
- 
-Given an expert's audio transcript, generate metadata for a 9:16 vertical reel.
- 
-RULES:
-- hookText: Must be 5-10 words. Pattern: question, surprising stat, or bold claim.
-  The hook should NOT be a summary — it should make someone STOP scrolling.
-- scenes: Divide the audio into 3-5 logical segments. Each scene gets a label
-  and a keyQuote. 
-  * If the target language matches the transcript language, the keyQuote MUST be a direct, verbatim quote of exact words from the transcript (max 15 words).
-  * If the target language is different, translate a high-impact sentence from that segment of the transcript.
-- ctaText: Short, domain-relevant call-to-action.
-- The first scene must start at 0s. Scenes must be contiguous (no gaps, the next startSec must equal the previous endSec).
-  The last scene must end at {duration_sec}s.
- 
+    cta_context = ""
+    if cta_handle:
+        cta_context += f"\n- Doctor's social handle: {cta_handle}"
+    if cta_link:
+        cta_context += f"\n- Booking/website link: {cta_link}"
+
+    prompt = f"""You are a viral social media content strategist who creates Instagram Reels for doctors and medical professionals.
+
+Given a doctor's audio transcript, generate metadata for a high-impact 9:16 vertical reel that stops scrolling.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOOK TEXT RULES (hookText field):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Must be 5-10 words maximum. Short and punchy.
+- Must NOT be a summary of the content.
+- MUST use ONE of these proven viral patterns:
+  * MYTH BUST: "Stop believing this [specialty] myth"
+  * SHOCKING STAT: "[Number]% of people get this wrong"
+  * FEAR/URGENCY: "You're probably making this mistake right now"
+  * QUESTION: "What if your doctor never told you this?"
+  * BOLD CLAIM: "This one [domain] habit changed everything"
+  * REVELATION: "The truth about [domain] doctors won't tell you"
+- The hook should make someone STOP scrolling immediately.
+- Do NOT start with "Did you know" — it is overused.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HOOK STYLE (hookStyle field):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Choose the best animation style for this content:
+- "zoom-face": Use when tone is authoritative/confident. Doctor fills screen.
+- "stat-counter": Use ONLY when hookText contains a specific statistic or number.
+  If chosen, also output hookStat field (e.g. "90%", "1 in 4").
+- "text-slam": Use for urgent/warning/myth-bust tone. High energy.
+- "typewriter-bold": Use for educational/storytelling tone. Calm, professional.
+- "split-reveal": Use for dramatic revelations. Before/after style content.
+- "word-cascade": Fallback only if none of the above fit.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TONE TAG (toneTag field):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Classify the overall content tone:
+- "educational": Teaching, explaining concepts
+- "motivational": Encouraging action or lifestyle change
+- "warning": Danger, risk, something to avoid
+- "myth-bust": Correcting common misconceptions
+- "storytelling": Narrative, case study, personal experience
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCENES RULES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Divide audio into 3-5 logical segments.
+- keyQuote MUST be the MOST surprising, emotional, or actionable sentence from that segment.
+  * Prefer quotes that reveal something unexpected.
+  * Prefer quotes with emotion, specificity, or urgency.
+  * Do NOT pick generic filler sentences.
+- If target language matches transcript: use exact verbatim words (max 15 words).
+- If target language differs: translate the most impactful sentence.
+- First scene starts at 0s, last scene ends at {duration_sec}s. No gaps.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CTA TEXT RULES (ctaText field):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Reference this specific content topic, not a generic "follow for tips".
+- If handle/link provided, incorporate naturally.
+- Short: 8-15 words.{cta_context}
+
 {lang_instruction}
- 
+
 INPUT:
 - Transcript: {transcript}
 - Expert: {expert_name} ({specialty})
 - Domain: {domain}
 - Audio duration: {duration_sec}s
- 
+
 Return ONLY valid JSON — no markdown, no explanation:
 {{
-  "hookText": "5-10 word attention-grabbing hook",
+  "hookText": "5-10 word pattern-interrupt hook",
+  "hookStyle": "zoom-face|stat-counter|text-slam|typewriter-bold|split-reveal|word-cascade",
+  "hookStat": "e.g. 90% (only if hookStyle is stat-counter, else null)",
+  "hookEmoji": "single relevant emoji like 🔥 ⚠️ 💡 🤔 ❤️ 🧪",
+  "toneTag": "educational|motivational|warning|myth-bust|storytelling",
   "scenes": [
-    {{ "startSec": 0, "endSec": number, "label": "string", "keyQuote": "string" }}
+    {{ "startSec": 0, "endSec": number, "label": "string", "keyQuote": "most impactful direct quote" }}
   ],
-  "ctaText": "short call-to-action",
-  "hashtags": ["#tag1", "#tag2"],
-  "title": "SEO-optimized title"
+  "ctaText": "short personalized call-to-action",
+  "hashtags": ["#tag1", "#tag2", "#tag3"],
+  "title": "SEO-optimized reel title"
 }}"""
 
     print(f"[ollama] Generating video metadata via model '{selected_model}'…")
@@ -122,9 +186,9 @@ Return ONLY valid JSON — no markdown, no explanation:
                 "model": selected_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "format": "json",     # JSON mode constraint
+                "format": "json",
                 "options": {
-                    "temperature": 0.3,
+                    "temperature": 0.4,  # Slightly higher for more creative hooks
                     "num_predict": 2048,
                 },
             },
@@ -140,7 +204,7 @@ Return ONLY valid JSON — no markdown, no explanation:
         raise RuntimeError(f"Ollama error {resp.status_code}: {resp.text}")
 
     raw = resp.json()["message"]["content"].strip()
-    
+
     # Robust JSON extraction
     clean = raw
     if "```" in raw:
@@ -148,13 +212,30 @@ Return ONLY valid JSON — no markdown, no explanation:
         fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
         if fence:
             clean = fence.group(1)
-    
+
     start = clean.find("{")
     end = clean.rfind("}") + 1
     if start == -1 or end == 0:
         raise ValueError(f"Could not locate JSON object in LLM response: {raw}")
-        
-    return json.loads(clean[start:end])
+
+    result = json.loads(clean[start:end])
+
+    # Normalize hookStat null strings
+    if result.get("hookStat") in ["null", "", "none", "None", None]:
+        result["hookStat"] = None
+
+    # Ensure hookStyle is a valid value
+    valid_hook_styles = {"zoom-face", "stat-counter", "text-slam", "typewriter-bold", "split-reveal", "word-cascade"}
+    if result.get("hookStyle") not in valid_hook_styles:
+        result["hookStyle"] = "zoom-face"
+
+    # Ensure toneTag is valid
+    valid_tones = {"educational", "motivational", "warning", "myth-bust", "storytelling"}
+    if result.get("toneTag") not in valid_tones:
+        result["toneTag"] = "educational"
+
+    return result
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate video metadata using Ollama.")
@@ -165,6 +246,8 @@ if __name__ == "__main__":
     parser.add_argument("--duration", required=True, type=float, help="Audio duration in seconds")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model name")
     parser.add_argument("--language", default="en", help="Target output language (e.g. en, hi, hinglish)")
+    parser.add_argument("--cta-handle", default="", help="Doctor's social media handle")
+    parser.add_argument("--cta-link", default="", help="Doctor's booking/website link")
     args = parser.parse_args()
 
     try:
@@ -175,7 +258,9 @@ if __name__ == "__main__":
             domain=args.domain,
             duration_sec=args.duration,
             model=args.model,
-            language=args.language
+            language=args.language,
+            cta_handle=args.cta_handle,
+            cta_link=args.cta_link,
         )
         print(json.dumps(result, indent=2, ensure_ascii=False))
     except Exception as e:

@@ -2,6 +2,7 @@ import React from 'react';
 import { Composition } from 'remotion';
 import { HookQuoteTemplate } from './templates/hook-quote';
 import { MinimalPodcastTemplate } from './templates/minimal-podcast';
+import { TalkingHeadTemplate } from './templates/talking-head';
 import { GlobalPropsSchema } from './global-schema';
 
 export const Root: React.FC = () => {
@@ -29,6 +30,28 @@ export const Root: React.FC = () => {
     ctaText: 'Follow for more skincare tips!',
     durationInFrames: 600, // 20 seconds default
     fps: 30,
+    wordTimestamps: [
+      { word: "This", start: 0, end: 0.5 },
+      { word: "is", start: 0.5, end: 0.8 },
+      { word: "a", start: 0.8, end: 1.0 },
+      { word: "sample", start: 1.0, end: 1.5 },
+      { word: "expert", start: 1.5, end: 2.0 },
+      { word: "audio", start: 2.0, end: 2.5 },
+      { word: "recording.", start: 2.5, end: 3.2 },
+      { word: "It", start: 3.2, end: 3.5 },
+      { word: "helps", start: 3.5, end: 3.8 },
+      { word: "us", start: 3.8, end: 4.1 },
+      { word: "validate", start: 4.1, end: 4.6 },
+      { word: "the", start: 4.6, end: 4.8 },
+      { word: "transcription", start: 4.8, end: 5.5 },
+      { word: "pipeline", start: 5.5, end: 6.2 },
+      { word: "and", start: 6.2, end: 6.5 },
+      { word: "ensure", start: 6.5, end: 7.0 },
+      { word: "the", start: 7.0, end: 7.2 },
+      { word: "templates", start: 7.2, end: 7.8 },
+      { word: "render", start: 7.8, end: 8.3 },
+      { word: "beautifully.", start: 8.3, end: 9.2 }
+    ]
   };
 
   return (
@@ -36,7 +59,7 @@ export const Root: React.FC = () => {
       <Composition
         id="hook-quote"
         component={HookQuoteTemplate}
-        calculateMetadata={({ props }) => {
+        calculateMetadata={({ props }: { props: { durationInFrames?: number } }) => {
           return {
             durationInFrames: props.durationInFrames || 600,
           };
@@ -50,7 +73,7 @@ export const Root: React.FC = () => {
       <Composition
         id="minimal-podcast"
         component={MinimalPodcastTemplate}
-        calculateMetadata={({ props }) => {
+        calculateMetadata={({ props }: { props: { durationInFrames?: number } }) => {
           return {
             durationInFrames: props.durationInFrames || 600,
           };
@@ -62,6 +85,23 @@ export const Root: React.FC = () => {
         defaultProps={{
           ...defaultSampleProps,
           ctaText: 'Full conversation on Spotify & Apple Podcasts',
+        }}
+      />
+      <Composition
+        id="talking-head"
+        component={TalkingHeadTemplate}
+        calculateMetadata={({ props }: { props: { durationInFrames?: number } }) => {
+          return {
+            durationInFrames: props.durationInFrames || 600,
+          };
+        }}
+        fps={30}
+        width={1080}
+        height={1920}
+        schema={GlobalPropsSchema}
+        defaultProps={{
+          ...defaultSampleProps,
+          ctaText: 'Follow for more skincare tips!',
         }}
       />
     </>

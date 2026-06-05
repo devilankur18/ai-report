@@ -8,5 +8,16 @@
     "avatar.png",
     "clinic-outside.png",
     "clinic-inside.png"
-  ]
+  ],
+  "imageSet": [
+    { "file": "avatar.png",          "role": "hook",     "alt": "Dr. Priya Sharma portrait" },
+    { "file": "clinic-outside.png",  "role": "scene",    "alt": "Clinic exterior" },
+    { "file": "clinic-inside.png",   "role": "scene",    "alt": "Consultation room" },
+    { "file": "avatar.png",          "role": "cta",      "alt": "Dr. Priya Sharma" }
+  ],
+  "minPhotoRequirements": {
+    "portrait": 1,
+    "clinic": 1,
+    "consultation": 1
+  }
 }

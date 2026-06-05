@@ -1,7 +1,7 @@
 {
-  "template": "hook-quote",
+  "template": "talking-head",
   "defaultLanguage": "en",
-  "ctaText": "Get glowing, healthy skin with personalized treatment plans.",
+  "ctaText": "Book a clinical consultation for personalized skincare plans.",
   "ctaType": "appointment",
   "ctaTitle": "Book Skincare Appointment",
   "ctaLink": "drpriyasharma.com/book",
@@ -9,11 +9,11 @@
   "bgVideoUrl": "",
   "hookStyle": "zoom-face",
   "theme": {
-    "accentColor": "#E07B54",
+    "accentColor": "#E2B25E",
     "textColor": "#FFFFFF",
-    "textSecondaryColor": "#F0D9CC",
+    "textSecondaryColor": "#F5EAD4",
     "bgType": "hero-portrait",
-    "bgSolid": "#1A0F0A",
+    "bgSolid": "#120F05",
     "overlayStyle": "scrim-bottom"
   }
 }

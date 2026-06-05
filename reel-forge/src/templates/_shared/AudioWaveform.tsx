@@ -202,5 +202,5 @@ export const AudioWaveform: React.FC<AudioWaveformProps> = ({
     );
   }
 
-  return <AudioWaveformInner resolvedAudioUrl={resolvedAudioUrl} {...props} />;
+  return <AudioWaveformInner resolvedAudioUrl={resolvedAudioUrl} audioUrl={audioUrl} {...props} />;
 };

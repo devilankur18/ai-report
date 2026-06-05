@@ -172,6 +172,10 @@ Rendering Options:
   if (!args.props && !args['skip-ai']) {
     console.log('[render] Running AI pipeline (Transcription + Metadata)...');
     
+    // Pass CTA personalization context from design config
+    const ctaHandle = clientProps.ctaHandle || '';
+    const ctaLink = clientProps.ctaLink || '';
+
     let pipelineCmd = `uv run --with faster-whisper --with requests python3 "${path.join(projectRoot, 'cli', 'pipeline.py')}" \
       --audio "${audio}" \
       --expert "${expert}" \
@@ -184,6 +188,12 @@ Rendering Options:
 
     if (args['asr-lang']) {
       pipelineCmd += ` --asr-language "${args['asr-lang']}"`;
+    }
+    if (ctaHandle) {
+      pipelineCmd += ` --cta-handle "${ctaHandle}"`;
+    }
+    if (ctaLink) {
+      pipelineCmd += ` --cta-link "${ctaLink}"`;
     }
 
     pipelineCmd += ` --output "${propsPath}"`;
@@ -229,8 +239,13 @@ Rendering Options:
 
   // Apply resolved config properties / manual overrides
   if (clientNameId) {
-    // Merge all client resolved properties (theme text colors, backgrounds, etc)
+    // Merge all client resolved properties (theme, assets, hook style, etc)
     Object.assign(props, clientProps);
+    // If design config locked a hookStyle, only override if LLM didn't already set one
+    // (design config hookStyle takes priority over LLM selection)
+    if (clientProps.hookStyle) {
+      props.hookStyle = clientProps.hookStyle;
+    }
   } else {
     // Manual overrides
     props.language = targetLang;

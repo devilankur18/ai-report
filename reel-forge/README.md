@@ -216,3 +216,52 @@ npx tsx cli/render.ts \
   --preview
 ```
 *(Open `http://localhost:3000` in your web browser)*
+
+---
+
+## 7. How-To Guides
+
+### How to Add a New Doctor
+To onboard a new doctor/client to ReelForge:
+
+1. **Create Client Folder**: Create a new folder under `clients/` named using a kebab-case identifier (e.g., `dr-jane-doe`).
+2. **Add Profile (`profile.json`)**: Create `profile.json` in the doctor's folder:
+   ```json
+   {
+     "name": "Dr. Jane Doe",
+     "specialty": "Pediatrician",
+     "domain": "Child Health",
+     "avatar": "avatar.png",
+     "logo": "logo.png"
+   }
+   ```
+3. **Add Assets**: Create an `assets/` subfolder and place the doctor's visual files there (e.g. `avatar.png` and `logo.png`).
+4. **Create Design Configs**: Create a `designs/` subfolder and add at least one design JSON configuration (e.g., `classic-reels.json`):
+   ```json
+   {
+     "template": "hook-quote",
+     "defaultLanguage": "en",
+     "ctaText": "Follow for pediatrician-approved health tips!",
+     "theme": {
+       "accentColor": "#3A86C8",
+       "textColor": "#1A2530",
+       "textSecondaryColor": "#5C6A79",
+       "bgType": "gradient",
+       "bgGradientStart": "#F4F7FA",
+       "bgGradientEnd": "#E1EAF2"
+     }
+   }
+   ```
+
+### How to Generate a New Reel for a New Question
+To generate a video for a new raw audio clip:
+
+1. **Prepare Audio**: Place the raw expert audio file (e.g. `.mp3` or `.wav`) in a local directory, such as `cli/sample-inputs/new-question.mp3`.
+2. **Run Pipeline Command**: Execute the renderer pointing to the new audio, targeting the specific doctor and design configuration:
+   ```bash
+   npx tsx cli/render.ts \
+     --audio cli/sample-inputs/new-question.mp3 \
+     --client dr-priya-sharma \
+     --design classic-reels
+   ```
+   *The system will automatically trigger Whisper for ASR transcription, Ollama to generate metadata (hook, quotes, durations) for the new audio, and Remotion to output the finished `.mp4` video in `out/<client-id>/`.*

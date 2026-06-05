@@ -3,9 +3,12 @@
 pipeline.py
 -----------
 Orchestrates the entire AI pipeline:
-1. Audio file transcription (ASR) via Whisper
+1. Audio file transcription (ASR) via Whisper — captures word-level timestamps
 2. Video metadata generation (LLM) via local Ollama
 3. Combines both into a dynamic props.json file for Remotion
+
+Phase 5 upgrade: word-level timestamps are now preserved and included
+in props.json for karaoke-style caption highlighting in talking-head template.
 """
 
 import argparse
@@ -36,6 +39,9 @@ def main():
     parser.add_argument("--language", default="en", help="Target video presentation language (e.g. en, hi, hinglish)")
     parser.add_argument("--asr-language", default=None, help="Force ASR transcription language (e.g. en, hi). Default: auto-detect")
     parser.add_argument("--output", default="tmp/props.json", help="Path to write Remotion props JSON")
+    # Pass-through for CTA personalization
+    parser.add_argument("--cta-handle", default="", help="Doctor social handle for CTA personalization")
+    parser.add_argument("--cta-link", default="", help="Doctor booking/website link for CTA personalization")
     args = parser.parse_args()
 
     audio_path = Path(args.audio)
@@ -44,11 +50,19 @@ def main():
         sys.exit(1)
 
     print(f"\n[pipeline] Starting ReelForge AI pipeline for audio: {audio_path.name}")
-    
+
     # ── Step 1: Transcription ───────────────────────────────────────────
     print("\n═══ Step 1/2 — Transcription (Whisper ASR) ═══")
     transcript = transcribe_audio(str(audio_path), model_size=args.whisper_model, language=args.asr_language)
     print(f"[pipeline] Transcription complete. Duration: {transcript['duration']:.2f}s, Detected Language: {transcript.get('language', 'unknown')}")
+
+    # ── Extract word-level timestamps if available ──────────────────────────────
+    # transcribe.py returns word timestamps in transcript["words"]
+    word_timestamps = transcript.get("words", []) or []
+    if word_timestamps:
+        print(f"[pipeline] Captured {len(word_timestamps)} word-level timestamps for karaoke captions.")
+    else:
+        print("[pipeline] No word timestamps available.")
 
     # ── Step 2: Metadata Generation ──────────────────────────────────────
     print("\n═══ Step 2/2 — Metadata Generation (Ollama LLM) ═══")
@@ -60,36 +74,53 @@ def main():
         duration_sec=transcript["duration"],
         model=args.model,
         language=args.language,
+        cta_handle=args.cta_handle,
+        cta_link=args.cta_link,
     )
     print("[pipeline] Metadata generation complete.")
+    print(f"[pipeline] Hook style selected: {meta.get('hookStyle', 'zoom-face')}")
+    print(f"[pipeline] Tone tag: {meta.get('toneTag', 'educational')}")
 
     # ── Step 3: Package final props for Remotion ─────────────────────────
     # Duration in frames = duration of audio * 30fps
-    # Add intro offset depending on the template
-    intro_frames = 90 if args.template == "hook-quote" else 60
+    # Add intro offset depending on the template (all templates now use 90 frames = 3s hook)
+    intro_frames = 90  # Standardized to 3 seconds across all templates
     audio_frames = math.ceil(transcript["duration"] * 30)
-    total_duration_frames = intro_frames + audio_frames
+    outro_frames = 120  # 4 seconds outro
+    total_duration_frames = intro_frames + audio_frames + 0  # outro is subtracted from audio, not added
 
     # Construct props JSON
     props = {
-      "audioUrl": str(audio_path.resolve()),
-      "transcript": transcript["text"],
-      "expertName": args.expert,
-      "expertSpecialty": args.specialty,
-      "domain": args.domain,
-      "hookText": meta.get("hookText", f"Important information on {args.domain}"),
-      "scenes": meta.get("scenes", []),
-      "ctaText": meta.get("ctaText", f"Follow for more {args.domain} tips!"),
-      "hashtags": meta.get("hashtags", []),
-      "title": meta.get("title", ""),
-      "durationInFrames": total_duration_frames,
-      "fps": 30,
-      "language": args.language,
+        "audioUrl": str(audio_path.resolve()),
+        "transcript": transcript["text"],
+        "expertName": args.expert,
+        "expertSpecialty": args.specialty,
+        "domain": args.domain,
+
+        # Phase 2: Hook personalization fields
+        "hookText": meta.get("hookText", f"Important information on {args.domain}"),
+        "hookStyle": meta.get("hookStyle", "zoom-face"),
+        "hookStat": meta.get("hookStat"),
+        "hookEmoji": meta.get("hookEmoji"),
+        "toneTag": meta.get("toneTag", "educational"),
+        "scenes": meta.get("scenes", []),
+        "ctaText": meta.get("ctaText", f"Follow for more {args.domain} tips!"),
+        "hashtags": meta.get("hashtags", []),
+        "title": meta.get("title", ""),
+        "durationInFrames": total_duration_frames,
+        "fps": 30,
+        "language": args.language,
+        # Phase 3: pass IDs for deterministic personalization hashing
+        "clientId": args.client_id if hasattr(args, 'client_id') else "",
+        "designId": args.design_id if hasattr(args, 'design_id') else "",
     }
+
+    # Include word timestamps if available (Phase 5 / talking-head)
+    if word_timestamps:
+        props["wordTimestamps"] = word_timestamps
 
     # Verify scene bounds and adjust if necessary
     for scene in props["scenes"]:
-        # Safety offset
         if scene["startSec"] < 0:
             scene["startSec"] = 0.0
         if scene["endSec"] > transcript["duration"]:
@@ -99,8 +130,9 @@ def main():
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(props, indent=2, ensure_ascii=False))
-    
+
     print(f"\n[pipeline] Success! Generated Remotion props written to: {out_path.resolve()}")
+    print(f"[pipeline] Video: {total_duration_frames} frames ({total_duration_frames/30:.1f}s) | Hook: {intro_frames/30:.0f}s | Audio: {audio_frames/30:.1f}s")
 
 if __name__ == "__main__":
     main()

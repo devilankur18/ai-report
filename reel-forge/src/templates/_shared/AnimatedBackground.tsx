@@ -8,14 +8,21 @@ import {
   Img,
   staticFile,
 } from 'remotion';
+import type { BgType, OverlayStyle } from './themes';
 
 interface AnimatedBackgroundProps {
-  bgType: 'gradient' | 'solid' | 'video' | 'particles' | 'image';
+  bgType: BgType;
   bgGradientStart?: string;
   bgGradientEnd?: string;
   bgSolid?: string;
   bgVideoUrl?: string;
   bgImageUrl?: string;
+  /** Controls how the text-legibility overlay is applied over images/portraits */
+  overlayStyle?: OverlayStyle;
+  /** Accent color used for tinted overlays (optional) */
+  accentColor?: string;
+  /** CSS filter to apply to images (optional) */
+  imageFilter?: string;
 }
 
 export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
@@ -25,12 +32,23 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
   bgSolid = '#0A0A0A',
   bgVideoUrl,
   bgImageUrl,
+  overlayStyle = 'scrim-bottom',
+  accentColor,
+  imageFilter,
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
 
   // Shifting angle for gradient rotation (slow 360-deg rotation)
   const bgAngle = interpolate(frame, [0, durationInFrames], [0, 360]);
+
+  // Ken Burns scale effect (zoom from 1.0 to 1.06 over full duration — subtle)
+  const kbScale = interpolate(
+    frame,
+    [0, durationInFrames],
+    [1, 1.08],
+    { extrapolateRight: 'clamp' }
+  );
 
   // Resolve video path if provided
   const resolvedVideoUrl = React.useMemo(() => {
@@ -50,18 +68,51 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     return staticFile(bgImageUrl);
   }, [bgImageUrl]);
 
-  // Ken Burns scale effect (zoom from 1.0 to 1.15 over 10-second cycles)
-  const kbScale = interpolate(
-    frame % 300,
-    [0, 300],
-    [1, 1.15],
-    { extrapolateRight: 'clamp' }
-  );
+  // ── Overlay helpers ────────────────────────────────────────────────────
+  const renderOverlay = (style: OverlayStyle) => {
+    switch (style) {
+      case 'scrim-bottom':
+        // Gradient transparent → dark, covering bottom 55% — keeps face visible
+        return (
+          <AbsoluteFill
+            style={{
+              background: 'linear-gradient(to bottom, transparent 0%, transparent 25%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.85) 100%)',
+              zIndex: 1,
+            }}
+          />
+        );
+      case 'scrim-full':
+        // Moderate full-screen darken — doctor still visible but text is very readable
+        return (
+          <AbsoluteFill
+            style={{
+              background: 'rgba(0,0,0,0.38)',
+              zIndex: 1,
+            }}
+          />
+        );
+      case 'vignette':
+        // Radial vignette — edges darken, center stays bright
+        return (
+          <AbsoluteFill
+            style={{
+              background: 'radial-gradient(ellipse at 50% 35%, transparent 30%, rgba(0,0,0,0.65) 100%)',
+              zIndex: 1,
+            }}
+          />
+        );
+      case 'none':
+      default:
+        return null;
+    }
+  };
 
+  // ── Solid ──────────────────────────────────────────────────────────────
   if (bgType === 'solid') {
     return <AbsoluteFill style={{ backgroundColor: bgSolid }} />;
   }
 
+  // ── Video background ───────────────────────────────────────────────────
   if (bgType === 'video' && resolvedVideoUrl) {
     return (
       <AbsoluteFill style={{ backgroundColor: bgSolid }}>
@@ -86,31 +137,29 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     );
   }
 
-  if (bgType === 'image' && resolvedImageUrl) {
+  // ── Hero Portrait — doctor fills entire screen, NO blur, bottom scrim ──
+  if (bgType === 'hero-portrait' && resolvedImageUrl) {
     return (
-      <AbsoluteFill style={{ backgroundColor: bgSolid, overflow: 'hidden' }}>
+      <AbsoluteFill style={{ backgroundColor: '#0A0A0A', overflow: 'hidden' }}>
+        {/* Full-bleed portrait photo — NO blur so doctor is crystal clear */}
         <Img
           src={resolvedImageUrl}
           style={{
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            objectPosition: 'center top', // Prioritise face/upper body
             transform: `scale(${kbScale})`,
+            transformOrigin: 'center 25%',
+            filter: imageFilter || 'none',
           }}
         />
-        {/* Dark contrast screen & glass blur to keep text perfectly legible */}
+        {/* Overlay: only apply readable gradient — NO blur on the image */}
+        {renderOverlay(overlayStyle)}
+        {/* Subtle top vignette for logo/watermark area */}
         <AbsoluteFill
           style={{
-            background: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            zIndex: 1,
-          }}
-        />
-        {/* Vignette shading */}
-        <AbsoluteFill
-          style={{
-            background: 'radial-gradient(circle, transparent 30%, rgba(0, 0, 0, 0.7) 100%)',
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 20%)',
             zIndex: 2,
           }}
         />
@@ -118,6 +167,37 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     );
   }
 
+  // ── Image background (legacy / used when bgType === 'image') ───────────
+  // IMPROVED: Remove heavy blur overlay. Use scrim-bottom by default.
+  if (bgType === 'image' && resolvedImageUrl) {
+    return (
+      <AbsoluteFill style={{ backgroundColor: '#0A0A0A', overflow: 'hidden' }}>
+        <Img
+          src={resolvedImageUrl}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center top',
+            transform: `scale(${kbScale})`,
+            transformOrigin: 'center 25%',
+            filter: imageFilter || 'none',
+          }}
+        />
+        {/* Scrim-bottom overlay — text readable at bottom, face visible at top */}
+        {renderOverlay(overlayStyle)}
+        {/* Subtle top gradient for logo watermark */}
+        <AbsoluteFill
+          style={{
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 18%)',
+            zIndex: 2,
+          }}
+        />
+      </AbsoluteFill>
+    );
+  }
+
+  // ── Particles background ───────────────────────────────────────────────
   if (bgType === 'particles') {
     return (
       <AbsoluteFill
@@ -145,7 +225,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
             100% { transform: translate(0px, 0px) scale(1); }
           }
         `}</style>
-        
+
         {/* Bubble 1 */}
         <div
           style={{
@@ -155,7 +235,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
             width: '450px',
             height: '450px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(255, 107, 53, 0.15) 0%, rgba(255, 107, 53, 0) 70%)',
+            background: `radial-gradient(circle, ${accentColor ? accentColor + '26' : 'rgba(255, 107, 53, 0.15)'} 0%, transparent 70%)`,
             filter: 'blur(50px)',
             animation: 'float-bubble-1 25s infinite ease-in-out',
           }}
@@ -190,7 +270,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
             animation: 'float-bubble-3 20s infinite ease-in-out',
           }}
         />
-        
+
         <div
           style={{
             position: 'absolute',
@@ -205,7 +285,7 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
     );
   }
 
-  // Default: Dynamic Gradient
+  // ── Default: Dynamic rotating gradient ────────────────────────────────
   return (
     <AbsoluteFill
       style={{

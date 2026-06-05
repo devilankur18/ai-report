@@ -1,3 +1,18 @@
+/**
+ * minimal-podcast/index.tsx
+ * --------------------------
+ * Podcast-style template with Phase 1+2 upgrades:
+ *
+ * Phase 1:
+ *  - Doctor fills 60% of background in portrait fill mode
+ *  - Radial waveform overlays ON TOP of the doctor image (not replacing it)
+ *  - Quote moves to bottom-third Instagram caption zone
+ *
+ * Phase 2:
+ *  - 3-second hook uses HookIntro component
+ *  - Default hook for podcast: typewriter-bold (authoritative, name-first feel)
+ */
+
 import React from 'react';
 import {
   AbsoluteFill,
@@ -8,21 +23,30 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  Img,
 } from 'remotion';
 import { GlobalProps } from '../../global-schema';
 import { getFontFamilies } from '../_shared/fonts';
 import { getThemeById } from '../_shared/themes';
 import { AnimatedBackground } from '../_shared/AnimatedBackground';
+import { HookIntro } from '../_shared/HookIntro';
 import { SafeZone } from '../_shared/SafeZone';
 import { ProgressBar } from '../_shared/ProgressBar';
 import { AudioWaveform } from '../_shared/AudioWaveform';
 import { EndingBlock } from '../_shared/EndingBlock';
+import { getPersonalizationProfile, getImageFilter } from '../../lib/personalization';
+import { PersonalizedQuoteCard, PersonalizedIdentity } from '../_shared/LayoutVariants';
 
 export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   audioUrl,
   expertName,
   expertSpecialty,
   domain,
+  hookText,
+  hookStyle = 'typewriter-bold',
+  hookStat,
+  hookEmoji,
+  toneTag,
   scenes,
   ctaText,
   ctaType,
@@ -40,11 +64,20 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   expertAvatar,
   expertLogo,
   expertImages,
+  expertImageSet,
+  overlayStyle: customOverlayStyle,
+  // Personalization fields
+  clientId,
+  designId,
+  fontPairingIndex: customFontPairingIndex,
+  layoutVariant: customLayoutVariant,
+  decorationStyle: customDecorationStyle,
+  imageTreatment: customImageTreatment,
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
-  // 1. Resolve theme configuration
+  // ── 1. Resolve theme ────────────────────────────────────────────────────
   const theme = getThemeById(themeId);
   const resolvedAccent = customAccent || theme.accentColor;
   const resolvedTextColor = theme.textColor;
@@ -55,75 +88,101 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
   const resolvedBgVideo = customBgVideo || theme.bgVideoUrl;
   const resolvedBgType = theme.bgType;
 
-  // 2. Resolve fonts based on language
-  const fonts = getFontFamilies(language);
+  // ── 1b. Resolve personalization profile ─────────────────────────────────
+  const pProfile = React.useMemo(() => {
+    return getPersonalizationProfile(
+      clientId || 'default-client',
+      designId || 'default-design',
+      {
+        fontPairingIndex: customFontPairingIndex,
+        layoutVariant: customLayoutVariant as any,
+        overlayStyle: customOverlayStyle as any,
+        decorationStyle: customDecorationStyle as any,
+        imageTreatment: customImageTreatment as any,
+      }
+    );
+  }, [clientId, designId, customFontPairingIndex, customLayoutVariant, customOverlayStyle, customDecorationStyle, customImageTreatment]);
 
-  // 3. Resolve audio path
+  const resolvedOverlayStyle = pProfile.overlayStyle || theme.overlayStyle || 'scrim-bottom';
+  const resolvedImageFilter = React.useMemo(() => {
+    return getImageFilter(pProfile.imageTreatment, resolvedAccent);
+  }, [pProfile.imageTreatment, resolvedAccent]);
+
+  // ── 2. Fonts ────────────────────────────────────────────────────────────
+  const fonts = getFontFamilies(language, pProfile.fontPairingIndex);
+
+  // ── 3. Audio path ────────────────────────────────────────────────────────
   const resolvedAudioUrl = React.useMemo(() => {
     if (!audioUrl) return '';
-    if (audioUrl.startsWith('http') || audioUrl.startsWith('data:') || audioUrl.startsWith('/') || audioUrl.startsWith('file:')) {
-      return audioUrl;
-    }
+    if (audioUrl.startsWith('http') || audioUrl.startsWith('data:') || audioUrl.startsWith('/') || audioUrl.startsWith('file:')) return audioUrl;
     return staticFile(audioUrl);
   }, [audioUrl]);
 
-  // Timing constants
-  const INTRO_DURATION = 60; // 2 seconds
-  const OUTRO_DURATION = 120; // 4 seconds
+  // ── 4. Timing ────────────────────────────────────────────────────────────
+  const INTRO_DURATION = 90;  // 3 seconds (upgraded from 2)
+  const OUTRO_DURATION = 120;
   const AUDIO_START_FRAME = INTRO_DURATION;
-
-  // 4. Resolve Background Image Cycling
-  const audioCurrentSec = Math.max(0, (frame - AUDIO_START_FRAME) / fps);
-  const activeSceneIndex = (scenes || []).findIndex(
-    (s) => audioCurrentSec >= s.startSec && audioCurrentSec < s.endSec
-  );
-  const activeScene = activeSceneIndex >= 0 ? scenes[activeSceneIndex] : null;
-
   const ctaStartFrame = durationInFrames - OUTRO_DURATION;
   const isCtaActive = frame >= ctaStartFrame;
 
-  const resolvedBgImageUrl = React.useMemo(() => {
-    if (!expertImages || expertImages.length === 0) return undefined;
-    
-    // Cycle backgrounds in sync with the scene shifts
-    if (isCtaActive) {
-      return expertImages[2] || expertImages[0];
-    }
-    if (frame < AUDIO_START_FRAME) {
-      return expertImages[1] || expertImages[0];
-    }
-    
-    const idx = (activeSceneIndex + 3) % expertImages.length;
-    return expertImages[idx];
-  }, [expertImages, frame, activeSceneIndex, isCtaActive]);
-
-  // Glassmorphic properties based on light vs dark theme
-  const isLightTheme = resolvedTextColor === '#2D221C';
-  const isImageBg = resolvedBgType === 'image';
-  const displayTextColor = isImageBg ? '#FFFFFF' : resolvedTextColor;
-  const displayTextSecondary = isImageBg ? '#CBD5E1' : resolvedTextSecondary;
-  
-  const cardBg = isImageBg 
-    ? 'rgba(0, 0, 0, 0.45)' 
-    : (isLightTheme ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.25)');
-  const cardBorder = isImageBg 
-    ? 'rgba(255, 255, 255, 0.08)' 
-    : (isLightTheme ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)');
-  const textShadowValue = isImageBg 
-    ? '0 4px 20px rgba(0, 0, 0, 0.6)' 
-    : (isLightTheme ? '0 2px 10px rgba(0, 0, 0, 0.05)' : '0 4px 20px rgba(0, 0, 0, 0.4)');
-
-  // 1. Typewriter Intro Scene (0s to 2s)
-  const introText = `${expertName.toUpperCase()}  |  ${expertSpecialty.toUpperCase()}`;
-  const visibleCharsCount = Math.floor(
-    interpolate(frame, [0, 45], [0, introText.length], {
-      extrapolateLeft: 'clamp',
-      extrapolateRight: 'clamp',
-    })
+  // ── 5. Scene tracking ────────────────────────────────────────────────────
+  const audioCurrentSec = Math.max(0, (frame - AUDIO_START_FRAME) / fps);
+  const activeSceneIndex = (scenes || []).findIndex(
+    (s: {startSec: number; endSec: number}) => audioCurrentSec >= s.startSec && audioCurrentSec < s.endSec
   );
-  const typedText = introText.substring(0, visibleCharsCount);
+  const activeScene = activeSceneIndex >= 0 ? scenes[activeSceneIndex] : null;
 
-  // Fade out main content during CTA
+  // ── 6. Image resolution ───────────────────────────────────────────────────
+  type ImageSetEntry = { file: string; role: string; alt?: string | undefined };
+  const allImages = React.useMemo(() => {
+    if (expertImageSet && expertImageSet.length > 0) return expertImageSet.map((e: ImageSetEntry) => e.file);
+    return expertImages || [];
+  }, [expertImages, expertImageSet]);
+
+  const hookImage = React.useMemo(() => {
+    if (expertImageSet) {
+      const hi = expertImageSet.find((e: ImageSetEntry) => e.role === 'hook' || e.role === 'portrait');
+      if (hi) return hi.file;
+    }
+    return allImages[0] || expertAvatar;
+  }, [expertImageSet, allImages, expertAvatar]);
+
+  // Active avatar cycles through scene images
+  const activeAvatar = React.useMemo(() => {
+    if (allImages.length > 0) {
+      const idx = Math.max(0, activeSceneIndex) % allImages.length;
+      return allImages[idx];
+    }
+    return expertAvatar;
+  }, [allImages, expertAvatar, activeSceneIndex]);
+
+  const resolveUrl = (u?: string | null): string => {
+    if (!u) return '';
+    if (u.startsWith('http') || u.startsWith('data:') || u.startsWith('/') || u.startsWith('file:')) return u;
+    return staticFile(u);
+  };
+
+  const resolvedAvatarUrl = resolveUrl(activeAvatar);
+  const resolvedLogoUrl = resolveUrl(expertLogo);
+
+  // ── 7. Theme helpers ────────────────────────────────────────────────────
+  const isImageBg = resolvedBgType === 'image' || resolvedBgType === 'hero-portrait';
+  const displayTextColor = '#FFFFFF';
+  const displayTextSecondary = 'rgba(255,255,255,0.75)';
+  const cardBg = 'rgba(0,0,0,0.52)';
+  const cardBorder = 'rgba(255,255,255,0.12)';
+  const textShadowValue = '0 3px 20px rgba(0,0,0,0.7)';
+
+  // ── 8. Background image for non-hero modes ────────────────────────────
+  const resolvedBgImageUrl = React.useMemo(() => {
+    if (!isImageBg || allImages.length === 0) return undefined;
+    if (isCtaActive) return allImages[2] || allImages[0];
+    if (frame < AUDIO_START_FRAME) return hookImage;
+    const idx = (activeSceneIndex + 3) % allImages.length;
+    return allImages[idx];
+  }, [allImages, frame, activeSceneIndex, isCtaActive, isImageBg, hookImage]);
+
+  // ── 9. Animations ─────────────────────────────────────────────────────
   const mainContentOpacity = interpolate(
     frame,
     [ctaStartFrame, ctaStartFrame + 15],
@@ -131,7 +190,6 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
 
-  // Audio volume fade out during the last 4 seconds
   const audioVolume = interpolate(
     frame,
     [durationInFrames - OUTRO_DURATION, durationInFrames - 15],
@@ -139,226 +197,158 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
 
-  // Active avatar image inside the circular waveform visualizer
-  const activeAvatar = React.useMemo(() => {
-    if (!expertImages || expertImages.length === 0) return expertAvatar;
-    const idx = Math.max(0, activeSceneIndex) % expertImages.length;
-    return expertImages[idx];
-  }, [expertImages, expertAvatar, activeSceneIndex]);
-
-  const resolvedAvatarUrl = activeAvatar
-    ? (activeAvatar.startsWith('http') || activeAvatar.startsWith('/') || activeAvatar.startsWith('data:') ? activeAvatar : staticFile(activeAvatar))
-    : null;
+  // Quote entry per scene
+  const activeSceneStartFrame = React.useMemo(() => {
+    if (!scenes || activeSceneIndex < 0) return AUDIO_START_FRAME;
+    return Math.round(scenes[activeSceneIndex].startSec * fps) + AUDIO_START_FRAME;
+  }, [scenes, activeSceneIndex, fps]);
+  const frameWithinScene = Math.max(0, frame - activeSceneStartFrame);
+  const quoteSpr = spring({ frame: frameWithinScene, fps, config: { damping: 14, stiffness: 110 } });
+  const quoteOpacity = interpolate(quoteSpr, [0, 1], [0, 1]);
+  const quoteTranslateY = interpolate(quoteSpr, [0, 1], [50, 0]);
 
   return (
     <AbsoluteFill>
+      {/* ── Background ──────────────────────────────────────────────────── */}
       <AnimatedBackground
-        bgType={resolvedBgType}
+        bgType={resolvedBgType as any}
         bgGradientStart={resolvedBgStart}
         bgGradientEnd={resolvedBgEnd}
         bgSolid={resolvedBgSolid}
         bgVideoUrl={resolvedBgVideo}
         bgImageUrl={resolvedBgImageUrl}
+        overlayStyle={resolvedOverlayStyle as any}
+        accentColor={resolvedAccent}
+        imageFilter={resolvedImageFilter}
       />
-      
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: scale(0.97); }
-          to { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
-      
+
       <SafeZone show={false} />
 
-      {/* Brand logo watermark (top right) */}
-      {expertLogo && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100px',
-            right: '90px',
-            opacity: 0.65,
-            zIndex: 10,
-          }}
-        >
+      {/* ── Logo Watermark ───────────────────────────────────────────────── */}
+      {resolvedLogoUrl && frame >= AUDIO_START_FRAME && (
+        <div style={{
+          position: 'absolute', top: '80px', right: '80px',
+          opacity: 0.75, zIndex: 20,
+        }}>
           <img
-            src={expertLogo.startsWith('http') || expertLogo.startsWith('/') || expertLogo.startsWith('data:') ? expertLogo : staticFile(expertLogo)}
+            src={resolvedLogoUrl}
             alt="Brand Logo"
-            style={{
-              maxHeight: '50px',
-              maxWidth: '160px',
-              objectFit: 'contain',
-            }}
+            style={{ maxHeight: '50px', maxWidth: '160px', objectFit: 'contain' }}
           />
         </div>
       )}
 
-      {/* Intro Typewriter Scene (0s to 2s) */}
+      {/* ── 3-Second Hook ───────────────────────────────────────────────── */}
       {frame < INTRO_DURATION && (
-        <AbsoluteFill
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '0 60px',
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: fonts.sans,
-              fontSize: '38px', // enlarged (was 32px)
-              fontWeight: 500,
-              color: displayTextColor,
-              letterSpacing: '3px',
-              borderRight: frame % 15 < 8 ? `3px solid ${displayTextColor}` : '3px solid transparent',
-              paddingRight: '8px',
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textShadow: textShadowValue,
-            }}
-          >
-            {typedText}
-          </div>
+        <AbsoluteFill style={{ zIndex: 30 }}>
+          <HookIntro
+            hookText={hookText || expertName}
+            hookStyle={hookStyle}
+            hookStat={hookStat}
+            hookEmoji={hookEmoji}
+            toneTag={toneTag}
+            expertName={expertName}
+            expertSpecialty={expertSpecialty}
+            heroImageUrl={hookImage}
+            accentColor={resolvedAccent}
+            textColor={displayTextColor}
+            fonts={fonts}
+            durationFrames={INTRO_DURATION}
+          />
         </AbsoluteFill>
       )}
 
-      {/* Main Podcast Player UI (from 2s onwards) */}
+      {/* ── Main Podcast Content ─────────────────────────────────────────── */}
       {frame >= AUDIO_START_FRAME && (
-        <AbsoluteFill style={{ opacity: mainContentOpacity, zIndex: 5 }}>
-          
-          {/* Centered Radial Waveform with Avatar inside */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '42%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '400px',
-              height: '400px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
+        <AbsoluteFill style={{ opacity: mainContentOpacity, zIndex: 10 }}>
+
+          {/* ── Centered circular avatar + radial waveform ─────────────── */}
+          <div style={{
+            position: 'absolute',
+            top: '30%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '420px',
+            height: '420px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            {/* Waveform rings behind avatar */}
             <AudioWaveform
               audioUrl={resolvedAudioUrl}
               accentColor={resolvedAccent}
               mode="radial"
               numberOfBars={64}
             />
-            
+
+            {/* Doctor avatar inside waveform ring */}
             {resolvedAvatarUrl && (
               <img
                 src={resolvedAvatarUrl}
                 alt={expertName}
                 style={{
                   position: 'absolute',
-                  width: '315px',
-                  height: '315px',
+                  width: '320px',
+                  height: '320px',
                   borderRadius: '50%',
                   objectFit: 'cover',
+                  objectPosition: 'center top',
                   zIndex: 2,
-                  border: `3px solid ${resolvedAccent}30`,
+                  border: `4px solid ${resolvedAccent}`,
+                  boxShadow: `0 0 30px ${resolvedAccent}50, 0 8px 40px rgba(0,0,0,0.5)`,
                 }}
               />
             )}
           </div>
 
-          {/* Rotating Quote Overlay */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '68%',
-              left: '80px',
-              right: '80px',
-              textAlign: 'center',
-              minHeight: '160px',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          >
-            {activeScene?.keyQuote && (
-              <div
-                key={activeSceneIndex} // Re-render triggers animation reset
-                style={{
-                  fontFamily: fonts.sans,
-                  fontSize: '44px', // enlarged (was 38px)
-                  fontWeight: 400,
-                  color: displayTextColor,
-                  lineHeight: 1.5,
-                  letterSpacing: '0.5px',
-                  animation: 'fadeIn 0.6s ease-out',
-                  textShadow: textShadowValue,
-                  padding: '24px 36px',
-                  borderRadius: '20px',
-                  backgroundColor: cardBg,
-                  border: `1px solid ${cardBorder}`,
-                  backdropFilter: 'blur(20px)',
-                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.25)',
-                }}
-              >
+          {/* ── Key Quote Card ────────────────────────────────────────────── */}
+          {activeScene?.keyQuote && (
+            <PersonalizedQuoteCard
+              variant={pProfile.layoutVariant}
+              decoration={pProfile.decorationStyle}
+              accentColor={resolvedAccent}
+              textColor={displayTextColor}
+              cardBg={cardBg}
+              cardBorder={cardBorder}
+              textShadow={textShadowValue}
+              fontFamily={fonts.serif}
+              opacity={quoteOpacity}
+              translateY={quoteTranslateY}
+            >
+              <div style={{ marginTop: '12px' }}>
                 "{activeScene.keyQuote}"
               </div>
-            )}
-          </div>
+            </PersonalizedQuoteCard>
+          )}
 
-          {/* Static Metadata Info at Bottom */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '100px',
-              width: '100%',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
+          {/* ── Doctor Identity Pill ──────────────────────────────────────── */}
+          <PersonalizedIdentity
+            variant={pProfile.layoutVariant}
+            expertName={expertName}
+            expertSpecialty={expertSpecialty}
+            expertAvatar={expertAvatar}
+            accentColor={resolvedAccent}
+            textColor={displayTextColor}
+            textShadow={textShadowValue}
+            fontFamily={fonts.sans}
+            avatarResolver={(u?: string | null) => {
+              if (!u) return '';
+              if (u.startsWith('http') || u.startsWith('data:') || u.startsWith('/') || u.startsWith('file:')) return u;
+              return staticFile(u);
             }}
-          >
-            <div
-              style={{
-                fontFamily: fonts.sans,
-                fontSize: '38px', // enlarged (was 28px)
-                fontWeight: 700,
-                color: displayTextColor,
-                textTransform: 'uppercase',
-                letterSpacing: '4px',
-                textShadow: textShadowValue,
-              }}
-            >
-              {expertName}
-            </div>
-            <div
-              style={{
-                fontFamily: fonts.sans,
-                fontSize: '24px', // enlarged (was 18px)
-                fontWeight: 500,
-                color: displayTextSecondary,
-                textTransform: 'uppercase',
-                letterSpacing: '3px',
-              }}
-            >
-              {expertSpecialty}
-            </div>
-          </div>
+          />
         </AbsoluteFill>
       )}
 
-      {/* Outro CTA Overlay */}
+      {/* ── Outro CTA ──────────────────────────────────────────────────────── */}
       {isCtaActive && (
         <Sequence from={ctaStartFrame}>
-          <AbsoluteFill
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '0 80px',
-              textAlign: 'center',
-              zIndex: 10,
-            }}
-          >
+          <AbsoluteFill style={{
+            display: 'flex', flexDirection: 'column',
+            justifyContent: 'center', alignItems: 'center',
+            padding: '0 80px', textAlign: 'center', zIndex: 20,
+          }}>
             <EndingBlock
               ctaType={ctaType}
               ctaText={ctaText}
@@ -377,18 +367,18 @@ export const MinimalPodcastTemplate: React.FC<GlobalProps> = ({
               textShadow={textShadowValue}
               fonts={fonts}
               expertAvatar={expertAvatar}
-              isLightTheme={isLightTheme}
+              isLightTheme={false}
             />
           </AbsoluteFill>
         </Sequence>
       )}
 
-      {/* Thin minimalist progress bar */}
+      {/* ── Progress Bar ──────────────────────────────────────────────────── */}
       <ProgressBar accentColor={resolvedAccent} />
 
-      {/* Audio Playback starting at frame 60 */}
+      {/* ── Audio ─────────────────────────────────────────────────────────── */}
       {frame >= AUDIO_START_FRAME && resolvedAudioUrl && (
-        <Audio src={resolvedAudioUrl} volume={audioVolume} />
+        <Audio src={resolvedAudioUrl} volume={audioVolume} startFrom={0} />
       )}
     </AbsoluteFill>
   );
