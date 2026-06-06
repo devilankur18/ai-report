@@ -104,6 +104,7 @@ Rendering Options:
     let audio = args.audio;
     const question = args.question;
     let voiceId = args.voice;
+    const duration = args.duration ? parseInt(args.duration, 10) : 30;
     // 1. Resolve Profile and Design Config
     let clientNameId = args.client;
     let designId = args.design || 'classic-reels';
@@ -189,7 +190,6 @@ Rendering Options:
         const pythonCmd = fs.existsSync(path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3'))
             ? path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3')
             : 'python3';
-        const duration = args.duration ? parseInt(args.duration, 10) : 30;
         const questionSlug = getSlug(question, 'question');
         const questionDirName = `${questionSlug}-d${duration}-${voiceId}`;
         const questionDir = path.join(projectRoot, 'tmp', 'questions', clientNameId, questionDirName);
@@ -254,7 +254,11 @@ Rendering Options:
     const preview = !!args.preview;
     // Resolve Cache Directory and File Path structured under <client-id>/<run-info>
     const safeClientId = clientNameId || 'manual';
-    const audioName = audio ? path.basename(audio, path.extname(audio)) : 'no-audio';
+    let audioName = audio ? path.basename(audio, path.extname(audio)) : 'no-audio';
+    if (question) {
+        const questionSlug = getSlug(question, 'question');
+        audioName = `${questionSlug}-d${duration}-${voiceId || 'default'}`;
+    }
     const cacheDir = path.join(projectRoot, 'tmp', 'cache', safeClientId);
     const cacheFilePath = path.join(cacheDir, `${audioName}-${designId}.json`);
     let propsPath = args.props || cacheFilePath;
@@ -348,7 +352,10 @@ Rendering Options:
         if (!fs.existsSync(publicAudioDir)) {
             fs.mkdirSync(publicAudioDir, { recursive: true });
         }
-        const audioDestFilename = path.basename(audioSrcFile);
+        let audioDestFilename = path.basename(audioSrcFile);
+        if (question) {
+            audioDestFilename = `${audioName}.mp3`;
+        }
         const audioDestPath = path.join(publicAudioDir, audioDestFilename);
         console.log(`[render] Copying audio asset to public: ${audioDestPath}`);
         fs.copyFileSync(audioSrcFile, audioDestPath);
@@ -384,6 +391,9 @@ Rendering Options:
     // CLI Hook Style Override (highest priority)
     if (args['hook-style']) {
         props.hookStyle = args['hook-style'];
+    }
+    if (question) {
+        props.patientQuestionAudioUrl = '';
     }
     // Save the updated props back to temp path
     const updatedPropsPath = path.join(projectRoot, 'tmp', 'props-resolved.json');

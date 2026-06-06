@@ -827,8 +827,7 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
                   transform: `scale(${interpolate(frameWithinScene, [0, 600], [1.02, 1.10], { extrapolateRight: 'clamp' }) * zoomScale})`,
                   transformOrigin: 'center 25%',
                   filter: resolvedImageFilter || 'none',
-                }}
-              />
+                }} />
               {/* readable overlays */}
               {resolvedOverlayStyle === 'scrim-bottom' && (
                 <AbsoluteFill style={{ background: 'linear-gradient(to bottom, transparent 0%, transparent 22%, rgba(0,0,0,0.5) 55%, rgba(0,0,0,0.85) 100%)', zIndex: 1 }} />
@@ -855,14 +854,11 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
           imageFilter={resolvedImageFilter}
         />
       )}
-
       <SafeZone show={false} />
-
       {/* ── Visual White Flash Cut Pattern Interrupt ──────────────────────── */}
       {flashOpacity > 0 && (
         <AbsoluteFill style={{ backgroundColor: '#FFFFFF', opacity: flashOpacity, zIndex: 100, pointerEvents: 'none' }} />
       )}
-
       {/* ── Brand Logo Watermark ─────────────────────────────────────────── */}
       {resolvedLogoUrl && frame >= ANSWER_START_FRAME && !isCtaActive && (
         <div style={{
@@ -880,7 +876,6 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
           />
         </div>
       )}
-
       {/* ── Visual elements and widgets ──────────────────────────────────── */}
       {!isCtaActive && (
         <AbsoluteFill style={{ zIndex: 20, opacity: mainContentOpacity }}>
@@ -966,7 +961,7 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
               }}>
                 {isQuestionInAudio ? (
                   // Mode A: Spoken question (Highlight active words)
-                  <div>
+                  (<div>
                     {wordTimestamps
                       ?.filter((w: WordTimestamp) => w.start < questionEndSec)
                       .map((w: WordTimestamp, idx: number) => {
@@ -987,15 +982,15 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
                           </span>
                         );
                       })}
-                  </div>
+                  </div>)
                 ) : (
                   // Mode B: Typewriter typing animation
-                  <div>
+                  (<div>
                     {hookText.substring(0, typedCharCount)}
                     {frame >= typingStartFrame && frame < typingEndFrame && (
                       <span style={{ color: resolvedAccent, fontWeight: 300, marginLeft: '2px' }}>|</span>
                     )}
-                  </div>
+                  </div>)
                 )}
               </div>
 
@@ -1248,7 +1243,6 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
           )}
         </AbsoluteFill>
       )}
-
       {/* ── Outro CTA block ──────────────────────────────────────────────── */}
       {isCtaActive && (
         <Sequence from={ctaStartFrame}>
@@ -1280,28 +1274,23 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
           </AbsoluteFill>
         </Sequence>
       )}
-
       {/* Progress Bar */}
       <ProgressBar accentColor={resolvedAccent} />
-
       {/* ── Sound Effects playback ────────────────────────────────────────── */}
       <SoundEffect src="audio/sfx/boom.wav" triggerFrames={sfxBoomFrames} volume={0.8} />
       <SoundEffect src="audio/sfx/whoosh.wav" triggerFrames={sfxWhooshFrames} volume={0.6} />
       <SoundEffect src="audio/sfx/ding.wav" triggerFrames={sfxDingFrames} volume={0.6} />
       <SoundEffect src="audio/sfx/pop.wav" triggerFrames={keyTakeawayDingFrames} volume={0.5} />
-
       {/* ── Background Music playback ────────────────────────────────────── */}
       {bgMusicUrl && (
         <Audio src={staticFile(bgMusicUrl)} volume={interpolate(frame, [ctaStartFrame, durationInFrames], [0.06, 0.0], { extrapolateLeft: 'clamp' })} loop />
       )}
-
       {/* ── Expert Audio voiceover playback ──────────────────────────────── */}
       {resolvedAudioUrl && (
         <Sequence from={AUDIO_START_FRAME}>
           <Audio src={resolvedAudioUrl} volume={audioVolume} />
         </Sequence>
       )}
-
       {/* Mode B: Patient voiceover audio (defaults to question-1.mp3) ────── */}
       {!isQuestionInAudio && patientQuestionAudioUrl && (
         <Sequence from={0} durationInFrames={ANSWER_START_FRAME}>
