@@ -443,7 +443,7 @@ Rendering Options:
     fs.mkdirSync(path.dirname(finalOutPath), { recursive: true });
     
     console.log(`[render] Rendering video composition '${template}' to: ${finalOutPath}...`);
-    const renderCmd = `npx remotion render "${rootPath}" "${template}" "${finalOutPath}" --props="${updatedPropsPath}" --codec=h264`;
+    const renderCmd = `npx remotion render "${rootPath}" "${template}" "${finalOutPath}" --props="${updatedPropsPath}" --codec=h264 --timeout=120000`;
     
     try {
       execSync(renderCmd, { stdio: 'inherit', cwd: projectRoot });
