@@ -40,15 +40,20 @@ def generate_expert_answer(
     expert_name: str,
     specialty: str,
     domain: str,
-    model: str = DEFAULT_MODEL
+    model: str = DEFAULT_MODEL,
+    duration: int = 30
 ) -> str:
     selected_model = select_best_model(model)
+    
+    # Calculate word range based on duration (assuming ~2.1-2.5 words per second)
+    min_words = max(15, int(duration * 2.1))
+    max_words = int(duration * 2.5)
     
     prompt = f"""You are {expert_name}, a {specialty} specializing in {domain}.
 Write a natural, friendly, spoken-style answer to the following patient question.
 
 GUIDELINES:
-1. Write a direct, clear response of 45-60 words.
+1. Write a direct, clear response of {min_words}-{max_words} words (targeting a {duration} second spoken duration).
 2. Use simple words and short sentences. Avoid dense medical jargon; explain things simply so patients feel comforted and informed.
 3. Make it sound like a real person talking during a conversation (e.g. "I recommend...", "You should...", "It's best to...").
 4. Do NOT include any intro like "As a pathologist..." or "Here is the answer". Start directly with the explanation.
@@ -94,6 +99,7 @@ if __name__ == "__main__":
     parser.add_argument("--specialty", required=True, help="Expert specialty")
     parser.add_argument("--domain", required=True, help="Domain area")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Ollama model name")
+    parser.add_argument("--duration", type=int, default=30, help="Target answer duration in seconds")
     parser.add_argument("--output", help="Optional path to write answer text to")
     args = parser.parse_args()
 
@@ -103,7 +109,8 @@ if __name__ == "__main__":
             expert_name=args.expert,
             specialty=args.specialty,
             domain=args.domain,
-            model=args.model
+            model=args.model,
+            duration=args.duration
         )
         print(f"\n--- Generated Answer ({len(answer.split())} words) ---\n{answer}\n")
         

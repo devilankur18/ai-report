@@ -74,9 +74,9 @@ function main() {
 ReelForge Scalable Video Render Orchestrator
 -------------------------------------------
 Usage:
-  npx tsx cli/render.ts \\
-    --audio ./samples/expert-advice.mp3 \\
-    --client dr-priya-sharma \\
+  npx tsx cli/render.ts \
+    --audio ./samples/expert-advice.mp3 \
+    --client dr-priya-sharma \
     --design classic-reels
 
 Options:
@@ -85,6 +85,7 @@ Options:
   --audio <path>          Path to the local expert audio file (.mp3 / .wav)
   --voice <voice-id>      Voice profile ID under clients/<client-id>/voices/
   --question "<text>"     Text question to generate answer and voice dynamically
+  --duration <seconds>    Target answer duration in seconds (default: 30)
   
 Alternative Manual overrides (skips client profile):
   --expert <name>         Name of the expert
@@ -204,47 +205,60 @@ Rendering Options:
       ? path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3')
       : 'python3';
 
-    const tempDir = path.join(projectRoot, 'tmp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    const duration = args.duration ? parseInt(args.duration as string, 10) : 30;
+    const questionSlug = getSlug(question, 'question');
+    const questionDirName = `${questionSlug}-d${duration}-${voiceId}`;
+    const questionDir = path.join(projectRoot, 'tmp', 'questions', clientNameId, questionDirName);
+
+    if (!fs.existsSync(questionDir)) {
+      fs.mkdirSync(questionDir, { recursive: true });
     }
-    const generatedAnswerPath = path.join(tempDir, 'generated_answer.txt');
-    const synthesizedVoicePath = path.join(tempDir, 'synthesized_voice.mp3');
+    const generatedAnswerPath = path.join(questionDir, 'generated_answer.txt');
+    const synthesizedVoicePath = path.join(questionDir, 'synthesized_voice.mp3');
 
-    console.log(`[render] Generating answer to: "${question}"…`);
-    const model = (args.model as string) || 'gemma4:e4b';
-    
-    // Run generate_answer.py
-    const genAnswerCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'generate_answer.py')}" \
-      --question "${question.replace(/"/g, '\\"')}" \
-      --expert "${expert}" \
-      --specialty "${specialty}" \
-      --domain "${domain}" \
-      --model "${model}" \
-      --output "${generatedAnswerPath}"`;
-
-    try {
-      execSync(genAnswerCmd, { stdio: 'inherit', cwd: projectRoot });
-    } catch (err) {
-      console.error('[render] Error: Answer generation failed.', err);
-      process.exit(1);
+    let skipQuestionGeneration = false;
+    if (args.quick && fs.existsSync(generatedAnswerPath) && fs.existsSync(synthesizedVoicePath)) {
+      console.log(`[render] [quick] Found cached answer and voice at: ${questionDir}. Reusing them.`);
+      skipQuestionGeneration = true;
     }
 
-    const answerText = fs.readFileSync(generatedAnswerPath, 'utf8').trim();
+    if (!skipQuestionGeneration) {
+      console.log(`[render] Generating answer to: "${question}"…`);
+      const model = (args.model as string) || 'gemma4:e4b';
+      
+      // Run generate_answer.py
+      const genAnswerCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'generate_answer.py')}" \
+        --question "${question.replace(/"/g, '\\"')}" \
+        --expert "${expert}" \
+        --specialty "${specialty}" \
+        --domain "${domain}" \
+        --model "${model}" \
+        --duration "${duration}" \
+        --output "${generatedAnswerPath}"`;
 
-    console.log(`[render] Synthesizing voice for resolved answer…`);
-    // Run synthesize_voice.py
-    const synthVoiceCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'synthesize_voice.py')}" \
-      --client "${clientNameId}" \
-      --voice "${voiceId}" \
-      --text "${answerText.replace(/"/g, '\\"')}" \
-      --output "${synthesizedVoicePath}"`;
+      try {
+        execSync(genAnswerCmd, { stdio: 'inherit', cwd: projectRoot });
+      } catch (err) {
+        console.error('[render] Error: Answer generation failed.', err);
+        process.exit(1);
+      }
 
-    try {
-      execSync(synthVoiceCmd, { stdio: 'inherit', cwd: projectRoot });
-    } catch (err) {
-      console.error('[render] Error: Voice synthesis failed.', err);
-      process.exit(1);
+      const answerText = fs.readFileSync(generatedAnswerPath, 'utf8').trim();
+
+      console.log(`[render] Synthesizing voice for resolved answer…`);
+      // Run synthesize_voice.py
+      const synthVoiceCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'synthesize_voice.py')}" \
+        --client "${clientNameId}" \
+        --voice "${voiceId}" \
+        --text "${answerText.replace(/"/g, '\\"')}" \
+        --output "${synthesizedVoicePath}"`;
+
+      try {
+        execSync(synthVoiceCmd, { stdio: 'inherit', cwd: projectRoot });
+      } catch (err) {
+        console.error('[render] Error: Voice synthesis failed.', err);
+        process.exit(1);
+      }
     }
 
     audio = synthesizedVoicePath;
