@@ -3,3 +3,5 @@ tmp/*
 out/*
 public/*
 node_modules/*
+cli/__pycache__/*
+*.DS_Store

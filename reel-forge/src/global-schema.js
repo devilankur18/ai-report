@@ -11,6 +11,10 @@ export const WordTimestampSchema = z.object({
     start: z.number(),
     end: z.number(),
 });
+export const TakeawaySchema = z.object({
+    timeSec: z.number(),
+    text: z.string(),
+});
 export const GlobalPropsSchema = z.object({
     audioUrl: z.string(),
     transcript: z.string(),
@@ -109,4 +113,7 @@ export const GlobalPropsSchema = z.object({
     // ── Phase 5: Talking-head karaoke captions ─────────────────────────────
     /** Word-level timestamps from Whisper for karaoke-style caption highlighting */
     wordTimestamps: z.array(WordTimestampSchema).optional(),
+    // ── Takeaways ──────────────────────────────────────────────────────────
+    /** List of takeaway bullet points distributed across full video length */
+    takeaways: z.array(TakeawaySchema).optional(),
 });

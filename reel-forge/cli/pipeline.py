@@ -113,6 +113,8 @@ def main():
         # Phase 3: pass IDs for deterministic personalization hashing
         "clientId": args.client_id if hasattr(args, 'client_id') else "",
         "designId": args.design_id if hasattr(args, 'design_id') else "",
+        # Phase 6: Takeaways across full video length
+        "takeaways": meta.get("takeaways", []),
     }
 
     # Include word timestamps if available (Phase 5 / talking-head)

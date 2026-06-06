@@ -267,6 +267,81 @@ const renderHookAnimation = (style: string, props: any) => {
   }
 };
 
+interface StaggeredTakeawayItemProps {
+  bullet: string;
+  idx: number;
+  frameWithinScene: number;
+  fps: number;
+  resolvedAccent: string;
+  fonts: { sans: string; serif: string };
+  startFrame: number;
+}
+
+const StaggeredTakeawayItem: React.FC<StaggeredTakeawayItemProps> = ({
+  bullet,
+  idx,
+  frameWithinScene,
+  fps,
+  resolvedAccent,
+  fonts,
+  startFrame,
+}) => {
+  const relativeFrame = frameWithinScene - startFrame;
+  
+  const itemSpring = spring({
+    frame: Math.max(0, relativeFrame),
+    fps,
+    config: { damping: 14, stiffness: 120 },
+  });
+  
+  const yOffset = interpolate(itemSpring, [0, 1], [30, 0]);
+  const opacity = relativeFrame >= 0 ? interpolate(itemSpring, [0, 1], [0, 1]) : 0;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        width: '100%',
+        transform: `translateY(${yOffset}px)`,
+        opacity,
+      }}
+    >
+      <div style={{
+        fontFamily: 'Courier New, Courier, monospace',
+        fontSize: '26px',
+        fontWeight: 900,
+        backgroundColor: resolvedAccent,
+        color: '#050505',
+        width: '56px',
+        height: '56px',
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        boxShadow: `0 0 15px ${resolvedAccent}40`,
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}>
+        {String(idx + 1).padStart(2, '0')}
+      </div>
+
+      <div style={{
+        fontFamily: fonts.sans,
+        fontSize: '34px',
+        fontWeight: 800,
+        color: '#FFFFFF',
+        textAlign: 'left',
+        lineHeight: 1.25,
+        textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+      }}>
+        {bullet}
+      </div>
+    </div>
+  );
+};
+
 export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
   audioHasQuestion?: boolean;
   patientQuestionAudioUrl?: string;
@@ -298,6 +373,7 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
   expertImageSet,
   overlayStyle: customOverlayStyle,
   wordTimestamps,
+  takeaways,
   clientId,
   designId,
   fontPairingIndex: customFontPairingIndex,
@@ -547,12 +623,142 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
     return s.keyQuote ? s : null;
   }, [scenes, activeSceneIndex]);
 
+  const takeawayBullets = React.useMemo(() => {
+    if (!currentSceneWithTakeaway || !currentSceneWithTakeaway.keyQuote) return [];
+    
+    // Clean trailing/leading whitespace and any trailing commas
+    const cleanQuote = currentSceneWithTakeaway.keyQuote.trim().replace(/,\s*$/, '');
+    
+    // Split by newlines, bullets (•), dashes (-), or asterisks (*)
+    if (cleanQuote.includes('\n') || cleanQuote.includes('•') || cleanQuote.includes('- ')) {
+      return cleanQuote
+        .split(/[\n•\-*]+/g)
+        .map(b => b.trim().replace(/,\s*$/, ''))
+        .filter(Boolean);
+    }
+    
+    // Fallback: split by sentence boundaries (e.g. ". ") if there are multiple sentences
+    const sentences = cleanQuote
+      .split(/(?<=[.!?])\s+/)
+      .map(s => s.trim().replace(/,\s*$/, ''))
+      .filter(Boolean);
+      
+    if (sentences.length > 1) {
+      return sentences;
+    }
+    
+    // Fallback: split by comma if the parts are moderately short (clause list style)
+    if (cleanQuote.includes(',')) {
+      const parts = cleanQuote.split(',').map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2 && parts.every(p => p.split(' ').length <= 5)) {
+        return parts;
+      }
+    }
+    
+    return [cleanQuote];
+  }, [currentSceneWithTakeaway]);
+
+  const bulletStartFrames = React.useMemo(() => {
+    if (takeawayBullets.length === 0 || !currentSceneWithTakeaway) return [];
+    
+    const sceneStartSec = currentSceneWithTakeaway.startSec;
+    const sceneEndSec = currentSceneWithTakeaway.endSec;
+    
+    // Filter words that belong to this scene
+    const sceneWords = (wordTimestamps || []).filter(
+      (w) => w.start >= sceneStartSec && w.start <= sceneEndSec
+    );
+    
+    const stopwords = new Set([
+      'the', 'and', 'for', 'you', 'with', 'this', 'that', 'your', 'from', 'have',
+      'are', 'was', 'were', 'has', 'had', 'been', 'can', 'could', 'should', 'would',
+      'will', 'shall', 'may', 'might', 'must', 'but', 'not', 'our', 'out', 'what'
+    ]);
+    
+    const startTimes: number[] = [];
+    let lastFoundIdx = -1;
+    
+    takeawayBullets.forEach((bullet) => {
+      const bulletWords = bullet
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stopwords.has(w));
+        
+      let foundTime: number | null = null;
+      
+      for (let i = lastFoundIdx + 1; i < sceneWords.length; i++) {
+        const sw = sceneWords[i].word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+        if (bulletWords.includes(sw) || bulletWords.some(bw => sw.includes(bw) || bw.includes(sw))) {
+          foundTime = sceneWords[i].start;
+          lastFoundIdx = i;
+          break;
+        }
+      }
+      
+      startTimes.push(foundTime ?? -1);
+    });
+    
+    const finalStartSecs: number[] = [];
+    for (let i = 0; i < takeawayBullets.length; i++) {
+      const prevTime = i > 0 ? finalStartSecs[i - 1] : sceneStartSec;
+      let time = startTimes[i];
+      
+      if (time === -1 || time < prevTime) {
+        const remainingBullets = takeawayBullets.length - i;
+        const step = (sceneEndSec - prevTime) / (remainingBullets + 1);
+        time = prevTime + step;
+      }
+      
+      time = Math.min(time, sceneEndSec - 0.2);
+      finalStartSecs.push(time);
+    }
+    
+    return finalStartSecs.map(sec => {
+      const relSec = sec - sceneStartSec;
+      return Math.max(0, Math.round(relSec * fps));
+    });
+  }, [takeawayBullets, currentSceneWithTakeaway, wordTimestamps, fps]);
+
+  const activeTakeaways = React.useMemo(() => {
+    // If global takeaways exist, use them
+    if (takeaways && takeaways.length > 0) {
+      return takeaways.map((t, idx) => {
+        const cleanedText = t.text.trim().replace(/,\s*$/, '');
+        const startFrame = AUDIO_START_FRAME + Math.round(t.timeSec * fps);
+        return {
+          text: cleanedText,
+          startFrame,
+          idx,
+        };
+      });
+    }
+
+    // Fallback: use scene-based keyQuote split into bullets
+    if (currentSceneWithTakeaway) {
+      return takeawayBullets.map((bullet, idx) => {
+        const startFrame = bulletStartFrames[idx] || 0;
+        // Since scene-based starts relative to the scene, convert it to global frame
+        const globalStartFrame = activeSceneStartFrame + startFrame;
+        return {
+          text: bullet,
+          startFrame: globalStartFrame,
+          idx,
+        };
+      });
+    }
+
+    return [];
+  }, [takeaways, takeawayBullets, bulletStartFrames, currentSceneWithTakeaway, activeSceneStartFrame, AUDIO_START_FRAME, fps]);
+
+  const firstTakeawayStartFrame = React.useMemo(() => {
+    if (activeTakeaways.length === 0) return 0;
+    return Math.min(...activeTakeaways.map(t => t.startFrame));
+  }, [activeTakeaways]);
+
   const keyTakeawayDingFrames = React.useMemo(() => {
-    if (!scenes) return [];
-    return scenes
-      .filter((s: Scene) => s.keyQuote)
-      .map((s: Scene) => Math.round(s.startSec * fps) + AUDIO_START_FRAME);
-  }, [scenes, fps, AUDIO_START_FRAME]);
+    return activeTakeaways.map(t => t.startFrame);
+  }, [activeTakeaways]);
 
   // Logo resolver
   const resolvedLogoUrl = React.useMemo(() => {
@@ -918,52 +1124,73 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
                 </div>
               )}
 
-              {/* Floating Takeaway Banner (Mobile Optimized Big Scale) */}
-              {currentSceneWithTakeaway && (
+              {/* Floating Takeaway Banner (Mobile Optimized Big Scale with Premium Staggered Bullets) */}
+              {activeTakeaways.length > 0 && frame >= firstTakeawayStartFrame && (
                 <div style={{
                   position: 'absolute',
                   top: '185px',
                   left: '60px',
                   right: '60px',
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   gap: '20px',
-                  padding: '30px 40px', // Increased padding
-                  backgroundColor: 'rgba(15, 15, 15, 0.82)',
-                  backdropFilter: 'blur(16px)',
-                  borderRadius: '28px',
-                  borderLeft: `8px solid ${resolvedAccent}`, // Stronger accent bar
+                  padding: '30px 40px',
+                  backgroundColor: 'rgba(15, 15, 15, 0.85)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  borderRadius: '32px',
+                  borderLeft: `8px solid ${resolvedAccent}`,
                   border: '1.5px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 25px 45px rgba(0,0,0,0.4)',
+                  boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
                   zIndex: 25,
                   transform: `translateY(${interpolate(spring({
-                    frame: frameWithinScene,
+                    frame: Math.max(0, frame - firstTakeawayStartFrame),
                     fps,
                     config: { damping: 16, stiffness: 120 }
                   }), [0, 1], [-40, 0])}px)`,
-                  opacity: interpolate(frameWithinScene, [0, 12], [0, 1]),
+                  opacity: interpolate(Math.max(0, frame - firstTakeawayStartFrame), [0, 12], [0, 1]),
                 }}>
-                  <div style={{ fontSize: '48px' }}>🔑</div>
-                  <div>
-                    <div style={{
-                      fontSize: '32px', // Doubled from 16px to 32px for mobile readability
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                  }}>
+                    <span style={{ fontSize: '42px' }}>💡</span>
+                    <span style={{
+                      fontFamily: fonts.sans,
+                      fontSize: '28px',
                       fontWeight: 900,
                       color: resolvedAccent,
                       textTransform: 'uppercase',
-                      letterSpacing: '2px',
+                      letterSpacing: '2.5px',
+                      textShadow: `0 0 12px ${resolvedAccent}40`,
                     }}>
-                      Key Takeaway
-                    </div>
-                    <div style={{
-                      fontSize: '46px', // Doubled from 24px to 46px for mobile readability
-                      fontWeight: 800,
-                      color: '#FFFFFF',
-                      lineHeight: 1.3,
-                      marginTop: '8px',
-                      textShadow: '0 2px 10px rgba(0,0,0,0.6)',
-                    }}>
-                      "{currentSceneWithTakeaway.keyQuote}"
-                    </div>
+                      Key Takeaways
+                    </span>
+                  </div>
+                  
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '20px',
+                    width: '100%',
+                  }}>
+                    {activeTakeaways.map((item, idx) => {
+                      const isVisible = frame >= item.startFrame;
+                      if (!isVisible) return null;
+                      return (
+                        <StaggeredTakeawayItem
+                          key={item.idx}
+                          bullet={item.text}
+                          idx={idx}
+                          frameWithinScene={frame}
+                          fps={fps}
+                          resolvedAccent={resolvedAccent}
+                          fonts={fonts}
+                          startFrame={item.startFrame}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1061,6 +1288,7 @@ export const TalkingHeadQnaTemplate: React.FC<GlobalProps & {
       <SoundEffect src="audio/sfx/boom.wav" triggerFrames={sfxBoomFrames} volume={0.8} />
       <SoundEffect src="audio/sfx/whoosh.wav" triggerFrames={sfxWhooshFrames} volume={0.6} />
       <SoundEffect src="audio/sfx/ding.wav" triggerFrames={sfxDingFrames} volume={0.6} />
+      <SoundEffect src="audio/sfx/pop.wav" triggerFrames={keyTakeawayDingFrames} volume={0.5} />
 
       {/* ── Background Music playback ────────────────────────────────────── */}
       {bgMusicUrl && (

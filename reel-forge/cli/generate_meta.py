@@ -170,13 +170,23 @@ Classify the overall content tone:
 SCENES RULES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Divide audio into 3-5 logical segments.
-- keyQuote MUST be the MOST surprising, emotional, or actionable sentence from that segment.
-  * Prefer quotes that reveal something unexpected.
-  * Prefer quotes with emotion, specificity, or urgency.
-  * Do NOT pick generic filler sentences.
-- If target language matches transcript: use exact verbatim words (max 15 words).
-- If target language differs: translate the most impactful sentence.
+- keyQuote MUST be a bulleted list of 2-3 short, actionable, and surprising key takeaways (each 3-6 words, separated by newlines and starting with a bullet '• ') rather than one long sentence.
+  * Example format:
+    "• Point 1\n• Point 2\n• Point 3"
+  * Prefer points that reveal something unexpected, practical, or urgent.
+  * Do NOT use trailing commas at the end of the bullet points.
+- If target language matches transcript: translate/use terms from the transcript.
+- If target language differs: translate the key points.
 - First scene starts at 0s, last scene ends at {duration_sec}s. No gaps.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TAKEAWAYS RULES (takeaways array):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Provide a list of 3-5 key takeaway points distributed across the full video length.
+- For each point:
+  * "timeSec": The exact time in seconds when this specific point is introduced/discussed in the transcript.
+  * "text": A highly patient-relevant, actionable, and non-generic tip/step (3-6 words). Do NOT write filler/junk.
+  * Do NOT use trailing commas at the end of the text.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CTA TEXT RULES (ctaText field):
@@ -202,6 +212,9 @@ Return ONLY valid JSON — no markdown, no explanation:
   "toneTag": "educational|motivational|warning|myth-bust|storytelling",
   "scenes": [
     {{ "startSec": 0, "endSec": number, "label": "string", "keyQuote": "most impactful direct quote" }}
+  ],
+  "takeaways": [
+    {{ "timeSec": number, "text": "actionable takeaways (3-6 words)" }}
   ],
   "ctaText": "short personalized call-to-action",
   "hashtags": ["#tag1", "#tag2", "#tag3"],

@@ -172,7 +172,48 @@ const renderHookAnimation = (style, props) => {
             return null;
     }
 };
-export const TalkingHeadQnaTemplate = ({ audioUrl, expertName, expertSpecialty, domain, hookText, hookStyle = 'zoom-face', scenes, ctaText, ctaType, ctaTitle, ctaSubtitle, ctaLink, ctaHandle, accentColor: customAccent, bgGradientStart: customStart, bgGradientEnd: customEnd, bgSolid: customSolid, themeId = 'hero-gold', bgVideoUrl: customBgVideo, language = 'en', expertAvatar, expertLogo, expertImages, expertImageSet, overlayStyle: customOverlayStyle, wordTimestamps, clientId, designId, fontPairingIndex: customFontPairingIndex, layoutVariant: customLayoutVariant, decorationStyle: customDecorationStyle, imageTreatment: customImageTreatment, audioHasQuestion, patientQuestionAudioUrl = 'audio/question-1.mp3', // Loud default patient voice
+const StaggeredTakeawayItem = ({ bullet, idx, frameWithinScene, fps, resolvedAccent, fonts, startFrame, }) => {
+    const relativeFrame = frameWithinScene - startFrame;
+    const itemSpring = spring({
+        frame: Math.max(0, relativeFrame),
+        fps,
+        config: { damping: 14, stiffness: 120 },
+    });
+    const yOffset = interpolate(itemSpring, [0, 1], [30, 0]);
+    const opacity = relativeFrame >= 0 ? interpolate(itemSpring, [0, 1], [0, 1]) : 0;
+    return (_jsxs("div", { style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            width: '100%',
+            transform: `translateY(${yOffset}px)`,
+            opacity,
+        }, children: [_jsx("div", { style: {
+                    fontFamily: 'Courier New, Courier, monospace',
+                    fontSize: '26px',
+                    fontWeight: 900,
+                    backgroundColor: resolvedAccent,
+                    color: '#050505',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: `0 0 15px ${resolvedAccent}40`,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                }, children: String(idx + 1).padStart(2, '0') }), _jsx("div", { style: {
+                    fontFamily: fonts.sans,
+                    fontSize: '34px',
+                    fontWeight: 800,
+                    color: '#FFFFFF',
+                    textAlign: 'left',
+                    lineHeight: 1.25,
+                    textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                }, children: bullet })] }));
+};
+export const TalkingHeadQnaTemplate = ({ audioUrl, expertName, expertSpecialty, domain, hookText, hookStyle = 'zoom-face', scenes, ctaText, ctaType, ctaTitle, ctaSubtitle, ctaLink, ctaHandle, accentColor: customAccent, bgGradientStart: customStart, bgGradientEnd: customEnd, bgSolid: customSolid, themeId = 'hero-gold', bgVideoUrl: customBgVideo, language = 'en', expertAvatar, expertLogo, expertImages, expertImageSet, overlayStyle: customOverlayStyle, wordTimestamps, takeaways, clientId, designId, fontPairingIndex: customFontPairingIndex, layoutVariant: customLayoutVariant, decorationStyle: customDecorationStyle, imageTreatment: customImageTreatment, audioHasQuestion, patientQuestionAudioUrl = 'audio/question-1.mp3', // Loud default patient voice
 bgMusicUrl, }) => {
     const frame = useCurrentFrame();
     const { fps, durationInFrames } = useVideoConfig();
@@ -394,13 +435,119 @@ bgMusicUrl, }) => {
         const s = scenes[activeSceneIndex];
         return s.keyQuote ? s : null;
     }, [scenes, activeSceneIndex]);
-    const keyTakeawayDingFrames = React.useMemo(() => {
-        if (!scenes)
+    const takeawayBullets = React.useMemo(() => {
+        if (!currentSceneWithTakeaway || !currentSceneWithTakeaway.keyQuote)
             return [];
-        return scenes
-            .filter((s) => s.keyQuote)
-            .map((s) => Math.round(s.startSec * fps) + AUDIO_START_FRAME);
-    }, [scenes, fps, AUDIO_START_FRAME]);
+        // Clean trailing/leading whitespace and any trailing commas
+        const cleanQuote = currentSceneWithTakeaway.keyQuote.trim().replace(/,\s*$/, '');
+        // Split by newlines, bullets (•), dashes (-), or asterisks (*)
+        if (cleanQuote.includes('\n') || cleanQuote.includes('•') || cleanQuote.includes('- ')) {
+            return cleanQuote
+                .split(/[\n•\-*]+/g)
+                .map(b => b.trim().replace(/,\s*$/, ''))
+                .filter(Boolean);
+        }
+        // Fallback: split by sentence boundaries (e.g. ". ") if there are multiple sentences
+        const sentences = cleanQuote
+            .split(/(?<=[.!?])\s+/)
+            .map(s => s.trim().replace(/,\s*$/, ''))
+            .filter(Boolean);
+        if (sentences.length > 1) {
+            return sentences;
+        }
+        // Fallback: split by comma if the parts are moderately short (clause list style)
+        if (cleanQuote.includes(',')) {
+            const parts = cleanQuote.split(',').map(p => p.trim()).filter(Boolean);
+            if (parts.length >= 2 && parts.every(p => p.split(' ').length <= 5)) {
+                return parts;
+            }
+        }
+        return [cleanQuote];
+    }, [currentSceneWithTakeaway]);
+    const bulletStartFrames = React.useMemo(() => {
+        if (takeawayBullets.length === 0 || !currentSceneWithTakeaway)
+            return [];
+        const sceneStartSec = currentSceneWithTakeaway.startSec;
+        const sceneEndSec = currentSceneWithTakeaway.endSec;
+        // Filter words that belong to this scene
+        const sceneWords = (wordTimestamps || []).filter((w) => w.start >= sceneStartSec && w.start <= sceneEndSec);
+        const stopwords = new Set([
+            'the', 'and', 'for', 'you', 'with', 'this', 'that', 'your', 'from', 'have',
+            'are', 'was', 'were', 'has', 'had', 'been', 'can', 'could', 'should', 'would',
+            'will', 'shall', 'may', 'might', 'must', 'but', 'not', 'our', 'out', 'what'
+        ]);
+        const startTimes = [];
+        let lastFoundIdx = -1;
+        takeawayBullets.forEach((bullet) => {
+            const bulletWords = bullet
+                .toLowerCase()
+                .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "")
+                .split(/\s+/)
+                .filter(w => w.length > 2 && !stopwords.has(w));
+            let foundTime = null;
+            for (let i = lastFoundIdx + 1; i < sceneWords.length; i++) {
+                const sw = sceneWords[i].word.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "");
+                if (bulletWords.includes(sw) || bulletWords.some(bw => sw.includes(bw) || bw.includes(sw))) {
+                    foundTime = sceneWords[i].start;
+                    lastFoundIdx = i;
+                    break;
+                }
+            }
+            startTimes.push(foundTime ?? -1);
+        });
+        const finalStartSecs = [];
+        for (let i = 0; i < takeawayBullets.length; i++) {
+            const prevTime = i > 0 ? finalStartSecs[i - 1] : sceneStartSec;
+            let time = startTimes[i];
+            if (time === -1 || time < prevTime) {
+                const remainingBullets = takeawayBullets.length - i;
+                const step = (sceneEndSec - prevTime) / (remainingBullets + 1);
+                time = prevTime + step;
+            }
+            time = Math.min(time, sceneEndSec - 0.2);
+            finalStartSecs.push(time);
+        }
+        return finalStartSecs.map(sec => {
+            const relSec = sec - sceneStartSec;
+            return Math.max(0, Math.round(relSec * fps));
+        });
+    }, [takeawayBullets, currentSceneWithTakeaway, wordTimestamps, fps]);
+    const activeTakeaways = React.useMemo(() => {
+        // If global takeaways exist, use them
+        if (takeaways && takeaways.length > 0) {
+            return takeaways.map((t, idx) => {
+                const cleanedText = t.text.trim().replace(/,\s*$/, '');
+                const startFrame = AUDIO_START_FRAME + Math.round(t.timeSec * fps);
+                return {
+                    text: cleanedText,
+                    startFrame,
+                    idx,
+                };
+            });
+        }
+        // Fallback: use scene-based keyQuote split into bullets
+        if (currentSceneWithTakeaway) {
+            return takeawayBullets.map((bullet, idx) => {
+                const startFrame = bulletStartFrames[idx] || 0;
+                // Since scene-based starts relative to the scene, convert it to global frame
+                const globalStartFrame = activeSceneStartFrame + startFrame;
+                return {
+                    text: bullet,
+                    startFrame: globalStartFrame,
+                    idx,
+                };
+            });
+        }
+        return [];
+    }, [takeaways, takeawayBullets, bulletStartFrames, currentSceneWithTakeaway, activeSceneStartFrame, AUDIO_START_FRAME, fps]);
+    const firstTakeawayStartFrame = React.useMemo(() => {
+        if (activeTakeaways.length === 0)
+            return 0;
+        return Math.min(...activeTakeaways.map(t => t.startFrame));
+    }, [activeTakeaways]);
+    const keyTakeawayDingFrames = React.useMemo(() => {
+        return activeTakeaways.map(t => t.startFrame);
+    }, [activeTakeaways]);
     // Logo resolver
     const resolvedLogoUrl = React.useMemo(() => {
         if (!expertLogo)
@@ -613,42 +760,52 @@ bgMusicUrl, }) => {
                                                 display: 'inline-block',
                                                 transition: 'color 0.1s ease',
                                             }, children: w.word }, idx));
-                                    }) }) })), currentSceneWithTakeaway && (_jsxs("div", { style: {
+                                    }) }) })), activeTakeaways.length > 0 && frame >= firstTakeawayStartFrame && (_jsxs("div", { style: {
                                     position: 'absolute',
                                     top: '185px',
                                     left: '60px',
                                     right: '60px',
                                     display: 'flex',
-                                    alignItems: 'center',
+                                    flexDirection: 'column',
                                     gap: '20px',
-                                    padding: '30px 40px', // Increased padding
-                                    backgroundColor: 'rgba(15, 15, 15, 0.82)',
-                                    backdropFilter: 'blur(16px)',
-                                    borderRadius: '28px',
-                                    borderLeft: `8px solid ${resolvedAccent}`, // Stronger accent bar
+                                    padding: '30px 40px',
+                                    backgroundColor: 'rgba(15, 15, 15, 0.85)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    borderRadius: '32px',
+                                    borderLeft: `8px solid ${resolvedAccent}`,
                                     border: '1.5px solid rgba(255,255,255,0.08)',
-                                    boxShadow: '0 25px 45px rgba(0,0,0,0.4)',
+                                    boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
                                     zIndex: 25,
                                     transform: `translateY(${interpolate(spring({
-                                        frame: frameWithinScene,
+                                        frame: Math.max(0, frame - firstTakeawayStartFrame),
                                         fps,
                                         config: { damping: 16, stiffness: 120 }
                                     }), [0, 1], [-40, 0])}px)`,
-                                    opacity: interpolate(frameWithinScene, [0, 12], [0, 1]),
-                                }, children: [_jsx("div", { style: { fontSize: '48px' }, children: "\uD83D\uDD11" }), _jsxs("div", { children: [_jsx("div", { style: {
-                                                    fontSize: '32px', // Doubled from 16px to 32px for mobile readability
+                                    opacity: interpolate(Math.max(0, frame - firstTakeawayStartFrame), [0, 12], [0, 1]),
+                                }, children: [_jsxs("div", { style: {
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '16px',
+                                        }, children: [_jsx("span", { style: { fontSize: '42px' }, children: "\uD83D\uDCA1" }), _jsx("span", { style: {
+                                                    fontFamily: fonts.sans,
+                                                    fontSize: '28px',
                                                     fontWeight: 900,
                                                     color: resolvedAccent,
                                                     textTransform: 'uppercase',
-                                                    letterSpacing: '2px',
-                                                }, children: "Key Takeaway" }), _jsxs("div", { style: {
-                                                    fontSize: '46px', // Doubled from 24px to 46px for mobile readability
-                                                    fontWeight: 800,
-                                                    color: '#FFFFFF',
-                                                    lineHeight: 1.3,
-                                                    marginTop: '8px',
-                                                    textShadow: '0 2px 10px rgba(0,0,0,0.6)',
-                                                }, children: ["\"", currentSceneWithTakeaway.keyQuote, "\""] })] })] })), _jsxs("div", { style: {
+                                                    letterSpacing: '2.5px',
+                                                    textShadow: `0 0 12px ${resolvedAccent}40`,
+                                                }, children: "Key Takeaways" })] }), _jsx("div", { style: {
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '20px',
+                                            width: '100%',
+                                        }, children: activeTakeaways.map((item, idx) => {
+                                            const isVisible = frame >= item.startFrame;
+                                            if (!isVisible)
+                                                return null;
+                                            return (_jsx(StaggeredTakeawayItem, { bullet: item.text, idx: idx, frameWithinScene: frame, fps: fps, resolvedAccent: resolvedAccent, fonts: fonts, startFrame: item.startFrame }, item.idx));
+                                        }) })] })), _jsxs("div", { style: {
                                     position: 'absolute',
                                     bottom: '120px',
                                     left: '60px',
@@ -683,5 +840,5 @@ bgMusicUrl, }) => {
                         display: 'flex', flexDirection: 'column',
                         justifyContent: 'center', alignItems: 'center',
                         padding: '0 80px', textAlign: 'center', zIndex: 30,
-                    }, children: _jsx(EndingBlock, { ctaType: ctaType, ctaText: ctaText, ctaTitle: ctaTitle, ctaSubtitle: ctaSubtitle, ctaLink: ctaLink, ctaHandle: ctaHandle, expertName: expertName, expertSpecialty: expertSpecialty, domain: domain, accentColor: resolvedAccent, textColor: displayTextColor, textSecondaryColor: displayTextSecondary, cardBg: cardBg, cardBorder: cardBorder, textShadow: textShadowValue, fonts: fonts, expertAvatar: expertAvatar, isLightTheme: false }) }) })), _jsx(ProgressBar, { accentColor: resolvedAccent }), _jsx(SoundEffect, { src: "audio/sfx/boom.wav", triggerFrames: sfxBoomFrames, volume: 0.8 }), _jsx(SoundEffect, { src: "audio/sfx/whoosh.wav", triggerFrames: sfxWhooshFrames, volume: 0.6 }), _jsx(SoundEffect, { src: "audio/sfx/ding.wav", triggerFrames: sfxDingFrames, volume: 0.6 }), bgMusicUrl && (_jsx(Audio, { src: staticFile(bgMusicUrl), volume: interpolate(frame, [ctaStartFrame, durationInFrames], [0.06, 0.0], { extrapolateLeft: 'clamp' }), loop: true })), resolvedAudioUrl && (_jsx(Sequence, { from: AUDIO_START_FRAME, children: _jsx(Audio, { src: resolvedAudioUrl, volume: audioVolume }) })), !isQuestionInAudio && patientQuestionAudioUrl && (_jsx(Sequence, { from: 0, durationInFrames: ANSWER_START_FRAME, children: _jsx(Audio, { src: patientQuestionAudioUrl.startsWith('http') || patientQuestionAudioUrl.startsWith('/') || patientQuestionAudioUrl.startsWith('data:') ? patientQuestionAudioUrl : staticFile(patientQuestionAudioUrl), volume: 0.8 }) }))] }));
+                    }, children: _jsx(EndingBlock, { ctaType: ctaType, ctaText: ctaText, ctaTitle: ctaTitle, ctaSubtitle: ctaSubtitle, ctaLink: ctaLink, ctaHandle: ctaHandle, expertName: expertName, expertSpecialty: expertSpecialty, domain: domain, accentColor: resolvedAccent, textColor: displayTextColor, textSecondaryColor: displayTextSecondary, cardBg: cardBg, cardBorder: cardBorder, textShadow: textShadowValue, fonts: fonts, expertAvatar: expertAvatar, isLightTheme: false }) }) })), _jsx(ProgressBar, { accentColor: resolvedAccent }), _jsx(SoundEffect, { src: "audio/sfx/boom.wav", triggerFrames: sfxBoomFrames, volume: 0.8 }), _jsx(SoundEffect, { src: "audio/sfx/whoosh.wav", triggerFrames: sfxWhooshFrames, volume: 0.6 }), _jsx(SoundEffect, { src: "audio/sfx/ding.wav", triggerFrames: sfxDingFrames, volume: 0.6 }), _jsx(SoundEffect, { src: "audio/sfx/pop.wav", triggerFrames: keyTakeawayDingFrames, volume: 0.5 }), bgMusicUrl && (_jsx(Audio, { src: staticFile(bgMusicUrl), volume: interpolate(frame, [ctaStartFrame, durationInFrames], [0.06, 0.0], { extrapolateLeft: 'clamp' }), loop: true })), resolvedAudioUrl && (_jsx(Sequence, { from: AUDIO_START_FRAME, children: _jsx(Audio, { src: resolvedAudioUrl, volume: audioVolume }) })), !isQuestionInAudio && patientQuestionAudioUrl && (_jsx(Sequence, { from: 0, durationInFrames: ANSWER_START_FRAME, children: _jsx(Audio, { src: patientQuestionAudioUrl.startsWith('http') || patientQuestionAudioUrl.startsWith('/') || patientQuestionAudioUrl.startsWith('data:') ? patientQuestionAudioUrl : staticFile(patientQuestionAudioUrl), volume: 0.8 }) }))] }));
 };

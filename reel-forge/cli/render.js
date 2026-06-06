@@ -91,6 +91,7 @@ Rendering Options:
   --model <model>         Ollama model (default: gemma4:e4b)
   --whisper-model <size>  Whisper model size (default: small)
   --accent-color <hex>    Accent color override (e.g. #FF6B35)
+  --hook-style <style>    Override the hook style (e.g. 3d-stack, glitch-cycle)
   --skip-ai               Skip transcription/LLM (uses existing tmp/props.json)
   --props <path>          Path to a pre-generated props.json (skips AI entirely)
   --preview               Open Remotion Studio instead of rendering
@@ -278,6 +279,10 @@ Rendering Options:
     // CLI Accent Color Override (highest priority)
     if (args['accent-color']) {
         props.accentColor = args['accent-color'];
+    }
+    // CLI Hook Style Override (highest priority)
+    if (args['hook-style']) {
+        props.hookStyle = args['hook-style'];
     }
     // Save the updated props back to temp path
     const updatedPropsPath = path.join(projectRoot, 'tmp', 'props-resolved.json');
