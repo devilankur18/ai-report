@@ -145,6 +145,7 @@ npx tsx cli/render.ts [options]
 | `--asr-lang` | `string` | Force Whisper transcription language (default: auto-detect). |
 | `--bg-video` | `path/url` | Inject custom loop video relative to `public/` (e.g. `backgrounds/abstract.mp4`). |
 | `--accent-color`| `hex` | Manual accent color override (e.g., `#FF5733`). |
+| `--hook-style`  | `string` | Manual hook style override (e.g., `glitch-cycle`, `3d-stack`, `redacted`). |
 | `--model` | `string` | Local Ollama LLM model tag to pull metadata (default: `gemma4:e4b`). |
 | `--whisper-model`| `string`| Local Whisper model size (default: `small`). |
 | `--skip-ai` | *None* | Skips ASR/LLM pipeline, reusing the last generated `tmp/props.json`. |
@@ -266,3 +267,62 @@ To generate a video for a new raw audio clip:
      --design classic-reels
    ```
    *The system will automatically trigger Whisper for ASR transcription, Ollama to generate metadata (hook, quotes, durations) for the new audio, and Remotion to output the finished `.mp4` video in `out/<client-id>/`.*
+
+---
+
+## 8. High-Engagement Hook Gallery & Efficient Usage
+
+ReelForge features a catalog of **22 premium kinetic hook animations** designed to capture viewer attention in the crucial first 3 to 5 seconds of a reel.
+
+### Catalog of Hooks & Psychological Profiles
+
+| Hook Style | Visual Style | Psychological Match / Best Use Case |
+|---|---|---|
+| `zoom-face` | Glassmorphic Q&A sticker in center that zooms down to top-left corner. | **Conversational Q&A**: Perfect for friendly, direct, authoritative answers. |
+| `stat-counter` | Massive number counting up rapidly with a subtitle tagline. | **Data-driven hooks**: Use when the hook text contains a percentage/statistic (e.g. "90%"). |
+| `text-slam` | Words slam onto the screen sequentially with high speed. | **Myth-busting / Urgency**: Best for alarmist warnings or sudden contradictions. |
+| `typewriter-bold` | Bold serif text typed line-by-line with a blinking cursor. | **Storytelling / Educational**: Standard professional introduction. |
+| `split-reveal` | Horizontal split screen revealing desaturated doctor underneath. | **Anticipation**: Creating high contrast before revealing an answer. |
+| `ehr-file` | Clinical telemetry brief, Patient ID scrambler, flashing alert. | **Diagnostic / Urgent warning**: High stakes medical alerts. |
+| `parallax-data` | Slow zoom on desaturated photo with active clinical line wave vector. | **Documentary feel**: Premium medical research or guidelines context. |
+| `redacted` | Cream document over desaturated photo with black block overlays that shake and unmask. | **Secrets / Controversies**: Best for corporate/insurance secrets or debunking myths. |
+| `typewriter-terminal`| Green monospace characters typing with a blinking block cursor. | **Retro-technical / Logs**: Technical diagnostic briefings. |
+| `typewriter-pop` | Words spring-scale up one-by-one and glow in accent color. | **Rhythmic typography**: Good general high-energy typography choice. |
+| `typewriter-slide` | Words slide up from a clipped mask with an accent glow. | **Concepts / Clean modern intro**: Sleek Apple-style concept introduction. |
+| `3d-stack` | Card stack fracturing along 3D axes to reveal photo. | **Industry contradictions**: "They told you X, but it is a lie" style hooks. |
+| `blur-in` | Highly blurred text resolving line-by-line while photo unblurs. | **Anticipation**: Restricts visual detail initialy to draw focus to the words. |
+| `parallax-waveform`| SVG audio waveform moving in real time at the footer. | **Voice track proof**: Highlights the existence of spoken audio immediately. |
+| `glitch-cycle` | Metric text strobes and glitches rapidly between medical terms. | **Systemic errors / Panic**: Great for alarming health alerts or panic triggers. |
+| `mosaic-reframe` | Doctor photo converges from 6 sliding grid pieces. | **Aggregating clues**: Connecting multiple research points to a single conclusion. |
+| `variable-typewriter`| Monospace text typing at variable human-like speed inside terminal card. | **Clinical logs / Case studies**: Feels like a live clinical diary entry. |
+| `3d-carousel` | 3 cards rotating in vertical 3D space, locking on target card. | **Decision-making**: Comparing option A, B, and a secret option C. |
+| `matrix-flyby` | Acronyms fly past the camera in 3D, resolving on doctor portrait. | **Complex data**: Simulates cutting through medical jargon to get the answer. |
+| `list-countdown` | Neon numbered boxes flash to progressively unmask points. | **Listicles**: Perfect for structured warnings (e.g. "3 main errors"). |
+| `3d-showcase` | 3D document flips 180 degrees on Y-axis to reveal details. | **Flipping perspective**: Turning a regulatory/administrative issue into a solution. |
+
+---
+
+### Best Practices for Efficient Iteration & Selection
+
+#### 1. Automatic Dynamic Selection (LLM Choice)
+Ollama (`generate_meta.py`) dynamically evaluates the transcript and matches it to a hook style based on the psychological profiles defined in `src/templates/_shared/hooks-metadata.json`. To let the LLM choose, leave the `"hookStyle"` field blank or omit it from the design JSON config.
+
+#### 2. Manual Lock in Design Configuration
+If a client has a set brand pattern (e.g., they always want a desaturated documentary feel), lock the style by defining `"hookStyle": "parallax-data"` inside the design config (e.g., `clients/dr-snigdha-sinha/designs/talking-head-qna.json`).
+
+#### 3. CLI Override for Fast A/B Testing
+When generating reels, do not modify config files to try different styles. Instead, use the `--hook-style` override combined with `--quick` to reuse cached transcriptions:
+```bash
+# Test Glitch Cycle Hook (renders in ~45s reusing transcript)
+npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --hook-style glitch-cycle --quick
+
+# Test 3D Card Stack (renders in ~45s reusing transcript)
+npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --hook-style 3d-stack --quick
+```
+
+#### 4. Preview Server Visual Checking
+To visual-check all hooks frame-by-frame instantly without waiting for MP4 rendering, launch the Remotion Studio preview server:
+```bash
+npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --preview
+```
+*Tip: Register a draft props configuration in `tmp/props-resolved.json` and adjust the hookStyle in the Remotion sidebar controls to instantly see visual updates.*
