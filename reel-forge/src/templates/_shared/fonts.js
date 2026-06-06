@@ -18,16 +18,16 @@ import { loadFont as loadSourceSans } from '@remotion/google-fonts/SourceSans3';
 import { loadFont as loadPoppins } from '@remotion/google-fonts/Poppins';
 import { loadFont as loadMerriweather } from '@remotion/google-fonts/Merriweather';
 // ── Load all fonts at module level so Remotion can register them ──────────
-export const playfair = loadPlayfair();
-export const inter = loadInter();
-export const rozha = loadRozha();
-export const mukta = loadMukta();
-export const montserrat = loadMontserrat();
-export const lora = loadLora();
-export const oswald = loadOswald();
-export const sourceSans = loadSourceSans();
-export const poppins = loadPoppins();
-export const merriweather = loadMerriweather();
+export const playfair = loadPlayfair(undefined, { ignoreTooManyRequestsWarning: true });
+export const inter = loadInter(undefined, { ignoreTooManyRequestsWarning: true });
+export const rozha = loadRozha(undefined, { ignoreTooManyRequestsWarning: true });
+export const mukta = loadMukta(undefined, { ignoreTooManyRequestsWarning: true });
+export const montserrat = loadMontserrat(undefined, { ignoreTooManyRequestsWarning: true });
+export const lora = loadLora(undefined, { ignoreTooManyRequestsWarning: true });
+export const oswald = loadOswald(undefined, { ignoreTooManyRequestsWarning: true });
+export const sourceSans = loadSourceSans(undefined, { ignoreTooManyRequestsWarning: true });
+export const poppins = loadPoppins(undefined, { ignoreTooManyRequestsWarning: true });
+export const merriweather = loadMerriweather(undefined, { ignoreTooManyRequestsWarning: true });
 // ── English font pairings ─────────────────────────────────────────────────
 /**
  * 5 distinct personality profiles:
