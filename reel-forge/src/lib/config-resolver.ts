@@ -225,3 +225,40 @@ export function resolveClientConfig(
     designId,
   };
 }
+
+export interface VoiceConfig {
+  engine: string;
+  profile_id?: string;
+  profile_name?: string;
+  model?: string;
+  type?: 'preset' | 'cloned';
+  presetName?: string;
+  instruct?: string;
+  refAudio?: string;
+  refText?: string;
+  speed?: number;
+  pitch?: number;
+  refAudioAbsolutePath?: string;
+}
+
+export function resolveVoiceConfig(
+  projectRoot: string,
+  clientId: string,
+  voiceId: string
+): VoiceConfig {
+  const clientDir = path.join(projectRoot, 'clients', clientId);
+  const voicePath = path.join(clientDir, 'voices', `${voiceId}.json`);
+
+  if (!fs.existsSync(voicePath)) {
+    throw new Error(`Voice profile not found at ${voicePath}`);
+  }
+
+  const voice: VoiceConfig = JSON.parse(fs.readFileSync(voicePath, 'utf8'));
+
+  if (voice.type === 'cloned' && voice.refAudio) {
+    voice.refAudioAbsolutePath = path.resolve(clientDir, 'assets', voice.refAudio);
+  }
+
+  return voice;
+}
+

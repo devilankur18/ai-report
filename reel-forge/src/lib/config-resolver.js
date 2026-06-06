@@ -115,3 +115,15 @@ export function resolveClientConfig(projectRoot, clientId, designId) {
         designId,
     };
 }
+export function resolveVoiceConfig(projectRoot, clientId, voiceId) {
+    const clientDir = path.join(projectRoot, 'clients', clientId);
+    const voicePath = path.join(clientDir, 'voices', `${voiceId}.json`);
+    if (!fs.existsSync(voicePath)) {
+        throw new Error(`Voice profile not found at ${voicePath}`);
+    }
+    const voice = JSON.parse(fs.readFileSync(voicePath, 'utf8'));
+    if (voice.type === 'cloned' && voice.refAudio) {
+        voice.refAudioAbsolutePath = path.resolve(clientDir, 'assets', voice.refAudio);
+    }
+    return voice;
+}

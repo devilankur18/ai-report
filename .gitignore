@@ -4,3 +4,5 @@ reports/*
 reports-old/*
 .antigravitycli/*
 .env
+
+.DS_Store

@@ -2,7 +2,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { resolveClientConfig } from '../src/lib/config-resolver';
+import { resolveClientConfig, resolveVoiceConfig } from '../src/lib/config-resolver';
 
 // Parse arguments manually to avoid extra dependencies
 function parseArgs() {
@@ -69,7 +69,7 @@ function main() {
   const args = parseArgs();
 
   // Show help if requested or missing required arguments
-  if (args.help || (!args.audio && !args.props)) {
+  if (args.help || (!args.audio && !args.props && !args.question)) {
     console.log(`
 ReelForge Scalable Video Render Orchestrator
 -------------------------------------------
@@ -83,6 +83,8 @@ Options:
   --client <id>           Directory name of the client under clients/
   --design <id>           Name of the design profile JSON (default: classic-reels)
   --audio <path>          Path to the local expert audio file (.mp3 / .wav)
+  --voice <voice-id>      Voice profile ID under clients/<client-id>/voices/
+  --question "<text>"     Text question to generate answer and voice dynamically
   
 Alternative Manual overrides (skips client profile):
   --expert <name>         Name of the expert
@@ -107,11 +109,9 @@ Rendering Options:
     process.exit(0);
   }
 
-  const audio = args.audio as string;
-  if (audio && !fs.existsSync(audio)) {
-    console.error(`[render] Error: Audio file not found at ${audio}`);
-    process.exit(1);
-  }
+  let audio = args.audio as string;
+  const question = args.question as string;
+  let voiceId = args.voice as string;
 
   // 1. Resolve Profile and Design Config
   let clientNameId = args.client as string;
@@ -156,11 +156,108 @@ Rendering Options:
   } else {
     // Manual fallback mode (must have expert, specialty, domain)
     if (!args.props && !args['skip-ai']) {
-      if (!audio || !expert || !specialty || !domain) {
+      if (!audio && !question && (!expert || !specialty || !domain)) {
         console.error('[render] Error: --client OR manual overrides (--expert, --specialty, --domain) are required.');
         process.exit(1);
       }
     }
+  }
+
+  // 1b. If question is specified, run the Text-to-Speech generation pipeline
+  if (question) {
+    if (!clientNameId) {
+      console.error('[render] Error: --client is required when using --question.');
+      process.exit(1);
+    }
+    
+    // Resolve voice config
+    if (!voiceId) {
+      // Look for default-voice config or first available
+      const voicesDir = path.join(projectRoot, 'clients', clientNameId, 'voices');
+      if (fs.existsSync(voicesDir)) {
+        const files = fs.readdirSync(voicesDir).filter(f => f.endsWith('.json'));
+        if (files.includes('default.json')) {
+          voiceId = 'default';
+        } else if (files.includes('standard-aiden.json')) {
+          voiceId = 'standard-aiden';
+        } else if (files.length > 0) {
+          voiceId = path.basename(files[0], '.json');
+        }
+      }
+      if (!voiceId) {
+        console.error('[render] Error: No voice profile found and none specified via --voice.');
+        process.exit(1);
+      }
+      console.log(`[render] No voice profile specified, defaulting to: ${voiceId}`);
+    }
+
+    console.log(`[render] Resolving voice config for voiceId: ${voiceId}…`);
+    try {
+      const voiceConfig = resolveVoiceConfig(projectRoot, clientNameId, voiceId);
+      console.log(`[render] Voice engine: ${voiceConfig.engine}`);
+    } catch (err: any) {
+      console.error(`[render] Error: Failed to resolve voice config.`, err.message);
+      process.exit(1);
+    }
+
+    const pythonCmd = fs.existsSync(path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3'))
+      ? path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3')
+      : 'python3';
+
+    const tempDir = path.join(projectRoot, 'tmp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const generatedAnswerPath = path.join(tempDir, 'generated_answer.txt');
+    const synthesizedVoicePath = path.join(tempDir, 'synthesized_voice.mp3');
+
+    console.log(`[render] Generating answer to: "${question}"…`);
+    const model = (args.model as string) || 'gemma4:e4b';
+    
+    // Run generate_answer.py
+    const genAnswerCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'generate_answer.py')}" \
+      --question "${question.replace(/"/g, '\\"')}" \
+      --expert "${expert}" \
+      --specialty "${specialty}" \
+      --domain "${domain}" \
+      --model "${model}" \
+      --output "${generatedAnswerPath}"`;
+
+    try {
+      execSync(genAnswerCmd, { stdio: 'inherit', cwd: projectRoot });
+    } catch (err) {
+      console.error('[render] Error: Answer generation failed.', err);
+      process.exit(1);
+    }
+
+    const answerText = fs.readFileSync(generatedAnswerPath, 'utf8').trim();
+
+    console.log(`[render] Synthesizing voice for resolved answer…`);
+    // Run synthesize_voice.py
+    const synthVoiceCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'synthesize_voice.py')}" \
+      --client "${clientNameId}" \
+      --voice "${voiceId}" \
+      --text "${answerText.replace(/"/g, '\\"')}" \
+      --output "${synthesizedVoicePath}"`;
+
+    try {
+      execSync(synthVoiceCmd, { stdio: 'inherit', cwd: projectRoot });
+    } catch (err) {
+      console.error('[render] Error: Voice synthesis failed.', err);
+      process.exit(1);
+    }
+
+    audio = synthesizedVoicePath;
+  }
+
+  // Validate that input audio file exists
+  if (!audio && !args.props) {
+    console.error('[render] Error: Either --audio, --props, or --question must be provided.');
+    process.exit(1);
+  }
+  if (audio && !fs.existsSync(audio)) {
+    console.error(`[render] Error: Audio file not found at ${audio}`);
+    process.exit(1);
   }
 
   const model = (args.model as string) || 'gemma4:e4b';

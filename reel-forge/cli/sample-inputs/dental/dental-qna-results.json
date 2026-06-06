@@ -1,0 +1,72 @@
+[
+  {
+    "question_index": 1,
+    "question": "How can I get a dental appointment with my 9-to-5 work schedule?",
+    "answer": "It's totally understandable that your job makes scheduling hard! I recommend calling us and telling them about your work hours. We often have early morning slots, lunch breaks, or late afternoon openings just for people like you. Don't hesitate to ask for flexible times; we want to make dental care easy for you.",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q1-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q1-cloned.mp3"
+  },
+  {
+    "question_index": 2,
+    "question": "What should I expect at my first dental visit?",
+    "answer": "Don't worry; it’s usually very comfortable! First, we will do a thorough cleaning and examine your teeth and gums. We take time to talk about your overall oral health goals too. I recommend bringing any questions you have. It’s just a check-up to get you started on a healthy routine.",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q2-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q2-cloned.mp3"
+  },
+  {
+    "question_index": 3,
+    "question": "How much does dental care cost without insurance?",
+    "answer": "It really varies depending on what you need! A basic checkup is usually the most affordable starting point. I recommend calling a few local dentists to get an estimate first. They can give you clear pricing for X-rays or cleanings before your visit.",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q3-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q3-cloned.mp3"
+  },
+  {
+    "question_index": 4,
+    "question": "Can a dentist prescribe antibiotics?",
+    "answer": "Yes, they can, but only if they diagnose a serious infection that needs it. They must examine you first to be sure. Antibiotics are powerful, so dentists use them carefully. It is always best to talk to your primary care doctor as well, just to make sure the medication is right for you.",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q4-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q4-cloned.mp3"
+  },
+  {
+    "question_index": 5,
+    "question": "Why is my dental front desk staff so grouchy?",
+    "answer": "It sounds like you’re having a tough experience there. Sometimes, dental staff are dealing with high stress or long days. Instead of focusing on their mood, try letting them know what you need directly and calmly. Remember that communication is key to making your visit comfortable!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q5-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q5-cloned.mp3"
+  },
+  {
+    "question_index": 6,
+    "question": "How do I find a dentist near me that accepts my insurance?",
+    "answer": "The easiest way is to call your insurance company directly. They have a dedicated number for finding in-network providers. You can also use their online portal; it usually has a search tool for dentists near you. Always confirm the dentist accepts your specific plan before booking an appointment!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q6-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q6-cloned.mp3"
+  },
+  {
+    "question_index": 7,
+    "question": "What's the difference between a dentist and a dental surgeon?",
+    "answer": "A dentist handles your routine care, like cleanings, fillings, and general checkups. They are experts in keeping your teeth healthy. A dental surgeon deals with more complex procedures, such as extractions or wisdom tooth removal. If it requires surgery, you should see the specialist surgeon!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q7-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q7-cloned.mp3"
+  },
+  {
+    "question_index": 8,
+    "question": "How often should I visit the dentist?",
+    "answer": "I recommend seeing your dentist every six months for a professional cleaning and checkup. This helps us catch small problems before they become big ones. If you have gum issues or specific concerns, we might suggest coming in more often. Regular visits keep your smile healthy and prevent serious decay!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q8-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q8-cloned.mp3"
+  },
+  {
+    "question_index": 9,
+    "question": "Can I get emergency dental care without an appointment?",
+    "answer": "Yes, most dental clinics do have emergency care options without an appointment. However, I recommend calling them first thing in the morning. This way, they can tell you if they have immediate availability for urgent issues. Always keep your dentist's after-hours number saved on your phone too!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q9-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q9-cloned.mp3"
+  },
+  {
+    "question_index": 10,
+    "question": "What dental procedures require a specialist?",
+    "answer": "It depends on how complicated the issue is. If you have severe gum disease or advanced bone issues, an oral surgeon or periodontist might be best. For cosmetic concerns, we can refer you to an orthodontist or cosmetic dentist. Don't worry; we will guide you to the right specialist!",
+    "preset_audio": "cli/sample-inputs/dental/preset/dental-q10-preset.mp3",
+    "cloned_audio": "cli/sample-inputs/dental/cloned/dental-q10-cloned.mp3"
+  }
+]
