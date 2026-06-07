@@ -105,6 +105,7 @@ Rendering Options:
     const question = args.question;
     let voiceId = args.voice;
     const duration = args.duration ? parseInt(args.duration, 10) : 30;
+    const questionSlug = question ? getSlug(question, 'question') : '';
     // 1. Resolve Profile and Design Config
     let clientNameId = args.client;
     let designId = args.design || 'classic-reels';
@@ -190,7 +191,6 @@ Rendering Options:
         const pythonCmd = fs.existsSync(path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3'))
             ? path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3')
             : 'python3';
-        const questionSlug = getSlug(question, 'question');
         const questionDirName = `${questionSlug}-d${duration}-${voiceId}`;
         const questionDir = path.join(projectRoot, 'tmp', 'questions', clientNameId, questionDirName);
         if (!fs.existsSync(questionDir)) {
@@ -198,9 +198,43 @@ Rendering Options:
         }
         const generatedAnswerPath = path.join(questionDir, 'generated_answer.txt');
         const synthesizedVoicePath = path.join(questionDir, 'synthesized_voice.mp3');
+        const synthesizedQuestionPath = path.join(questionDir, 'synthesized_question.mp3');
+        // Resolve a patient voice for the question
+        let patientVoiceId = 'standard-vivian';
+        const voicesDir = path.join(projectRoot, 'clients', clientNameId, 'voices');
+        if (fs.existsSync(voicesDir)) {
+            const files = fs.readdirSync(voicesDir).filter(f => f.endsWith('.json'));
+            const voiceNames = files.map(f => path.basename(f, '.json'));
+            if (voiceId.includes('snig') || voiceId.includes('vivian')) {
+                if (voiceNames.includes('standard-aiden')) {
+                    patientVoiceId = 'standard-aiden';
+                }
+                else if (voiceNames.includes('standard-vivian')) {
+                    patientVoiceId = 'standard-vivian';
+                }
+                else {
+                    const fallback = voiceNames.find(v => v !== voiceId);
+                    if (fallback)
+                        patientVoiceId = fallback;
+                }
+            }
+            else {
+                if (voiceNames.includes('standard-vivian')) {
+                    patientVoiceId = 'standard-vivian';
+                }
+                else if (voiceNames.includes('standard-aiden')) {
+                    patientVoiceId = 'standard-aiden';
+                }
+                else {
+                    const fallback = voiceNames.find(v => v !== voiceId);
+                    if (fallback)
+                        patientVoiceId = fallback;
+                }
+            }
+        }
         let skipQuestionGeneration = false;
-        if (args.quick && fs.existsSync(generatedAnswerPath) && fs.existsSync(synthesizedVoicePath)) {
-            console.log(`[render] [quick] Found cached answer and voice at: ${questionDir}. Reusing them.`);
+        if (args.quick && fs.existsSync(generatedAnswerPath) && fs.existsSync(synthesizedVoicePath) && fs.existsSync(synthesizedQuestionPath)) {
+            console.log(`[render] [quick] Found cached answer, voice, and question audio at: ${questionDir}. Reusing them.`);
             skipQuestionGeneration = true;
         }
         if (!skipQuestionGeneration) {
@@ -235,6 +269,20 @@ Rendering Options:
             }
             catch (err) {
                 console.error('[render] Error: Voice synthesis failed.', err);
+                process.exit(1);
+            }
+            console.log(`[render] Synthesizing voice for question using voice '${patientVoiceId}'…`);
+            // Run synthesize_voice.py for question
+            const synthQuestionCmd = `"${pythonCmd}" "${path.join(projectRoot, 'cli', 'synthesize_voice.py')}" \
+        --client "${clientNameId}" \
+        --voice "${patientVoiceId}" \
+        --text "${question.replace(/"/g, '\\"')}" \
+        --output "${synthesizedQuestionPath}"`;
+            try {
+                execSync(synthQuestionCmd, { stdio: 'inherit', cwd: projectRoot });
+            }
+            catch (err) {
+                console.error('[render] Error: Question voice synthesis failed.', err);
                 process.exit(1);
             }
         }
@@ -360,6 +408,52 @@ Rendering Options:
         console.log(`[render] Copying audio asset to public: ${audioDestPath}`);
         fs.copyFileSync(audioSrcFile, audioDestPath);
         props.audioUrl = `audio/${audioDestFilename}`;
+        if (question) {
+            let patientVoiceId = 'standard-vivian';
+            const questionDir = path.dirname(audioSrcFile);
+            const synthesizedQuestionPath = path.join(questionDir, 'synthesized_question.mp3');
+            const voicesDir = path.join(projectRoot, 'clients', clientNameId, 'voices');
+            if (fs.existsSync(voicesDir)) {
+                const files = fs.readdirSync(voicesDir).filter(f => f.endsWith('.json'));
+                const voiceNames = files.map(f => path.basename(f, '.json'));
+                if (voiceId.includes('snig') || voiceId.includes('vivian')) {
+                    if (voiceNames.includes('standard-aiden')) {
+                        patientVoiceId = 'standard-aiden';
+                    }
+                    else if (voiceNames.includes('standard-vivian')) {
+                        patientVoiceId = 'standard-vivian';
+                    }
+                    else {
+                        const fallback = voiceNames.find(v => v !== voiceId);
+                        if (fallback)
+                            patientVoiceId = fallback;
+                    }
+                }
+                else {
+                    if (voiceNames.includes('standard-vivian')) {
+                        patientVoiceId = 'standard-vivian';
+                    }
+                    else if (voiceNames.includes('standard-aiden')) {
+                        patientVoiceId = 'standard-aiden';
+                    }
+                    else {
+                        const fallback = voiceNames.find(v => v !== voiceId);
+                        if (fallback)
+                            patientVoiceId = fallback;
+                    }
+                }
+            }
+            if (fs.existsSync(synthesizedQuestionPath)) {
+                const questionDestFilename = `${questionSlug}-q-${patientVoiceId}.mp3`;
+                const questionDestPath = path.join(publicAudioDir, questionDestFilename);
+                console.log(`[render] Copying question audio asset to public: ${questionDestPath}`);
+                fs.copyFileSync(synthesizedQuestionPath, questionDestPath);
+                props.patientQuestionAudioUrl = `audio/${questionDestFilename}`;
+            }
+            else {
+                props.patientQuestionAudioUrl = '';
+            }
+        }
     }
     else {
         console.warn(`[render] Warning: Audio file source '${audioSrcFile}' was not found or is empty.`);
@@ -391,9 +485,6 @@ Rendering Options:
     // CLI Hook Style Override (highest priority)
     if (args['hook-style']) {
         props.hookStyle = args['hook-style'];
-    }
-    if (question) {
-        props.patientQuestionAudioUrl = '';
     }
     // Save the updated props back to temp path
     const updatedPropsPath = path.join(projectRoot, 'tmp', 'props-resolved.json');

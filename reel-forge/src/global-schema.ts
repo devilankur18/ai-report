@@ -126,6 +126,7 @@ export const GlobalPropsSchema = z.object({
   // ── Takeaways ──────────────────────────────────────────────────────────
   /** List of takeaway bullet points distributed across full video length */
   takeaways: z.array(TakeawaySchema).optional(),
+  patientQuestionAudioUrl: z.string().optional(),
 });
 
 export type Scene = z.infer<typeof SceneSchema>;

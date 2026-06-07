@@ -24,6 +24,7 @@ def synthesize_voice(
     text: str,
     out_mp3: Path
 ):
+    text = " ".join(text.split())
     voice_profile_path, client_dir = resolve_paths(project_root, client_id, voice_id)
     
     with open(voice_profile_path, "r", encoding="utf-8") as f:
