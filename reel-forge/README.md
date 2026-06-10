@@ -316,8 +316,8 @@ When generating reels, do not modify config files to try different styles. Inste
 # Test Glitch Cycle Hook (renders in ~45s reusing transcript)
 npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --hook-style glitch-cycle --quick
 
-# Test 3D Card Stack (renders in ~45s reusing transcript)
-npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --hook-style 3d-stack --quick
+# Test paralax-waveform  (renders in ~45s reusing transcript)
+npx tsx cli/render.ts --client dr-snigdha-sinha --design talking-head-qna --audio public/audio/audio-snig.m4a --hook-style paralax-waveform --quick
 ```
 
 #### 4. Preview Server Visual Checking

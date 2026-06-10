@@ -173,34 +173,114 @@ Rendering Options:
       process.exit(1);
     }
     
-    // Resolve voice config
+    // Resolve voice config based on language and defaults
     if (!voiceId) {
-      // Look for default-voice config or first available
       const voicesDir = path.join(projectRoot, 'clients', clientNameId, 'voices');
       if (fs.existsSync(voicesDir)) {
         const files = fs.readdirSync(voicesDir).filter(f => f.endsWith('.json'));
-        if (files.includes('default.json')) {
-          voiceId = 'default';
-        } else if (files.includes('standard-aiden.json')) {
-          voiceId = 'standard-aiden';
-        } else if (files.length > 0) {
-          voiceId = path.basename(files[0], '.json');
+        
+        if (targetLang === 'hi') {
+          // Look for Hindi specific profiles
+          if (files.includes('default-hi.json')) {
+            voiceId = 'default-hi';
+          } else {
+            const hiFile = files.find(f => f.endsWith('-hi.json'));
+            if (hiFile) {
+              voiceId = path.basename(hiFile, '.json');
+            } else if (files.includes('default-en.json')) {
+              voiceId = 'default-en';
+            } else if (files.includes('default.json')) {
+              voiceId = 'default';
+            } else if (files.includes('cloned-snig-hi.json')) {
+              voiceId = 'cloned-snig-hi';
+            } else if (files.includes('cloned-snig-en.json')) {
+              voiceId = 'cloned-snig-en';
+            } else if (files.includes('cloned-snig.json')) {
+              voiceId = 'cloned-snig';
+            } else if (files.length > 0) {
+              voiceId = path.basename(files[0], '.json');
+            }
+          }
+        } else {
+          // English/Default
+          if (files.includes('default-en.json')) {
+            voiceId = 'default-en';
+          } else if (files.includes('default.json')) {
+            voiceId = 'default';
+          } else if (files.includes('standard-aiden-en.json')) {
+            voiceId = 'standard-aiden-en';
+          } else if (files.includes('standard-aiden.json')) {
+            voiceId = 'standard-aiden';
+          } else {
+            const nonHiFile = files.find(f => !f.endsWith('-hi.json'));
+            if (nonHiFile) {
+              voiceId = path.basename(nonHiFile, '.json');
+            } else if (files.length > 0) {
+              voiceId = path.basename(files[0], '.json');
+            }
+          }
         }
       }
+      
       if (!voiceId) {
         console.error('[render] Error: No voice profile found and none specified via --voice.');
         process.exit(1);
       }
-      console.log(`[render] No voice profile specified, defaulting to: ${voiceId}`);
+      console.log(`[render] Resolved default voice to: ${voiceId}`);
     }
 
+    // Ensure we have a Hindi-specific voice profile copy to cache the LMNT voice ID
+    if (targetLang === 'hi' && !voiceId.endsWith('-hi')) {
+      const voicesDir = path.join(projectRoot, 'clients', clientNameId, 'voices');
+      const baseVoiceId = voiceId.endsWith('-en') ? voiceId.slice(0, -3) : voiceId;
+      const baseVoicePath = path.join(voicesDir, `${voiceId}.json`);
+      const hiVoiceId = `${baseVoiceId}-hi`;
+      const hiVoicePath = path.join(voicesDir, `${hiVoiceId}.json`);
+
+      if (fs.existsSync(baseVoicePath) && !fs.existsSync(hiVoicePath)) {
+        console.log(`[render] Creating Hindi voice profile clone: ${hiVoiceId}.json`);
+        try {
+          const profile = JSON.parse(fs.readFileSync(baseVoicePath, 'utf8'));
+          
+          // Clean up engine-specific parameters that are not needed for LMNT
+          delete profile.profile_id;
+          delete profile.profile_name;
+          delete profile.model_size;
+          delete profile.default_engine;
+          delete profile.model;
+          delete profile.presetName;
+          delete profile.instruct;
+          
+          profile.engine = 'lmnt';
+          profile.language = 'hi';
+          
+          if (voiceId.includes('cloned') || profile.type === 'cloned' || profile.refAudio) {
+            profile.type = 'cloned';
+          }
+          
+          fs.writeFileSync(hiVoicePath, JSON.stringify(profile, null, 2));
+        } catch (err: any) {
+          console.warn(`[render] Warning: Failed to clone Hindi voice profile.`, err.message);
+        }
+      }
+      if (fs.existsSync(hiVoicePath)) {
+        voiceId = hiVoiceId;
+      }
+    }
+
+    let voiceEngine = 'voicebox';
     console.log(`[render] Resolving voice config for voiceId: ${voiceId}…`);
     try {
       const voiceConfig = resolveVoiceConfig(projectRoot, clientNameId, voiceId);
-      console.log(`[render] Voice engine: ${voiceConfig.engine}`);
+      voiceEngine = voiceConfig.engine || 'voicebox';
+      console.log(`[render] Voice engine: ${voiceEngine}`);
     } catch (err: any) {
       console.error(`[render] Error: Failed to resolve voice config.`, err.message);
       process.exit(1);
+    }
+
+    if (targetLang === 'hi') {
+      voiceEngine = 'lmnt';
     }
 
     const pythonCmd = fs.existsSync(path.join(projectRoot, '..', 'browser-use-demo', '.venv', 'bin', 'python3'))
@@ -262,6 +342,8 @@ Rendering Options:
         --domain "${domain}" \
         --model "${model}" \
         --duration "${duration}" \
+        --language "${targetLang}" \
+        --provider "${voiceEngine}" \
         --output "${generatedAnswerPath}"`;
 
       try {
@@ -279,6 +361,7 @@ Rendering Options:
         --client "${clientNameId}" \
         --voice "${voiceId}" \
         --text "${answerText.replace(/"/g, '\\"')}" \
+        --language "${targetLang}" \
         --output "${synthesizedVoicePath}"`;
 
       try {
@@ -294,6 +377,7 @@ Rendering Options:
         --client "${clientNameId}" \
         --voice "${patientVoiceId}" \
         --text "${question.replace(/"/g, '\\"')}" \
+        --language "${targetLang}" \
         --output "${synthesizedQuestionPath}"`;
 
       try {

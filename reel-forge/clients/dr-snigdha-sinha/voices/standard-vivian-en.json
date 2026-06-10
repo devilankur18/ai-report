@@ -1,0 +1,9 @@
+{
+  "engine": "mlx-qwen3-tts",
+  "model": "Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice",
+  "type": "preset",
+  "presetName": "Vivian",
+  "instruct": "Speak in a warm, professional, engaging tone as a pathologist.",
+  "speed": 1.0,
+  "pitch": 1.0
+}

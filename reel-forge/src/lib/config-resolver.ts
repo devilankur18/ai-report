@@ -247,10 +247,21 @@ export function resolveVoiceConfig(
   voiceId: string
 ): VoiceConfig {
   const clientDir = path.join(projectRoot, 'clients', clientId);
-  const voicePath = path.join(clientDir, 'voices', `${voiceId}.json`);
+  let voicePath = path.join(clientDir, 'voices', `${voiceId}.json`);
 
   if (!fs.existsSync(voicePath)) {
-    throw new Error(`Voice profile not found at ${voicePath}`);
+    let found = false;
+    for (const suffix of ['-en', '-hi']) {
+      const altPath = path.join(clientDir, 'voices', `${voiceId}${suffix}.json`);
+      if (fs.existsSync(altPath)) {
+        voicePath = altPath;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      throw new Error(`Voice profile not found at ${voicePath}`);
+    }
   }
 
   const voice: VoiceConfig = JSON.parse(fs.readFileSync(voicePath, 'utf8'));
