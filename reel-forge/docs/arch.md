@@ -116,12 +116,14 @@ Declares the expert's metadata and lists the asset files available in the client
 ```
 
 ### Design Configuration (`designs/<design-id>.json`)
-Declares which template to use, default language settings, and customized visual elements (colors, gradients, backgrounds):
+Declares which template to use, default language settings, and customized visual elements (colors, gradients, backgrounds). The system defaults to the `talking-head-qna` design and template configuration, with the `parallax-waveform` hook style.
+
 ```json
 {
   "template": "talking-head-qna",
   "defaultLanguage": "en",
   "ctaText": "Protect your teeth. Book an appointment today.",
+  "hookStyle": "parallax-waveform",
   "theme": {
     "accentColor": "#00F5D4",
     "textColor": "#FFFFFF",

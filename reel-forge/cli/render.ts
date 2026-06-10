@@ -118,12 +118,12 @@ Rendering Options:
 
   // 1. Resolve Profile and Design Config
   let clientNameId = args.client as string;
-  let designId = (args.design as string) || 'classic-reels';
+  let designId = (args.design as string) || 'talking-head-qna';
 
   let expert = args.expert as string;
   let specialty = args.specialty as string;
   let domain = args.domain as string;
-  let template = (args.template as string) || 'hook-quote';
+  let template = (args.template as string) || 'talking-head-qna';
   let targetLang = (args.lang as string) || 'en';
   let accentColor = args['accent-color'] as string;
   let bgVideo = (args['bg-video'] as string) || '';
